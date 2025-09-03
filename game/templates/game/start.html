@@ -1,0 +1,15 @@
+{% extends 'game/base.html' %}
+
+{% block title %}ゲーム開始 | RPG Game{% endblock %}
+
+{% block content %}
+    <h2>名前を登録しよう</h2>
+    <form method="POST">
+        {% csrf_token %}
+        <div class="mb3">
+            <label for="name" class="form-label">あなたの名前</label>
+            <input type="text" name="name" id="name" class="form-control" required>
+        </div>
+        <button type="submit" class="btn btn-primary">Start the Adventure</button>
+    </form>
+{% endblock %}

@@ -1,0 +1,41 @@
+{% extends 'game/base.html' %}
+{% block title %}冒険開始 | RPG Game{% endblock %}
+
+{% block content %}
+    <h2>冒険を始めよう</h2>
+    <p>経験値: {{ player.exp }} / {{ player.next_exp }}</p>
+    <div style="width: 300px; height: 20px; background-color: #ddd; border-radius: 5px;">
+        <div style="width: {{ exp_percent }}%; height: 100%; background-color: green; border-radius: 5px;"></div>
+    </div>
+    <p>冒険者:{{ player.profile.name }}</p>
+    <p>レベル:{{ player.level }}</p>
+    <p>HP:{{ player.hp }} / {{ player.max_hp }}
+        {% if player.stat_points > 0 %}
+            <form method="POST" action="{% url 'battle_start' player.id %}" style="display:inline;">
+                {% csrf_token %}
+                <button type="submit" name="stat" value="hp" class="btn btn-success btn-sm">＋</button>
+            </form>
+        {% endif %}
+    </p>
+    <p>ATK:{{ player.atk }}
+        {% if player.stat_points > 0 %}
+            <form method="POST" action="{% url 'battle_start' player.id enemy.id %}" style="display:inline;">
+                {% csrf_token %}
+                <button type="submit" name="stat" value="atk" class="btn btn-success btn-sm">＋</button>
+            </form>
+        {% endif %}
+    </p>
+    <p>DEF:{{ player.defense }}
+        {% if player.stat_points > 0 %}
+            <form method="POST" action="{% url 'battle_start' player.id enemy.id %}" style="display:inline;">
+                {% csrf_token %}
+                <button type="submit" name="stat" value="defense" class="btn btn-success btn-sm">＋</button>
+            </form>
+        {% endif %}
+    </p>
+    <p>残りステータスポイント:{{ player.stat_points }}</p>
+    <p>残りコンティニュー回数:{{ continue_count }}</p>
+
+    <a href="{% url 'battle' player.id enemy.id %}" class="btn btn-danger mt-3">討伐任務</a>
+
+{% endblock %}

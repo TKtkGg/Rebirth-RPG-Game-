@@ -1,0 +1,8 @@
+{% extends 'game/base.html' %}
+
+{% block title %}ホーム | My RPG Game{% endblock %}
+
+{% block content %}
+<h2>ようこそ！冒険者さん！</h2>
+<a href="{% url 'start_game' %}" class="btn btn-primary">Start the RPG</a>
+{% endblock %}

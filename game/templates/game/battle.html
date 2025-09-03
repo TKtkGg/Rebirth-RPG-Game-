@@ -1,0 +1,41 @@
+{% extends 'game/base.html' %}
+{% block title %}バトル{% endblock %}
+
+{% block content %}
+    <h2>バトル スタート！</h2>
+    <p>{{ player.profile.name }} (HP:{{ player.hp }}/{{ player.max_hp }})</p>
+    <p>{{ enemy.name }} (HP:{{ enemy.hp }}/{{enemy.max_hp}})</p>
+
+    {% if message %}
+        <p style="white-space: pre-line;">{{ message }}</p>
+
+        {% if redirect_after %}
+            <script>
+                setTimeout(function() {
+                    window.location.href = "{% url 'battle_start_redirect' player.id %}";
+                }, 1500);  // 1.5秒後に戻る
+            </script>
+        {% endif %}
+    {% endif %}
+
+    {% if "を倒した" in message %}
+            <form action="{% url 'battle_start' player.id enemy.id %}" method="get">
+                <button type="submit" class="btn btn-primary mt-3">戻る</button>
+            </form>
+            
+            <script>
+                setTimeout(function() {
+                    window.location.href = "{% url 'battle_start' player.id enemy.id %}";
+                }, 5000);
+            </script>
+
+    {% else %}
+        {% if player.hp > 0 and enemy and not recovering%}
+            <form method="POST">
+                {% csrf_token %}
+                <button type="submit" class="btn btn-danger">攻撃する</button>
+            </form>
+        {% endif %}
+    {% endif %}
+
+{% endblock %}

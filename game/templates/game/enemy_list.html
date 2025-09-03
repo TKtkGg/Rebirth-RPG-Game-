@@ -1,0 +1,13 @@
+{% extends 'game/base.html' %}
+{% block content %}
+    <h1>戦闘開始！</h1>
+
+    <ul>
+        {% for enemy in enemies %}
+            <li>
+                {{ enemy.name }} (HP:{{ enemy.max_hp }})
+                <a href="{% url 'battle' player_id enemy.id %}">戦う</a>
+            </li>
+        {% endfor %}
+    </ul>
+{% endblock %}

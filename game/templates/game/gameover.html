@@ -1,0 +1,37 @@
+{% extends 'game/base.html' %}
+{% block title %}ゲームオーバー{% endblock %}
+{% block content %}
+    <div class="flex flex-col items-center justify-center text-center p-6">
+        <h1 id="gameover" class="text-5xl font-bold text-red-600 animate-pulse mb-6">
+            GAME OVER
+        </h1>
+
+        <p class="text-lg text-gray-700 mb-4">
+            {{ message }}
+        </p>
+
+        <form action="{% url 'home' %}" method="get">
+            <button type="submit" 
+                    class="btn btn-primary text-xl px-6 py-3 rounded-2xl shadow-lg hover:scale-105 transition">
+                最初からやり直す
+            </button>
+        </form>
+    </div>
+    <style>
+        /* 背景にフェードする演出 */
+        body {
+            background: radial-gradient(circle, #000000 0%, #1a1a1a 100%);
+            color: white;
+        }
+
+        /* 赤い点滅を追加 */
+        @keyframes flicker {
+            0% { opacity: 1; color: red; }
+            50% { opacity: 0.2; color: rgb(125, 0, 0);}
+            100% { opacity: 1; color: red;}
+        }
+        #gameover {
+            animation: flicker 1.5s infinite;
+        }
+    </style>
+{% endblock %}
