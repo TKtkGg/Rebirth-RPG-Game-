@@ -11,7 +11,7 @@
     <p>レベル:{{ player.level }}</p>
     <p>HP:{{ player.hp }} / {{ player.max_hp }}
         {% if player.stat_points > 0 %}
-            <form method="POST" action="{% url 'battle_start' player.id %}" style="display:inline;">
+            <form method="POST" action="{% url 'battle_start_redirect' player.id %}" style="display:inline;">
                 {% csrf_token %}
                 <button type="submit" name="stat" value="hp" class="btn btn-success btn-sm">＋</button>
             </form>
@@ -19,7 +19,7 @@
     </p>
     <p>ATK:{{ player.atk }}
         {% if player.stat_points > 0 %}
-            <form method="POST" action="{% url 'battle_start' player.id enemy.id %}" style="display:inline;">
+            <form method="POST" action="{% url 'battle_start_redirect' player.id %}" style="display:inline;">
                 {% csrf_token %}
                 <button type="submit" name="stat" value="atk" class="btn btn-success btn-sm">＋</button>
             </form>
@@ -27,7 +27,7 @@
     </p>
     <p>DEF:{{ player.defense }}
         {% if player.stat_points > 0 %}
-            <form method="POST" action="{% url 'battle_start' player.id enemy.id %}" style="display:inline;">
+            <form method="POST" action="{% url 'battle_start_redirect' player.id %}" style="display:inline;">
                 {% csrf_token %}
                 <button type="submit" name="stat" value="defense" class="btn btn-success btn-sm">＋</button>
             </form>
@@ -37,5 +37,10 @@
     <p>残りコンティニュー回数:{{ continue_count }}</p>
 
     <a href="{% url 'battle' player.id enemy.id %}" class="btn btn-danger mt-3">討伐任務</a>
+    
+    <form method="POST" action="{% url 'battle_start_redirect' player.id %}" style="margin-top: 10px;">
+        {% csrf_token %}
+        <button type="submit" name="action" value="rest" class="btn btn-warning">休む</button>
+    </form>
 
 {% endblock %}

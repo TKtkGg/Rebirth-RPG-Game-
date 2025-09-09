@@ -19,13 +19,13 @@
     {% endif %}
 
     {% if "を倒した" in message %}
-            <form action="{% url 'battle_start' player.id enemy.id %}" method="get">
+            <form action="{% url 'battle_start_redirect' player.id %}" method="get">
                 <button type="submit" class="btn btn-primary mt-3">戻る</button>
             </form>
             
             <script>
                 setTimeout(function() {
-                    window.location.href = "{% url 'battle_start' player.id enemy.id %}";
+                    window.location.href = "{% url 'battle_start_redirect' player.id %}";
                 }, 5000);
             </script>
 

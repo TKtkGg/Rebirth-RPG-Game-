@@ -14,34 +14,42 @@ def start_game(request):
         profile = PlayerProfile.objects.create(name=name)
         player = Player.objects.create(profile=profile, hp=100, max_hp=100, job="戦士", item="なし")
 
-        return redirect('battle_start',player_id=player.id)
+        return redirect('battle_start_redirect',player_id=player.id)
     return render(request, 'game/start.html')
 
-def battle_start(request,player_id,enemy_id=None):
+def battle_start(request, player_id, enemy_id=None):
     player = Player.objects.get(id=player_id)
     if player.hp <= 0:
         player.hp = player.max_hp
         player.save()
 
-    enemy = Enemy.objects.order_by("?").first()
-    request.session["enemy_id"] = enemy.id
-    if enemy.is_defeated:
-        enemy.hp = enemy.max_hp
-        enemy.is_defeated = False
-        enemy.save()
-        
+    # ランダムに敵を選択
     enemy = random.choice(Enemy.objects.all())
-
+    
+    # 敵のHPを常に最大値にリセット
     enemy.hp = enemy.max_hp
+    enemy.is_defeated = False
     enemy.save()
+    
+    # セッションに敵のIDを保存
+    request.session["enemy_id"] = enemy.id
 
     exp_percent = int(player.exp / player.next_exp * 100)
 
     continue_count = 2 - player.defeats
 
-    if request.method =='POST':
+
+    if request.method == 'POST':
+        # 休む機能の処理
+        action = request.POST.get('action')
+        if action == 'rest':
+            player.hp = player.max_hp
+            player.save()
+            return redirect('battle_start_redirect', player_id=player.id)
+        
+        # ステータスポイント配分の処理
         stat = request.POST.get('stat')
-        if player.stat_points > 0:
+        if stat and player.stat_points > 0:
             if stat == 'atk':
                 player.atk += 1
             elif stat == 'defense':
@@ -51,7 +59,7 @@ def battle_start(request,player_id,enemy_id=None):
                 player.hp += 10
             player.stat_points -= 1
             player.save()
-        return redirect('battle_start',player_id=player.id)
+            return redirect('battle_start_redirect', player_id=player.id)
 
     return render(request, 'game/battle_start.html',{"player":player,"enemy":enemy,"exp_percent":exp_percent,"continue_count":continue_count,})
 
@@ -101,12 +109,18 @@ def battle(request,player_id,enemy_id):
             player.defeats += 1
             if player.defeats >= 3:
                 message += f"\n{player.profile.name} は力尽きた… ゲームオーバー！"
-                player.defeats = 0   # リセットして最初から
+                # 完全リセット
+                player.defeats = 0
                 player.level = 1
                 player.exp = 0
-                player.next_exp = 10
-                player.hp = player.max_hp
-                # 他の初期化処理もここで
+                player.next_exp = 500
+                player.max_hp = 100
+                player.hp = 100
+                player.atk = 10
+                player.defense = 5
+                player.stat_points = 0
+                player.job = "戦士"
+                player.item = "なし"
                 player.save()
                 return render(request, "game/gameover.html", {"player": player, "message": message})
             else:
