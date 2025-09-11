@@ -32,3 +32,4 @@ class Enemy(models.Model):
     defense = models.IntegerField(default=3)
     exp = models.IntegerField(default=120)
     is_defeated = models.BooleanField(default=False)
+    level = models.IntegerField(default=1)

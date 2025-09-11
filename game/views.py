@@ -23,21 +23,36 @@ def battle_start(request, player_id, enemy_id=None):
         player.hp = player.max_hp
         player.save()
 
+    # プレイヤーのレベル±10の範囲で敵を選択
+    min_level = max(1, player.level - 10)
+    max_level = player.level + 10
+    enemies = Enemy.objects.filter(level__gte=min_level, level__lte=max_level)
+
+    # 敵が存在しない場合のフォールバック
+    if not enemies.exists():
+        enemies = Enemy.objects.all()
+
+    # レベル差に応じて出現確率を調整
+    weighted_enemies = []
+    for enemy in enemies:
+        level_diff = abs(player.level - enemy.level)
+        weight = max(1, 20 - level_diff)  # レベル差が大きいほど重みが小さくなる
+        weighted_enemies.extend([enemy] * weight)
+
     # ランダムに敵を選択
-    enemy = random.choice(Enemy.objects.all())
-    
+    enemy = random.choice(weighted_enemies)
+
     # 敵のHPを常に最大値にリセット
     enemy.hp = enemy.max_hp
     enemy.is_defeated = False
     enemy.save()
-    
+
     # セッションに敵のIDを保存
     request.session["enemy_id"] = enemy.id
 
     exp_percent = int(player.exp / player.next_exp * 100)
 
     continue_count = 2 - player.defeats
-
 
     if request.method == 'POST':
         # 休む機能の処理
@@ -46,7 +61,7 @@ def battle_start(request, player_id, enemy_id=None):
             player.hp = player.max_hp
             player.save()
             return redirect('battle_start_redirect', player_id=player.id)
-        
+
         # ステータスポイント配分の処理
         stat = request.POST.get('stat')
         if stat and player.stat_points > 0:
@@ -61,7 +76,7 @@ def battle_start(request, player_id, enemy_id=None):
             player.save()
             return redirect('battle_start_redirect', player_id=player.id)
 
-    return render(request, 'game/battle_start.html',{"player":player,"enemy":enemy,"exp_percent":exp_percent,"continue_count":continue_count,})
+    return render(request, 'game/battle_start.html', {"player": player, "enemy": enemy, "exp_percent": exp_percent, "continue_count": continue_count,})
 
 def battle(request,player_id,enemy_id):
     player=Player.objects.get(id=player_id)
