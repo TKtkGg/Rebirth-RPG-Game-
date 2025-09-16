@@ -33,6 +33,14 @@
             </form>
         {% endif %}
     </p>
+    <p>SPD:{{ player.spd }}
+        {% if player.stat_points > 0 %}
+            <form method="POST" action="{% url 'battle_start_redirect' player.id %}" style="display:inline;">
+                {% csrf_token %}
+                <button type="submit" name="stat" value="defense" class="btn btn-success btn-sm">＋</button>
+            </form>
+        {% endif %}
+    </p>
     <p>残りステータスポイント:{{ player.stat_points }}</p>
     <p>残りコンティニュー回数:{{ continue_count }}</p>
 

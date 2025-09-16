@@ -23,9 +23,17 @@ def battle_start(request, player_id, enemy_id=None):
         player.hp = player.max_hp
         player.save()
 
-    # プレイヤーのレベル±10の範囲で敵を選択
-    min_level = max(1, player.level - 10)
-    max_level = player.level + 10
+    # 敵のレベル範囲を設定
+    if player.level <= 5:
+        min_level = max(1, player.level - 1)
+        max_level = player.level + 1
+    elif player.level <= 10:
+        min_level = max(1, player.level - 3)
+        max_level = player.level + 3
+    else:
+        min_level = max(1, player.level - 10)
+        max_level = player.level + 5
+
     enemies = Enemy.objects.filter(level__gte=min_level, level__lte=max_level)
 
     # 敵が存在しない場合のフォールバック
@@ -35,15 +43,32 @@ def battle_start(request, player_id, enemy_id=None):
     # レベル差に応じて出現確率を調整
     weighted_enemies = []
     for enemy in enemies:
-        level_diff = abs(player.level - enemy.level)
-        weight = max(1, 20 - level_diff)  # レベル差が大きいほど重みが小さくなる
+        if player.level <= 5:
+            weight = 10  # 同じレベルまたは±1の敵は均等に出現
+        elif player.level <= 10:
+            level_diff = abs(player.level - enemy.level)
+            weight = max(1, 10 - level_diff * 2)  # レベル差が大きいほど重みが小さくなる
+        else:
+            level_diff = abs(player.level - enemy.level)
+            weight = max(1, 20 - level_diff)  # レベル差が大きいほど重みが小さくなる
         weighted_enemies.extend([enemy] * weight)
 
     # ランダムに敵を選択
     enemy = random.choice(weighted_enemies)
 
-    # 敵のHPを常に最大値にリセット
+    # 敵のレベルをランダムに変更（範囲内で）
+    if max(min_level, enemy.level, enemy.level_default) > max_level:
+        enemy.level = max_level  # 範囲が無効な場合は最大値を設定
+    else:
+        enemy.level = random.randint(max(min_level, enemy.level_default), max_level)
+
+    # レベルに応じてステータスを変更
+    enemy.max_hp = enemy.max_hp_default + (enemy.level - enemy.level_default) * enemy.max_hp // 10
     enemy.hp = enemy.max_hp
+    enemy.atk = enemy.atk_default + (enemy.level - enemy.level_default) * enemy.atk // 15
+    enemy.defense = enemy.defense_default + (enemy.level - enemy.level_default) * enemy.defense // 15
+    enemy.spd = enemy.spd_default + (enemy.level - enemy.level_default) * enemy.spd // 15
+    enemy.exp = enemy.exp_default + (enemy.level - enemy.level_default) * enemy.exp // 10
     enemy.is_defeated = False
     enemy.save()
 
@@ -72,6 +97,8 @@ def battle_start(request, player_id, enemy_id=None):
             elif stat == 'hp':
                 player.max_hp += 10
                 player.hp += 10
+            elif stat == 'spd':
+                player.spd += 1
             player.stat_points -= 1
             player.save()
             return redirect('battle_start_redirect', player_id=player.id)
@@ -89,7 +116,7 @@ def battle(request,player_id,enemy_id):
         damage = max(random.randint(base_damage - 1, base_damage + 2),1)
         enemy.hp -= damage
         enemy.save()
-        message = f"{player.profile.name}の攻撃！ {enemy.name}に{damage}ダメージ！"
+        message = f"{player.profile.name}の攻撃！ {enemy.name}に{damage}ダメージ！\n"
 
         if enemy.hp <= 0:
             gained_exp = enemy.exp
@@ -133,10 +160,22 @@ def battle(request,player_id,enemy_id):
                 player.hp = 100
                 player.atk = 10
                 player.defense = 5
+                player.spd = 5
                 player.stat_points = 0
                 player.job = "戦士"
                 player.item = "なし"
                 player.save()
+
+                # 敵のステータスをデフォルトに戻す
+                enemies = Enemy.objects.all()
+                for enemy in enemies:
+                    enemy.hp = enemy.max_hp
+                    enemy.level = enemy.level_default
+                    enemy.atk = 5  # デフォルト値に戻す
+                    enemy.defense = 3  # デフォルト値に戻す
+                    enemy.is_defeated = False
+                    enemy.save()
+
                 return render(request, "game/gameover.html", {"player": player, "message": message})
             else:
                 message += f"{player.profile.name} は倒れてしまった… 休んで回復しよう\n"

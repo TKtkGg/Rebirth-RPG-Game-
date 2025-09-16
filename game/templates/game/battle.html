@@ -3,8 +3,8 @@
 
 {% block content %}
     <h2>バトル スタート！</h2>
-    <p>{{ player.profile.name }} (HP:{{ player.hp }}/{{ player.max_hp }})</p>
-    <p>{{ enemy.name }} (HP:{{ enemy.hp }}/{{enemy.max_hp}})</p>
+    <p>{{ player.profile.name }} (LV:{{ player.level }} HP:{{ player.hp }}/{{ player.max_hp }} ATK:{{ player.atk }} DEF:{{ player.defense }} SPD:{{ player.spd }})</p>
+    <p>{{ enemy.name }} (LV:{{ enemy.level }} HP:{{ enemy.hp }}/{{enemy.max_hp}} ATK:{{ enemy.atk }} DEF:{{ enemy.defense }} SPD:{{ enemy.spd }})</p>
 
     {% if message %}
         <p style="white-space: pre-line;">{{ message }}</p>
