@@ -3,7 +3,7 @@
 
 {% block content %}
     <h2>バトル スタート！</h2>
-    <p>{{ player.profile.name }} (LV:{{ player.level }} HP:{{ player.hp }}/{{ player.max_hp }} ATK:{{ player.atk }} DEF:{{ player.defense }} SPD:{{ player.spd }})</p>
+    <p>{{ player.profile.name }} (LV:{{ player.level }} HP:{{ player.hp }}/{{ player.max_hp }} ATK:{{ player.atk }} DEF:{{ player.defense }} SPD:{{ player.spd }} MP:{{ player.mp }}/{{ player.max_mp }})</p>
     <p>{{ enemy.name }} (LV:{{ enemy.level }} HP:{{ enemy.hp }}/{{enemy.max_hp}} ATK:{{ enemy.atk }} DEF:{{ enemy.defense }} SPD:{{ enemy.spd }})</p>
 
     {% if message %}
@@ -33,7 +33,8 @@
         {% if player.hp > 0 and enemy and not recovering%}
             <form method="POST">
                 {% csrf_token %}
-                <button type="submit" class="btn btn-danger">攻撃する</button>
+                <button type="submit" name="action" value="attack" class="btn btn-danger">攻撃する</button>
+                <button type="submit" name="action" value="defend" class="btn btn-secondary">防御する</button>
             </form>
         {% endif %}
     {% endif %}

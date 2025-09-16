@@ -41,6 +41,13 @@
             </form>
         {% endif %}
     </p>
+    <p>MP:{{ player.mp }} / {{ player.max_mp }}
+        {% if player.stat_points > 0 %}
+            <form method="POST" action="{% url 'battle_start_redirect' player.id %}" style="display:inline;">
+                {% csrf_token %}
+                <button type="submit" name="stat" value="mp" class="btn btn-success btn-sm">＋</button>
+            </form>
+        {% endif %}
     <p>残りステータスポイント:{{ player.stat_points }}</p>
     <p>残りコンティニュー回数:{{ continue_count }}</p>
 

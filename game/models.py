@@ -19,6 +19,8 @@ class Player(models.Model):
     atk = models.IntegerField(default=10)
     defense = models.IntegerField(default=5)
     spd = models.IntegerField(default=5)
+    max_mp = models.IntegerField(default=50)
+    mp = models.IntegerField(default=50)
     stat_points = models.IntegerField(default=0)
     job = models.CharField(max_length=20, default="戦士")
     item = models.CharField(max_length=30, default="なし")

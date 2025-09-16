@@ -99,6 +99,9 @@ def battle_start(request, player_id, enemy_id=None):
                 player.hp += 10
             elif stat == 'spd':
                 player.spd += 1
+            elif stat == 'mp':
+                player.max_mp += 5
+                player.mp += 5
             player.stat_points -= 1
             player.save()
             return redirect('battle_start_redirect', player_id=player.id)
@@ -111,7 +114,68 @@ def battle(request,player_id,enemy_id):
     enemy = Enemy.objects.get(id=enemy_id)
     message = ""
 
+    def game_over():
+        player.defeats = 0
+        player.level = 1
+        player.exp = 0
+        player.next_exp = 500
+        player.max_hp = 100
+        player.hp = 100
+        player.atk = 10
+        player.defense = 5
+        player.spd = 5
+        player.stat_points = 0
+        player.job = "戦士"
+        player.item = "なし"
+        player.save()
+
+        # 敵のステータスをデフォルトに戻す
+        enemies = Enemy.objects.all()
+        for enemy in enemies:
+            enemy.hp = enemy.max_hp
+            enemy.level = enemy.level_default
+            enemy.atk = enemy.atk_default  # デフォルト値に戻す
+            enemy.defense = enemy.defense_default  # デフォルト値に戻す
+            enemy.is_defeated = False
+            enemy.save()
+
+
     if request.method == 'POST':
+        action = request.POST.get('action')
+        if action == 'defend':
+            base_damage = max(1, (enemy.atk - player.defense))
+            damage = max(random.randint(base_damage - 2, base_damage + 1), 1)
+            player.hp -= damage
+            player.mp += random.randint(player.max_mp // 20 , player.max_mp // 10) if player.mp < player.max_mp else 0
+            message = f"{enemy.name} の攻撃！\n{player.profile.name} は防御した！ {damage}ダメージ！\n" + (f"防御によってMPが少し回復した！" if player.mp < player.max_mp else "")
+
+            if player.hp <= 0:
+                player.defeats += 1
+                if player.defeats >= 3:
+                    message += f"\n{player.profile.name} は力尽きた… ゲームオーバー！"
+                    game_over()
+
+                    return render(request, "game/gameover.html", {"player": player, "message": message})
+                else:
+                    message += f"{player.profile.name} は倒れてしまった… 休んで回復しよう\n"
+                    player.save()
+                    return render(request, "game/battle.html", {
+                        "player": player,
+                        "enemy": enemy,
+                        "message": message,
+                        "redirect_after": True,  # ← これでテンプレートに伝える
+                        "redirect_url": "battle_start",
+                        "recovering": True,
+                    })
+
+            player.save()
+            return render(request, "game/battle.html", {
+                "player": player,
+                "enemy": enemy,
+                "message": message,
+            })
+        
+        # 通常攻撃の処理
         base_damage = (player.atk - enemy.defense // 3)
         damage = max(random.randint(base_damage - 1, base_damage + 2),1)
         enemy.hp -= damage
@@ -124,7 +188,7 @@ def battle(request,player_id,enemy_id):
             message += f"\n{enemy.name}を倒した！"
             message += f"\n経験値を{gained_exp}ゲットした！"
             enemy.hp = 0
-            enemy.defeated = True
+            enemy.is_defeated = True
             enemy.save()
 
             while player.exp >= player.next_exp:
@@ -151,30 +215,7 @@ def battle(request,player_id,enemy_id):
             player.defeats += 1
             if player.defeats >= 3:
                 message += f"\n{player.profile.name} は力尽きた… ゲームオーバー！"
-                # 完全リセット
-                player.defeats = 0
-                player.level = 1
-                player.exp = 0
-                player.next_exp = 500
-                player.max_hp = 100
-                player.hp = 100
-                player.atk = 10
-                player.defense = 5
-                player.spd = 5
-                player.stat_points = 0
-                player.job = "戦士"
-                player.item = "なし"
-                player.save()
-
-                # 敵のステータスをデフォルトに戻す
-                enemies = Enemy.objects.all()
-                for enemy in enemies:
-                    enemy.hp = enemy.max_hp
-                    enemy.level = enemy.level_default
-                    enemy.atk = 5  # デフォルト値に戻す
-                    enemy.defense = 3  # デフォルト値に戻す
-                    enemy.is_defeated = False
-                    enemy.save()
+                game_over()
 
                 return render(request, "game/gameover.html", {"player": player, "message": message})
             else:
