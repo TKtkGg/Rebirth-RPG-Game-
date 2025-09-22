@@ -41,7 +41,7 @@
             </form>
         {% endif %}
     </p>
-    <p>MP:{{ player.mp }} / {{ player.max_mp }}
+    <p>SP:{{ player.mp }} / {{ player.max_mp }}
         {% if player.stat_points > 0 %}
             <form method="POST" action="{% url 'battle_start_redirect' player.id %}" style="display:inline;">
                 {% csrf_token %}

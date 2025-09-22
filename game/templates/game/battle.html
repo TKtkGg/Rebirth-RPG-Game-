@@ -3,7 +3,7 @@
 
 {% block content %}
     <h2>バトル スタート！</h2>
-    <p>{{ player.profile.name }} (LV:{{ player.level }} HP:{{ player.hp }}/{{ player.max_hp }} ATK:{{ player.atk }} DEF:{{ player.defense }} SPD:{{ player.spd }} MP:{{ player.mp }}/{{ player.max_mp }})</p>
+    <p>{{ player.profile.name }} (LV:{{ player.level }} HP:{{ player.hp }}/{{ player.max_hp }} ATK:{{ player.atk }} DEF:{{ player.defense }} SPD:{{ player.spd }} SP:{{ player.mp }}/{{ player.max_mp }})</p>
     <p>{{ enemy.name }} (LV:{{ enemy.level }} HP:{{ enemy.hp }}/{{enemy.max_hp}} ATK:{{ enemy.atk }} DEF:{{ enemy.defense }} SPD:{{ enemy.spd }})</p>
 
     {% if message %}
@@ -30,12 +30,29 @@
             </script>
 
     {% else %}
-        {% if player.hp > 0 and enemy and not recovering%}
-            <form method="POST">
+        {% if player.hp > 0 and enemy and not recovering %}
+            <form method="POST" id="action-form">
                 {% csrf_token %}
                 <button type="submit" name="action" value="attack" class="btn btn-danger">攻撃する</button>
                 <button type="submit" name="action" value="defend" class="btn btn-secondary">防御する</button>
+                <button type="button" id="special-skill-btn" class="btn btn-warning">得意技</button>
             </form>
+
+            <div id="special-skills" style="display: none;">
+                <form method="POST">
+                    {% csrf_token %}
+                    <button type="submit" name="special" value="skill1" class="btn btn-warning">渾身斬り</button>
+                    <button type="submit" name="special" value="skill2" class="btn btn-warning">身体強化</button>
+                    <button type="submit" name="special" value="skill3" class="btn btn-warning">気迫</button>
+                </form>
+            </div>
+
+            <script>
+                document.getElementById('special-skill-btn').addEventListener('click', function() {
+                    document.getElementById('action-form').style.display = 'none';
+                    document.getElementById('special-skills').style.display = 'block';
+                });
+            </script>
         {% endif %}
     {% endif %}
 

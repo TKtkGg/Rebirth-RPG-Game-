@@ -115,6 +115,7 @@ def battle(request,player_id,enemy_id):
     message = ""
 
     def game_over():
+        message += f"\n{player.profile.name} は力尽きた… ゲームオーバー！"
         player.defeats = 0
         player.level = 1
         player.exp = 0
@@ -139,6 +140,43 @@ def battle(request,player_id,enemy_id):
             enemy.is_defeated = False
             enemy.save()
 
+        return render(request, "game/gameover.html", {"player": player, "message": message})
+
+
+    def tohome():
+        message += f"{player.profile.name} は倒れてしまった… 休んで回復しよう\n"
+        player.save()
+        return render(request, "game/battle.html", {
+            "player": player,
+            "enemy": enemy,
+            "message": message,
+            "redirect_after": True,  # ← これでテンプレートに伝える
+            "redirect_url": "battle_start",
+            "recovering": True,
+        })
+    
+    def win():
+        gained_exp = enemy.exp
+        player.exp += gained_exp
+        message += f"\n{enemy.name}を倒した！"
+        message += f"\n経験値を{gained_exp}ゲットした！"
+        enemy.hp = 0
+        enemy.is_defeated = True
+        enemy.save()
+
+        while player.exp >= player.next_exp:
+            player.level += 1
+            player.stat_points += 3
+            player.exp -= player.next_exp
+            player.next_exp = int(500 + player.level * 20 * player.level)
+            message += f"\nレベルアップ！ レベル{player.level}になった！ ステータスポイント+3"
+
+        player.save()
+        return render(request, "game/battle.html", {
+            "player": player,
+            "enemy": None,
+            "message": message,
+        })
 
     if request.method == 'POST':
         action = request.POST.get('action')
@@ -147,28 +185,47 @@ def battle(request,player_id,enemy_id):
             damage = max(random.randint(base_damage - 2, base_damage + 1), 1)
             player.hp -= damage
             player.mp += random.randint(player.max_mp // 20 , player.max_mp // 10) if player.mp < player.max_mp else 0
-            message = f"{enemy.name} の攻撃！\n{player.profile.name} は防御した！ {damage}ダメージ！\n" + (f"防御によってMPが少し回復した！" if player.mp < player.max_mp else "")
+            message = f"{enemy.name} の攻撃！\n{player.profile.name} は防御した！ {damage}ダメージ！\n" + (f"防御によってSPが少し回復した！" if player.mp < player.max_mp else "")
 
             if player.hp <= 0:
                 player.defeats += 1
                 if player.defeats >= 3:
-                    message += f"\n{player.profile.name} は力尽きた… ゲームオーバー！"
                     game_over()
-
-                    return render(request, "game/gameover.html", {"player": player, "message": message})
                 else:
-                    message += f"{player.profile.name} は倒れてしまった… 休んで回復しよう\n"
-                    player.save()
-                    return render(request, "game/battle.html", {
-                        "player": player,
-                        "enemy": enemy,
-                        "message": message,
-                        "redirect_after": True,  # ← これでテンプレートに伝える
-                        "redirect_url": "battle_start",
-                        "recovering": True,
-                    })
+                    tohome()
 
             player.save()
+            return render(request, "game/battle.html", {
+                "player": player,
+                "enemy": enemy,
+                "message": message,
+            })
+        
+        special = request.POST.get('special')
+        if special:
+            if special == 'skill1':
+                # 得意技1: 敵に大ダメージを与える
+                damage = max(player.atk * 2 - enemy.defense, 1)
+                enemy.hp -= damage
+                message = f"{player.profile.name}の渾身斬り！ {enemy.name}に{damage}の大ダメージ！"
+                if enemy.hp <= 0:
+                    win()
+                enemy.save()
+
+            elif special == 'skill2':
+                # 得意技2: プレイヤーにバフを付与
+                player.atk = round(player.atk * 1.5)
+                player.defense = round(player.atk * 1.5)
+                message = f"{player.profile.name}の身体強化！ 攻撃力と防御力が上昇した！"
+                player.save()
+
+            elif special == 'skill3':
+                # 得意技3: 敵を弱体化
+                enemy.atk = round(enemy.atk * 0.6)
+                enemy.defense = round(enemy.defense * 0.6)
+                message = f"{player.profile.name}の気迫！ {enemy.name}の攻撃力と防御力を弱体化させた！"
+                enemy.save()
+
             return render(request, "game/battle.html", {
                 "player": player,
                 "enemy": enemy,
@@ -183,27 +240,7 @@ def battle(request,player_id,enemy_id):
         message = f"{player.profile.name}の攻撃！ {enemy.name}に{damage}ダメージ！\n"
 
         if enemy.hp <= 0:
-            gained_exp = enemy.exp
-            player.exp += gained_exp
-            message += f"\n{enemy.name}を倒した！"
-            message += f"\n経験値を{gained_exp}ゲットした！"
-            enemy.hp = 0
-            enemy.is_defeated = True
-            enemy.save()
-
-            while player.exp >= player.next_exp:
-                player.level += 1
-                player.stat_points += 3
-                player.exp -= player.next_exp
-                player.next_exp = int(500 + player.level * 20 * player.level)
-                message += f"\nレベルアップ！ レベル{player.level}になった！ ステータスポイント+3"
-
-            player.save()
-            return render(request, "game/battle.html", {
-                "player": player,
-                "enemy": None,
-                "message": message,
-            })
+            win()
 
 
         enemy_damage_base = max(1,enemy.atk - player.defense // 3)
@@ -214,21 +251,9 @@ def battle(request,player_id,enemy_id):
         if player.hp <= 0:
             player.defeats += 1
             if player.defeats >= 3:
-                message += f"\n{player.profile.name} は力尽きた… ゲームオーバー！"
                 game_over()
-
-                return render(request, "game/gameover.html", {"player": player, "message": message})
             else:
-                message += f"{player.profile.name} は倒れてしまった… 休んで回復しよう\n"
-                player.save()
-                return render(request, "game/battle.html", {
-                    "player": player,
-                    "enemy": enemy,
-                    "message": message,
-                    "redirect_after": True,  # ← これでテンプレートに伝える
-                    "redirect_url": "battle_start",
-                    "recovering":True,
-                })
+                tohome()
 
         player.save()
         enemy.save()
