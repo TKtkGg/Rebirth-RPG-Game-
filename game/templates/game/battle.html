@@ -3,8 +3,14 @@
 
 {% block content %}
     <h2>バトル スタート！</h2>
-    <p>{{ player.profile.name }} (LV:{{ player.level }} HP:{{ player.hp }}/{{ player.max_hp }} ATK:{{ player.atk }} DEF:{{ player.defense }} SPD:{{ player.spd }} SP:{{ player.mp }}/{{ player.max_mp }})</p>
-    <p>{{ enemy.name }} (LV:{{ enemy.level }} HP:{{ enemy.hp }}/{{enemy.max_hp}} ATK:{{ enemy.atk }} DEF:{{ enemy.defense }} SPD:{{ enemy.spd }})</p>
+    {% if buffs %}
+        <p style="margin: 0.1px 0;">身体強化:残り{{ buffs.atk_up.turns}}ターン</p>
+    {% endif %}
+    <p>{{ player.profile.name }} (LV:{{ player.level }} HP:{{ player.hp }}/{{ player.max_hp }} ATK:{{ bufatk }} DEF:{{ bufdef }} SPD:{{ player.spd }} SP:{{ player.mp }}/{{ player.max_mp }})</p>
+    {% if debuffs %}
+        <p style="margin: 0.1px 0;">気迫:残り{{ debuffs.atk_down.turns}}ターン</p>
+    {% endif %}
+    <p>{{ enemy.name }} (LV:{{ enemy.level }} HP:{{ enemy.hp }}/{{enemy.max_hp}} ATK:{{ debufatk }} DEF:{{ debufdef }} SPD:{{ enemy.spd }})</p>
 
     {% if message %}
         <p style="white-space: pre-line;">{{ message }}</p>
