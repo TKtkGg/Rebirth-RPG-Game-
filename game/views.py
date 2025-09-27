@@ -65,9 +65,9 @@ def battle_start(request, player_id, enemy_id=None):
     # レベルに応じてステータスを変更
     enemy.max_hp = enemy.max_hp_default + (enemy.level - enemy.level_default) * enemy.max_hp // 10
     enemy.hp = enemy.max_hp
-    enemy.atk = enemy.atk_default + (enemy.level - enemy.level_default) * enemy.atk // 15
-    enemy.defense = enemy.defense_default + (enemy.level - enemy.level_default) * enemy.defense // 15
-    enemy.spd = enemy.spd_default + (enemy.level - enemy.level_default) * enemy.spd // 15
+    enemy.atk = enemy.atk_default + (enemy.level - enemy.level_default) * enemy.atk // 5
+    enemy.defense = enemy.defense_default + (enemy.level - enemy.level_default) * enemy.defense // 5
+    enemy.spd = enemy.spd_default + (enemy.level - enemy.level_default) * enemy.spd // 5
     enemy.exp = enemy.exp_default + (enemy.level - enemy.level_default) * enemy.exp // 10
     enemy.is_defeated = False
     enemy.save()
@@ -180,11 +180,8 @@ def battle(request,player_id,enemy_id):
         request.session["debuffs"] = {}
         player.save()
         return message
-
-    if request.method == 'POST':
-        
-        action = request.POST.get('action')
-        special = request.POST.get('special')
+    
+    def playerAction(message,action,special):
         if action == 'attack':
             atk = int(player.atk * buffs.get("atk_up", {}).get("multiplier", 1.0))
             base_damage = int(atk - (enemy.defense * debuffs.get("def_down", {}).get("multiplier", 1.0)) // 3)
@@ -264,21 +261,9 @@ def battle(request,player_id,enemy_id):
                 player.mp -= 10
                 message = f"{player.profile.name}の気迫！ {enemy.name}の攻撃力と防御力が弱体化した！\nSPが10減った！\n"
                 player.save()
-
-        if enemy.hp <= 0:
-            message = win(message)
-            return render(request, "game/battle.html", {
-                "player": player,
-                "enemy": None,
-                "message": message,
-                "bufatk": bufatk,
-                "bufdef": bufdef,
-                "buffs": buffs,
-                "debufatk": debufatk,
-                "debufdef": debufdef,
-                "debuffs": debuffs,
-            })
-
+        return message
+    
+    def enemyAction(message,action):
         if action == 'defend':
             defense = int(player.defense * buffs.get("def_up", {}).get("multiplier", 1.0))
             base_damage = int(enemy.atk * debuffs.get("atk_down", {}).get("multiplier", 1.0) - defense)
@@ -291,7 +276,91 @@ def battle(request,player_id,enemy_id):
             enemy_damage_base = int(enemy.atk * debuffs.get("atk_down", {}).get("multiplier", 1.0) - defense // 3)
             enemy_damage = max(random.randint(enemy_damage_base - 1, enemy_damage_base + 2),1)
             player.hp -= enemy_damage
-            message += f"{enemy.name} の攻撃！ {player.profile.name} は {enemy_damage} のダメージを受けた！\n"
+            message = f"{enemy.name} の攻撃！ {player.profile.name} は {enemy_damage} のダメージを受けた！\n"
+        return message
+
+    if request.method == 'POST':
+        
+        action = request.POST.get('action')
+        special = request.POST.get('special')
+
+        if player.spd >= enemy.spd:
+            message = playerAction(message,action,special)
+            if enemy.hp <= 0:
+                message = win(message)
+                return render(request, "game/battle.html", {
+                    "player": player,
+                    "enemy": None,
+                    "message": message,
+                    "bufatk": bufatk,
+                    "bufdef": bufdef,
+                    "buffs": buffs,
+                    "debufatk": debufatk,
+                    "debufdef": debufdef,
+                    "debuffs": debuffs,
+                })
+            
+            message += enemyAction(message,action)    
+            if player.hp <= 0:
+                player.defeats += 1
+                if player.defeats >= 3:
+                    message = game_over(message)
+                    return render(request, "game/gameover.html", {"player": player, "message": message})
+                else:
+                    message = tohome(message)
+                    return render(request, "game/battle.html", {
+                        "player": player,
+                        "enemy": enemy,
+                        "message": message,
+                        "bufatk": bufatk,
+                        "bufdef": bufdef,
+                        "buffs": buffs,
+                        "debufatk": debufatk,
+                        "debufdef": debufdef,
+                        "debuffs": debuffs,
+                        "redirect_after": True,  # ← これでテンプレートに伝える
+                        "redirect_url": "battle_start",
+                        "recovering": True,
+                    })          
+        else:
+            message = enemyAction(message,action)
+            if player.hp <= 0:
+                player.defeats += 1
+                if player.defeats >= 3:
+                    message = game_over(message)
+                    return render(request, "game/gameover.html", {"player": player, "message": message})
+                else:
+                    message = tohome(message)
+                    return render(request, "game/battle.html", {
+                        "player": player,
+                        "enemy": enemy,
+                        "message": message,
+                        "bufatk": bufatk,
+                        "bufdef": bufdef,
+                        "buffs": buffs,
+                        "debufatk": debufatk,
+                        "debufdef": debufdef,
+                        "debuffs": debuffs,
+                        "redirect_after": True,  # ← これでテンプレートに伝える
+                        "redirect_url": "battle_start",
+                        "recovering": True,
+                    })
+            
+            message += playerAction(message,action,special)
+            if enemy.hp <= 0:
+                message = win(message)
+                return render(request, "game/battle.html", {
+                    "player": player,
+                    "enemy": None,
+                    "message": message,
+                    "bufatk": bufatk,
+                    "bufdef": bufdef,
+                    "buffs": buffs,
+                    "debufatk": debufatk,
+                    "debufdef": debufdef,
+                    "debuffs": debuffs,
+                })
+          
 
         # ターン経過でバフを減少
         for key in list(buffs.keys()):
@@ -313,28 +382,6 @@ def battle(request,player_id,enemy_id):
         debufatk = int(enemy.atk * debuffs.get("atk_down", {}).get("multiplier", 1.0))
         debufdef = int(enemy.defense * debuffs.get("def_down", {}).get("multiplier", 1.0))
 
-
-        if player.hp <= 0:
-            player.defeats += 1
-            if player.defeats >= 3:
-                message = game_over(message)
-                return render(request, "game/gameover.html", {"player": player, "message": message})
-            else:
-                message = tohome(message)
-                return render(request, "game/battle.html", {
-                    "player": player,
-                    "enemy": enemy,
-                    "message": message,
-                    "bufatk": bufatk,
-                    "bufdef": bufdef,
-                    "buffs": buffs,
-                    "debufatk": debufatk,
-                    "debufdef": debufdef,
-                    "debuffs": debuffs,
-                    "redirect_after": True,  # ← これでテンプレートに伝える
-                    "redirect_url": "battle_start",
-                    "recovering": True,
-                })
 
         player.save()
         return render(request, "game/battle.html", {
