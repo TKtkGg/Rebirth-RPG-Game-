@@ -193,27 +193,20 @@ def battle(request,player_id,enemy_id):
         elif special:
             required_mp = 0
             if special == 'skill1':
+                special = "渾身斬り"
                 required_mp = 12
             elif special == 'skill2':
+                special = "身体強化"
                 required_mp = 10
             elif special == 'skill3':
+                special = "気迫"
                 required_mp = 10
 
             if player.mp < required_mp:
                 message = f"SPが足りません！ {special} を発動するには SPが{required_mp}必要です。"
-                return render(request, "game/battle.html", {
-                    "player": player,
-                    "enemy": enemy,
-                    "message": message,
-                    "bufatk": bufatk,
-                    "bufdef": bufdef,
-                    "buffs": buffs,
-                    "debufatk": debufatk,
-                    "debufdef": debufdef,
-                    "debuffs": debuffs,
-                })
+                return message,False
 
-            if special == 'skill1':
+            if special == '渾身斬り':
                 # 得意技1: 敵に大ダメージを与える
                 atk = int(player.atk * buffs.get("atk_up", {}).get("multiplier", 1.0))
                 base_damage = int(atk * 2 - (enemy.defense * debuffs.get("def_down", {}).get("multiplier", 1.0)))
@@ -223,7 +216,7 @@ def battle(request,player_id,enemy_id):
                 message = f"{player.profile.name}の渾身斬り！ {enemy.name}に{damage}の大ダメージ！\nSPが12減った！\n"
                 enemy.save()
 
-            elif special == 'skill2':
+            elif special == '身体強化':
                 # 得意技2: プレイヤーにバフを付与
                 if "atk_up" not in buffs:  # 重ねがけ防止
                     buffs["atk_up"] = {"turns": 4, "multiplier": 1.5}
@@ -237,13 +230,11 @@ def battle(request,player_id,enemy_id):
                     buffs["def_up"]["turns"] = 4  # ターン数をリセット
 
                 request.session["buffs"] = buffs
-                bufatk = int(player.atk * buffs.get("atk_up", {}).get("multiplier", 1.0))
-                bufdef = int(player.defense * buffs.get("def_up", {}).get("multiplier", 1.0))
                 player.mp -= 10
                 message = f"{player.profile.name}の身体強化！ 攻撃力と防御力が上昇した！\nSPが10減った！\n"
                 player.save()
 
-            elif special == 'skill3':
+            elif special == '気迫':
                 # 得意技3: 敵を弱体化
                 if "atk_down" not in debuffs:  # 重ねがけ防止
                     debuffs["atk_down"] = {"turns": 4, "multiplier": 0.6}
@@ -256,12 +247,10 @@ def battle(request,player_id,enemy_id):
                     debuffs["def_down"]["turns"] = 4  # ターン数をリセット
 
                 request.session["debuffs"] = debuffs
-                debufatk = int(enemy.atk * debuffs.get("atk_down", {}).get("multiplier", 1.0))
-                debufdef = int(enemy.defense * debuffs.get("def_down", {}).get("multiplier", 1.0))
                 player.mp -= 10
                 message = f"{player.profile.name}の気迫！ {enemy.name}の攻撃力と防御力が弱体化した！\nSPが10減った！\n"
                 player.save()
-        return message
+        return message,True
     
     def enemyAction(message,action):
         if action == 'defend':
@@ -285,7 +274,19 @@ def battle(request,player_id,enemy_id):
         special = request.POST.get('special')
 
         if player.spd >= enemy.spd:
-            message = playerAction(message,action,special)
+            message,success = playerAction(message,action,special)
+            if not success:
+                return render(request, "game/battle.html", {
+                    "player": player,
+                    "enemy": enemy,
+                    "message": message,
+                    "bufatk": bufatk,
+                    "bufdef": bufdef,
+                    "buffs": buffs,
+                    "debufatk": debufatk,
+                    "debufdef": debufdef,
+                    "debuffs": debuffs,
+                })
             if enemy.hp <= 0:
                 message = win(message)
                 return render(request, "game/battle.html", {
@@ -346,7 +347,20 @@ def battle(request,player_id,enemy_id):
                         "recovering": True,
                     })
             
-            message += playerAction(message,action,special)
+            extra_message,success = playerAction(message,action,special)
+            message += extra_message
+            if not success:
+                return render(request, "game/battle.html", {
+                    "player": player,
+                    "enemy": enemy,
+                    "message": message,
+                    "bufatk": bufatk,
+                    "bufdef": bufdef,
+                    "buffs": buffs,
+                    "debufatk": debufatk,
+                    "debufdef": debufdef,
+                    "debuffs": debuffs,
+                })
             if enemy.hp <= 0:
                 message = win(message)
                 return render(request, "game/battle.html", {

@@ -51,12 +51,18 @@
                     <button type="submit" name="special" value="skill2" class="btn btn-warning">身体強化</button>
                     <button type="submit" name="special" value="skill3" class="btn btn-warning">気迫</button>
                 </form>
+                <button type="button" id="back-to-actions" class="btn btn-secondary mt-3">戻る</button>
             </div>
 
             <script>
                 document.getElementById('special-skill-btn').addEventListener('click', function() {
                     document.getElementById('action-form').style.display = 'none';
                     document.getElementById('special-skills').style.display = 'block';
+                });
+
+                document.getElementById('back-to-actions').addEventListener('click', function() {
+                    document.getElementById('special-skills').style.display = 'none';
+                    document.getElementById('action-form').style.display = 'block';
                 });
             </script>
         {% endif %}
