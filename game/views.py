@@ -114,12 +114,14 @@ def battle(request,player_id,enemy_id):
     enemy_id = request.session.get("enemy_id")
     enemy = Enemy.objects.get(id=enemy_id)
     message = ""
+
     buffs = request.session.get("buffs", {})
     bufatk = int(player.atk * buffs.get("atk_up", {}).get("multiplier", 1.0))
     bufdef = int(player.defense * buffs.get("def_up", {}).get("multiplier", 1.0))
     debuffs = request.session.get("debuffs", {})
     debufatk = int(enemy.atk * debuffs.get("atk_down", {}).get("multiplier", 1.0))
     debufdef = int(enemy.defense * debuffs.get("def_down", {}).get("multiplier", 1.0))
+    
     def game_over(message):
         message += f"{player.profile.name} は力尽きた… ゲームオーバー！\n"
         player.defeats = 0
@@ -151,7 +153,6 @@ def battle(request,player_id,enemy_id):
             enemy.save()
 
         return message
-
 
     def tohome(message):
         message += f"{player.profile.name} は倒れてしまった… 休んで回復しよう\n"
@@ -190,6 +191,9 @@ def battle(request,player_id,enemy_id):
             enemy.save()
             message = f"{player.profile.name}の攻撃！ {enemy.name}に{damage}ダメージ！\n"
         
+        elif action == 'defend':
+            message = f"{player.profile.name} は防御した！\n"
+
         elif special:
             required_mp = 0
             if special == 'skill1':
@@ -253,27 +257,28 @@ def battle(request,player_id,enemy_id):
         return message,True
     
     def enemyAction(message,action):
-        if action == 'defend':
-            defense = int(player.defense * buffs.get("def_up", {}).get("multiplier", 1.0))
-            base_damage = int(enemy.atk * debuffs.get("atk_down", {}).get("multiplier", 1.0) - defense)
-            damage = max(random.randint(base_damage - 2, base_damage + 1), 1)
-            player.hp -= damage
+        defense = int(player.defense * buffs.get("def_up", {}).get("multiplier", 1.0))
+        enemy_damage_base = int(enemy.atk * debuffs.get("atk_down", {}).get("multiplier", 1.0) - (defense if action == "defend" else defense // 3))
+        enemy_damage = max(random.randint(enemy_damage_base - 2, enemy_damage_base + 1),1)
+        player.hp -= enemy_damage
+        if action == "defend":
             player.mp += random.randint(player.max_mp // 20 , player.max_mp // 10) if player.mp < player.max_mp else 0
-            message = f"{enemy.name} の攻撃！\n{player.profile.name} は防御した！ {damage}ダメージ！\n" + (f"防御によってSPが少し回復した！\n" if player.mp < player.max_mp else "")
-        else:
-            defense = int(player.defense * buffs.get("def_up", {}).get("multiplier", 1.0))
-            enemy_damage_base = int(enemy.atk * debuffs.get("atk_down", {}).get("multiplier", 1.0) - defense // 3)
-            enemy_damage = max(random.randint(enemy_damage_base - 1, enemy_damage_base + 2),1)
-            player.hp -= enemy_damage
-            message = f"{enemy.name} の攻撃！ {player.profile.name} は {enemy_damage} のダメージを受けた！\n"
+        message = f"{enemy.name} の攻撃！ {player.profile.name} は {enemy_damage} のダメージを受けた！\n" + (f"防御によってSPが少し回復した！\n" if action == "defend" and player.mp < player.max_mp else "")
         return message
+    
+    def spdcheck(action):
+        if player.spd >= enemy.spd or action == 'defend':
+            return True
+        else:
+            return False
 
     if request.method == 'POST':
         
         action = request.POST.get('action')
         special = request.POST.get('special')
 
-        if player.spd >= enemy.spd:
+        spdcheck = spdcheck(action)
+        if spdcheck:
             message,success = playerAction(message,action,special)
             if not success:
                 return render(request, "game/battle.html", {
