@@ -3,14 +3,14 @@
 
 {% block content %}
     <h2>バトル スタート！</h2>
-    {% if buffs %}
-        <p style="margin: 0.1px 0;">身体強化:残り{{ buffs.atk_up.turns}}ターン</p>
+    {% if buffs.player.atk or buffs.player.def %}
+        <p style="margin: 0.1px 0;">身体強化:残り{{ buffs.player.atk.turn|default:buffs.player.def.turn }}ターン</p>
     {% endif %}
-    <p>{{ player.profile.name }} (LV:{{ player.level }} HP:{{ player.hp }}/{{ player.max_hp }} ATK:{{ bufatk }} DEF:{{ bufdef }} SPD:{{ player.spd }} SP:{{ player.mp }}/{{ player.max_mp }})</p>
-    {% if debuffs %}
-        <p style="margin: 0.1px 0;">気迫:残り{{ debuffs.atk_down.turns}}ターン</p>
+    <p>{{ player.profile.name }} (LV:{{ player.level }} HP:{{ player.hp }}/{{ player.max_hp }} ATK:{{ showplayer_atk }} DEF:{{ showplayer_def }} SPD:{{ showplayer_spd }} SP:{{ player.mp }}/{{ player.max_mp }})</p>
+    {% if debuffs.enemy.atk or debuffs.enemy.def %}
+        <p style="margin: 0.1px 0;">気迫:残り{{ debuffs.enemy.atk.turn|default:debuffs.enemy.def.turn }}ターン</p>
     {% endif %}
-    <p>{{ enemy.name }} (LV:{{ enemy.level }} HP:{{ enemy.hp }}/{{enemy.max_hp}} ATK:{{ debufatk }} DEF:{{ debufdef }} SPD:{{ enemy.spd }})</p>
+    <p>{{ enemy.name }} (LV:{{ enemy.level }} HP:{{ enemy.hp }}/{{enemy.max_hp}} ATK:{{ showenemy_atk }} DEF:{{ showenemy_def }} SPD:{{ showenemy_spd }})</p>
 
     {% if message %}
         <p style="white-space: pre-line;">{{ message }}</p>
@@ -47,9 +47,11 @@
             <div id="special-skills" style="display: none;">
                 <form method="POST">
                     {% csrf_token %}
-                    <button type="submit" name="special" value="skill1" class="btn btn-warning">渾身斬り</button>
-                    <button type="submit" name="special" value="skill2" class="btn btn-warning">身体強化</button>
-                    <button type="submit" name="special" value="skill3" class="btn btn-warning">気迫</button>
+                    {% for skill in player_skills %}
+                        <button type="submit" name="special" value="skill{{ forloop.counter }}" class="btn btn-warning">
+                            {{ skill.name }} (SP:{{ skill.cost }})
+                        </button>
+                    {% endfor %}
                 </form>
                 <button type="button" id="back-to-actions" class="btn btn-secondary mt-3">戻る</button>
             </div>

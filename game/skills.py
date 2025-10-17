@@ -7,7 +7,7 @@ ENEMY_SKILLS = {
             {"type": "defense", "target": "enemy", "multiplier": 1.0}
         ], "priority": 2},
         {"name": "べとべと液", "effects": [
-            {"type": "debuf", "target": "player", "multiplier": 1.0, "stat": "spd", "turn": 3}
+            {"type": "debuf", "target": "player", "multiplier": 0.6, "stat": "spd", "turn": 3}
         ], "priority": 3},
     ],
     "ゴブリン": [
@@ -90,4 +90,93 @@ ENEMY_SKILLS = {
             {"type": "debuf", "target": "player", "stat": "spd", "multiplier": 0.6, "turn": 3}
         ], "priority": 3},
     ],
+}
+
+# プレイヤースキル定義
+PLAYER_SKILLS = {
+    "戦士": [
+        {
+            "name": "渾身斬り",
+            "cost": 12,
+            "description": "全力で敵を斬りつける強力な攻撃",
+            "effects": [
+                {
+                    "type": "attack",
+                    "target": "enemy",
+                    "multiplier": 2.0
+                }
+            ]
+        },
+        {
+            "name": "身体強化",
+            "cost": 10,
+            "description": "自身の攻撃力と防御力を一時的に上昇させる",
+            "effects": [
+                {
+                    "type": "buf",
+                    "target": "player",
+                    "stat": "atk",
+                    "multiplier": 1.3,
+                    "turn": 3
+                },
+                {
+                    "type": "buf",
+                    "target": "player",
+                    "stat": "def",
+                    "multiplier": 1.3,
+                    "turn": 3
+                }
+            ]
+        },
+        {
+            "name": "気迫",
+            "cost": 12,
+            "description": "敵を威嚇して攻撃力、防御力を下げる",
+            "effects": [
+                {
+                    "type": "debuf",
+                    "target": "enemy",
+                    "stat": "atk",
+                    "multiplier": 0.7,
+                    "turn": 3
+                },
+                {
+                    "type": "debuf",
+                    "target": "enemy",
+                    "stat": "def",
+                    "multiplier": 0.7,
+                    "turn": 3
+                },
+            ]
+        },
+    ],
+    "魔法使い": [
+        {
+            "name": "ファイアボール",
+            "cost": 20,
+            "description": "炎の魔法で敵を攻撃する",
+            "effects": [
+                {
+                    "type": "attack",
+                    "target": "enemy",
+                    "multiplier": 2.5
+                }
+            ]
+        },
+        {
+            "name": "魔力強化",
+            "cost": 15,
+            "description": "魔力を高めて攻撃力を上げる",
+            "effects": [
+                {
+                    "type": "buf",
+                    "target": "player",
+                    "stat": "atk",
+                    "multiplier": 1.5,
+                    "turn": 3
+                }
+            ]
+        }
+    ],
+    # 他の職業も追加可能
 }

@@ -1,6 +1,7 @@
 import random
 from django.shortcuts import render,redirect
 from .models import Player, PlayerProfile,Enemy
+from .skills import ENEMY_SKILLS, PLAYER_SKILLS
 
 
 def home(request):
@@ -116,14 +117,39 @@ def battle(request,player_id,enemy_id):
     message = ""
 
     buffs = request.session.get("buffs", {})
-    bufatk = int(player.atk * buffs.get("atk_up", {}).get("multiplier", 1.0))
-    bufdef = int(player.defense * buffs.get("def_up", {}).get("multiplier", 1.0))
     debuffs = request.session.get("debuffs", {})
-    debufatk = int(enemy.atk * debuffs.get("atk_down", {}).get("multiplier", 1.0))
-    debufdef = int(enemy.defense * debuffs.get("def_down", {}).get("multiplier", 1.0))
     
+    # プレイヤーのスキルを取得
+    player_skills = PLAYER_SKILLS.get(player.job, [])
+    
+    # プレイヤーの表示用ステータス（自分へのバフ × 敵からのデバフ）
+    player_atk_buff = buffs.get("player", {}).get("atk", {}).get("multiplier", 1.0)
+    player_atk_debuff = debuffs.get("player", {}).get("atk", {}).get("multiplier", 1.0)
+    showplayer_atk = int(player.atk * player_atk_buff * player_atk_debuff)
+    
+    player_def_buff = buffs.get("player", {}).get("def", {}).get("multiplier", 1.0)
+    player_def_debuff = debuffs.get("player", {}).get("def", {}).get("multiplier", 1.0)
+    showplayer_def = int(player.defense * player_def_buff * player_def_debuff)
+    
+    player_spd_buff = buffs.get("player", {}).get("spd", {}).get("multiplier", 1.0)
+    player_spd_debuff = debuffs.get("player", {}).get("spd", {}).get("multiplier", 1.0)
+    showplayer_spd = int(player.spd * player_spd_buff * player_spd_debuff)
+    
+    # 敵の表示用ステータス（自分へのバフ × プレイヤーからのデバフ）
+    enemy_atk_buff = buffs.get("enemy", {}).get("atk", {}).get("multiplier", 1.0)
+    enemy_atk_debuff = debuffs.get("enemy", {}).get("atk", {}).get("multiplier", 1.0)
+    showenemy_atk = int(enemy.atk * enemy_atk_buff * enemy_atk_debuff)
+    
+    enemy_def_buff = buffs.get("enemy", {}).get("def", {}).get("multiplier", 1.0)
+    enemy_def_debuff = debuffs.get("enemy", {}).get("def", {}).get("multiplier", 1.0)
+    showenemy_def = int(enemy.defense * enemy_def_buff * enemy_def_debuff)
+    
+    enemy_spd_buff = buffs.get("enemy", {}).get("spd", {}).get("multiplier", 1.0)
+    enemy_spd_debuff = debuffs.get("enemy", {}).get("spd", {}).get("multiplier", 1.0)
+    showenemy_spd = int(enemy.spd * enemy_spd_buff * enemy_spd_debuff)
+
     def game_over(message):
-        message += f"{player.profile.name} は力尽きた… ゲームオーバー！\n"
+        message += f"{player.name} は力尽きた… ゲームオーバー！\n"
         player.defeats = 0
         player.level = 1
         player.exp = 0
@@ -155,7 +181,7 @@ def battle(request,player_id,enemy_id):
         return message
 
     def tohome(message):
-        message += f"{player.profile.name} は倒れてしまった… 休んで回復しよう\n"
+        message += f"{player.name} は倒れてしまった… 休んで回復しよう\n"
         request.session["buffs"] = {}
         request.session["debuffs"] = {}
         player.save()
@@ -182,115 +208,214 @@ def battle(request,player_id,enemy_id):
         player.save()
         return message
     
-    def playerAction(message,action,special):
+    def calculate_player_attack(multiplier=1.0, damage_variance=(-1, 2)):
+        """プレイヤーの攻撃ダメージを計算する共通関数
+        
+        Args:
+            multiplier: 攻撃力の倍率（デフォルト1.0）
+            damage_variance: ダメージのランダム範囲（デフォルト-1〜+2）
+            ignore_defense_action: 敵の防御アクションを無視するか（デフォルトFalse）
+        
+        Returns:
+            damage: 計算されたダメージ値
+        """
+        # プレイヤーの攻撃力にバフとデバフを適用
+        player_atk_buff = buffs.get("player", {}).get("atk", {}).get("multiplier", 1.0)
+        player_atk_debuff = debuffs.get("player", {}).get("atk", {}).get("multiplier", 1.0)
+        atk = int(player.atk * multiplier * player_atk_buff * player_atk_debuff)
+        
+        # 敵の防御力にバフとデバフを適用
+        enemy_def_buff = buffs.get("enemy", {}).get("def", {}).get("multiplier", 1.0)
+        enemy_def_debuff = debuffs.get("enemy", {}).get("def", {}).get("multiplier", 1.0)
+        enemy_def = int(enemy.defense * enemy_def_buff * enemy_def_debuff)
+        
+        effective_def = enemy_def if is_defense_action(actione) else enemy_def // 3
+        
+        # 基礎ダメージ計算
+        base_damage = int(atk - effective_def)
+        
+        # ランダムダメージ計算
+        damage = max(random.randint(base_damage + damage_variance[0], base_damage + damage_variance[1]), 1)
+        
+        return damage
+    
+    def playerAction(message,action,special,actione):
         if action == 'attack':
-            atk = int(player.atk * buffs.get("atk_up", {}).get("multiplier", 1.0))
-            base_damage = int(atk - (enemy.defense * debuffs.get("def_down", {}).get("multiplier", 1.0)) // 3)
-            damage = max(random.randint(base_damage - 1, base_damage + 2),1)
+            damage = calculate_player_attack()
             enemy.hp -= damage
             enemy.save()
-            message = f"{player.profile.name}の攻撃！ {enemy.name}に{damage}ダメージ！\n"
+            message = f"{player.name}の攻撃！ {enemy.name}に{damage}ダメージ！\n"
         
         elif action == 'defend':
-            message = f"{player.profile.name} は防御した！\n"
+            message = f"{player.name} は防御した！\n"+ (f"防御によってSPが少し回復した！\n" if action == "defend" and player.mp < player.max_mp else "")
+            player.mp += random.randint(player.max_mp // 20 , player.max_mp // 10) if player.mp < player.max_mp else 0
 
         elif special:
-            required_mp = 0
-            if special == 'skill1':
-                special = "渾身斬り"
-                required_mp = 12
-            elif special == 'skill2':
-                special = "身体強化"
-                required_mp = 10
-            elif special == 'skill3':
-                special = "気迫"
-                required_mp = 10
-
-            if player.mp < required_mp:
-                message = f"SPが足りません！ {special} を発動するには SPが{required_mp}必要です。"
-                return message,False
-
-            if special == '渾身斬り':
-                # 得意技1: 敵に大ダメージを与える
-                atk = int(player.atk * buffs.get("atk_up", {}).get("multiplier", 1.0))
-                base_damage = int(atk * 2 - (enemy.defense * debuffs.get("def_down", {}).get("multiplier", 1.0)))
-                damage = max(random.randint(base_damage, base_damage + 3), 1)
-                enemy.hp -= damage
-                player.mp -= 12
-                message = f"{player.profile.name}の渾身斬り！ {enemy.name}に{damage}の大ダメージ！\nSPが12減った！\n"
-                enemy.save()
-
-            elif special == '身体強化':
-                # 得意技2: プレイヤーにバフを付与
-                if "atk_up" not in buffs:  # 重ねがけ防止
-                    buffs["atk_up"] = {"turns": 4, "multiplier": 1.5}
-                else:
-                    buffs["atk_up"]["turns"] = 4  # ターン数をリセット
-
-                # 防御力アップ
-                if "def_up" not in buffs:
-                    buffs["def_up"] = {"turns": 4, "multiplier": 1.5}
-                else:
-                    buffs["def_up"]["turns"] = 4  # ターン数をリセット
-
-                request.session["buffs"] = buffs
-                player.mp -= 10
-                message = f"{player.profile.name}の身体強化！ 攻撃力と防御力が上昇した！\nSPが10減った！\n"
-                player.save()
-
-            elif special == '気迫':
-                # 得意技3: 敵を弱体化
-                if "atk_down" not in debuffs:  # 重ねがけ防止
-                    debuffs["atk_down"] = {"turns": 4, "multiplier": 0.6}
-                else:
-                    debuffs["atk_down"]["turns"] = 4  # ターン数をリセット
-
-                if "def_down" not in debuffs:
-                    debuffs["def_down"] = {"turns": 4, "multiplier": 0.6}
-                else:
-                    debuffs["def_down"]["turns"] = 4  # ターン数をリセット
-
-                request.session["debuffs"] = debuffs
-                player.mp -= 10
-                message = f"{player.profile.name}の気迫！ {enemy.name}の攻撃力と防御力が弱体化した！\nSPが10減った！\n"
-                player.save()
+            # skills.pyからプレイヤーのスキルを取得
+            player_skills = PLAYER_SKILLS.get(player.job, [])
+            skill_index = int(special.replace('skill', '')) - 1  # skill1 -> 0, skill2 -> 1, ...
+            
+            if skill_index < 0 or skill_index >= len(player_skills):
+                message = f"そのスキルは存在しません。"
+                return message, False
+            
+            skill_data = player_skills[skill_index]
+            skill_name = skill_data["name"]
+            skill_cost = skill_data["cost"]
+            
+            # SP不足チェック
+            if player.mp < skill_cost:
+                message = f"SPが足りません！ {skill_name} を発動するには SPが{skill_cost}必要です。"
+                return message, False
+            
+            # SPを消費
+            player.mp -= skill_cost
+            message = f"{player.name}の{skill_name}！\n"
+            
+            # スキルの効果を適用
+            for effect in skill_data["effects"]:
+                etype = effect["type"]
+                target = effect["target"]
+                multiplier = effect.get("multiplier", 1.0)
+                stat = effect.get("stat", None)
+                turn = effect.get("turn", 0)
+                
+                target_obj = player if target == "player" else enemy
+                
+                if etype == "attack":
+                    # 攻撃処理（共通関数を使用、スキル攻撃は防御アクション無視）
+                    damage = calculate_player_attack(
+                        multiplier=multiplier,
+                        damage_variance=(0, 3),
+                    )
+                    enemy.hp -= damage
+                    message += f"{enemy.name}に{damage}の大ダメージ！\n"
+                    enemy.save()
+                
+                elif etype == "buf" or etype == "debuf":
+                    # バフ・デバフ処理
+                    container = buffs if etype == "buf" else debuffs
+                    container.setdefault(target, {})
+                    if stat not in container[target]:
+                        container[target][stat] = {"multiplier": multiplier, "turn": turn}
+                    else:
+                        container[target][stat]["turn"] = turn
+                    request.session["buffs"] = buffs
+                    request.session["debuffs"] = debuffs
+                    message += f"{target_obj.name}の{stat}が" + ("上昇した！\n" if etype == "buf" else "低下した！\n")
+            
+            message += f"SPが{skill_cost}減った！\n"
+            player.save()
+                
         return message,True
     
-    def enemyAction(message,action):
-        defense = int(player.defense * buffs.get("def_up", {}).get("multiplier", 1.0))
-        enemy_damage_base = int(enemy.atk * debuffs.get("atk_down", {}).get("multiplier", 1.0) - (defense if action == "defend" else defense // 3))
-        enemy_damage = max(random.randint(enemy_damage_base - 2, enemy_damage_base + 1),1)
-        player.hp -= enemy_damage
-        if action == "defend":
-            player.mp += random.randint(player.max_mp // 20 , player.max_mp // 10) if player.mp < player.max_mp else 0
-        message = f"{enemy.name} の攻撃！ {player.profile.name} は {enemy_damage} のダメージを受けた！\n" + (f"防御によってSPが少し回復した！\n" if action == "defend" and player.mp < player.max_mp else "")
-        return message
-    
-    def spdcheck(action):
-        if player.spd >= enemy.spd or action == 'defend':
-            return True
-        else:
+    def choose_enemyAction(enemy,player):
+        skills = ENEMY_SKILLS.get(enemy.name, [])
+        if not skills:
+            return None  # スキルが存在しない場合はNoneを返す
+        
+        total_priority = sum(skill["priority"] for skill in skills)
+        rand_val = random.uniform(0, total_priority)
+        cumulative = 0
+        for skill in skills:
+            cumulative += skill["priority"]
+            if rand_val <= cumulative:
+                return skill
+            
+        return random.choice(skills)  # フォールバックとしてランダムに選択
+
+    def enemyAction(message,enemy,player,buffs,debuffs,actionp,actione):     
+        message = f"{enemy.name}の{actione['name']}！　"
+
+        for effect in actione["effects"]:
+            etype = effect["type"]      # attack / defense / buf / debuf など
+            target = effect["target"]   # "player" or "enemy"
+            multiplier = effect.get("multiplier", 1.0)
+            stat = effect.get("stat", None)
+            turn = effect.get("turn", 0)
+
+            target_obj = player if target == "player" else enemy
+            me_obj = enemy if target == "player" else player
+
+            if etype == "attack":
+                # 【修正】敵の攻撃力にバフとデバフの両方を適用
+                enemy_atk_buff = buffs.get("enemy", {}).get("atk", {}).get("multiplier", 1.0)
+                enemy_atk_debuff = debuffs.get("enemy", {}).get("atk", {}).get("multiplier", 1.0)
+                atk = int(me_obj.atk * multiplier * enemy_atk_buff * enemy_atk_debuff)
+                
+                # 【修正】プレイヤーの防御力にバフとデバフの両方を適用
+                player_def_buff = buffs.get("player", {}).get("def", {}).get("multiplier", 1.0)
+                player_def_debuff = debuffs.get("player", {}).get("def", {}).get("multiplier", 1.0)
+                player_def = int(target_obj.defense * player_def_buff * player_def_debuff)
+                
+                # ステップ2: 防御アクションを考慮してダメージ計算
+                damage_base = int(atk - (player_def if actionp == "defend" else player_def // 3))                
+                damage = max(random.randint(damage_base - 2, damage_base + 1),1)
+                target_obj.hp = max(0, target_obj.hp - damage)
+                message += f"{target_obj.name}に{damage}のダメージ！\n"
+
+            elif etype == "defense":
+                message += f"{target_obj.name}は防御した！\n"
+            
+            elif etype == "buf" or etype == "debuf":
+                container = buffs if etype == "buf" else debuffs
+                container.setdefault(target, {})
+                if stat not in container[target]:
+                    container[target][stat] = {"multiplier": multiplier, "turn": turn}
+                else:
+                    container[target][stat]["turn"] = turn
+
+                message += f"{target_obj.name}の{stat}が{turn}ターン" + ("上がった！\n" if etype == "buf" else "下がった\n")  
+
+        return message,buffs,debuffs
+
+    def is_defense_action(actione):
+        """actioneが防御スキルかどうかを判定"""
+        if not actione:
             return False
+        return any(effect.get("type") == "defense" for effect in actione.get("effects", []))
+
+    def spdcheck(actionp,actione):
+        if actionp == 'defend':
+            return True
+        elif is_defense_action(actione):
+            return False
+        else:
+            # プレイヤーの素早さにバフとデバフを適用
+            player_spd_buff = buffs.get("player", {}).get("spd", {}).get("multiplier", 1.0)
+            player_spd_debuff = debuffs.get("player", {}).get("spd", {}).get("multiplier", 1.0)
+            effective_player_spd = player.spd * player_spd_buff * player_spd_debuff
+            
+            # 敵の素早さにバフとデバフを適用
+            enemy_spd_buff = buffs.get("enemy", {}).get("spd", {}).get("multiplier", 1.0)
+            enemy_spd_debuff = debuffs.get("enemy", {}).get("spd", {}).get("multiplier", 1.0)
+            effective_enemy_spd = enemy.spd * enemy_spd_buff * enemy_spd_debuff
+            
+            return effective_player_spd >= effective_enemy_spd
 
     if request.method == 'POST':
         
-        action = request.POST.get('action')
+        actionp = request.POST.get('action')
         special = request.POST.get('special')
+        actione = choose_enemyAction(enemy,player)
 
-        spdcheck = spdcheck(action)
+        spdcheck = spdcheck(actionp,actione)
         if spdcheck:
-            message,success = playerAction(message,action,special)
+            message,success = playerAction(message,actionp,special,actione)
             if not success:
                 return render(request, "game/battle.html", {
                     "player": player,
                     "enemy": enemy,
                     "message": message,
-                    "bufatk": bufatk,
-                    "bufdef": bufdef,
+                    "showplayer_atk": showplayer_atk,
+                    "showplayer_def": showplayer_def,
+                    "showplayer_spd": showplayer_spd,
                     "buffs": buffs,
-                    "debufatk": debufatk,
-                    "debufdef": debufdef,
+                    "showenemy_atk": showenemy_atk,
+                    "showenemy_def": showenemy_def,
+                    "showenemy_spd": showenemy_spd,
                     "debuffs": debuffs,
+                    "player_skills": player_skills,
                 })
             if enemy.hp <= 0:
                 message = win(message)
@@ -298,15 +423,22 @@ def battle(request,player_id,enemy_id):
                     "player": player,
                     "enemy": None,
                     "message": message,
-                    "bufatk": bufatk,
-                    "bufdef": bufdef,
+                    "showplayer_atk": showplayer_atk,
+                    "showplayer_def": showplayer_def,
+                    "showplayer_spd": showplayer_spd,
                     "buffs": buffs,
-                    "debufatk": debufatk,
-                    "debufdef": debufdef,
+                    "showenemy_atk": showenemy_atk,
+                    "showenemy_def": showenemy_def,
+                    "showenemy_spd": showenemy_spd,
                     "debuffs": debuffs,
+                    "player_skills": player_skills,
                 })
             
-            message += enemyAction(message,action)    
+            ex_message,buffs,debuffs = enemyAction(message,enemy,player,buffs,debuffs,actionp,actione)
+            # 【追加】セッションに保存
+            request.session["buffs"] = buffs
+            request.session["debuffs"] = debuffs
+            message += ex_message    
             if player.hp <= 0:
                 player.defeats += 1
                 if player.defeats >= 3:
@@ -318,18 +450,24 @@ def battle(request,player_id,enemy_id):
                         "player": player,
                         "enemy": enemy,
                         "message": message,
-                        "bufatk": bufatk,
-                        "bufdef": bufdef,
+                        "showplayer_atk": showplayer_atk,
+                        "showplayer_def": showplayer_def,
+                        "showplayer_spd": showplayer_spd,
                         "buffs": buffs,
-                        "debufatk": debufatk,
-                        "debufdef": debufdef,
+                        "showenemy_atk": showenemy_atk,
+                        "showenemy_def": showenemy_def,
+                        "showenemy_spd": showenemy_spd,
                         "debuffs": debuffs,
-                        "redirect_after": True,  # ← これでテンプレートに伝える
+                        "redirect_after": True,
                         "redirect_url": "battle_start",
                         "recovering": True,
+                        "player_skills": player_skills,
                     })          
         else:
-            message = enemyAction(message,action)
+            message,buffs,debuffs = enemyAction(message,enemy,player,buffs,debuffs,actionp,actione)
+            # 【追加】セッションに保存
+            request.session["buffs"] = buffs
+            request.session["debuffs"] = debuffs
             if player.hp <= 0:
                 player.defeats += 1
                 if player.defeats >= 3:
@@ -341,30 +479,36 @@ def battle(request,player_id,enemy_id):
                         "player": player,
                         "enemy": enemy,
                         "message": message,
-                        "bufatk": bufatk,
-                        "bufdef": bufdef,
+                        "showplayer_atk": showplayer_atk,
+                        "showplayer_def": showplayer_def,
+                        "showplayer_spd": showplayer_spd,
                         "buffs": buffs,
-                        "debufatk": debufatk,
-                        "debufdef": debufdef,
+                        "showenemy_atk": showenemy_atk,
+                        "showenemy_def": showenemy_def,
+                        "showenemy_spd": showenemy_spd,
                         "debuffs": debuffs,
-                        "redirect_after": True,  # ← これでテンプレートに伝える
+                        "redirect_after": True,
                         "redirect_url": "battle_start",
                         "recovering": True,
+                        "player_skills": player_skills,
                     })
             
-            extra_message,success = playerAction(message,action,special)
-            message += extra_message
+            ex_message,success = playerAction(message,actionp,special,actione)
+            message += ex_message
             if not success:
                 return render(request, "game/battle.html", {
                     "player": player,
                     "enemy": enemy,
                     "message": message,
-                    "bufatk": bufatk,
-                    "bufdef": bufdef,
+                    "showplayer_atk": showplayer_atk,
+                    "showplayer_def": showplayer_def,
+                    "showplayer_spd": showplayer_spd,
                     "buffs": buffs,
-                    "debufatk": debufatk,
-                    "debufdef": debufdef,
+                    "showenemy_atk": showenemy_atk,
+                    "showenemy_def": showenemy_def,
+                    "showenemy_spd": showenemy_spd,
                     "debuffs": debuffs,
+                    "player_skills": player_skills,
                 })
             if enemy.hp <= 0:
                 message = win(message)
@@ -372,57 +516,96 @@ def battle(request,player_id,enemy_id):
                     "player": player,
                     "enemy": None,
                     "message": message,
-                    "bufatk": bufatk,
-                    "bufdef": bufdef,
+                    "showplayer_atk": showplayer_atk,
+                    "showplayer_def": showplayer_def,
+                    "showplayer_spd": showplayer_spd,
                     "buffs": buffs,
-                    "debufatk": debufatk,
-                    "debufdef": debufdef,
+                    "showenemy_atk": showenemy_atk,
+                    "showenemy_def": showenemy_def,
+                    "showenemy_spd": showenemy_spd,
                     "debuffs": debuffs,
+                    "player_skills": player_skills,
                 })
           
 
         # ターン経過でバフを減少
-        for key in list(buffs.keys()):
-            buffs[key]["turns"] -= 1
-            if buffs[key]["turns"] <= 0:
-                del buffs[key]
+        for target in list(buffs.keys()):
+            for stat in list(buffs[target].keys()):
+                buffs[target][stat]["turn"] -= 1
+                if buffs[target][stat]["turn"] <= 0:
+                    del buffs[target][stat]
+            # 空になったターゲットを削除
+            if not buffs[target]:
+                del buffs[target]
 
         request.session["buffs"] = buffs
-        bufatk = int(player.atk * buffs.get("atk_up", {}).get("multiplier", 1.0))
-        bufdef = int(player.defense * buffs.get("def_up", {}).get("multiplier", 1.0))
 
         # ターン経過でデバフを減少
-        for key in list(debuffs.keys()):
-            debuffs[key]["turns"] -= 1
-            if debuffs[key]["turns"] <= 0:
-                del debuffs[key]
+        for target in list(debuffs.keys()):
+            for stat in list(debuffs[target].keys()):
+                debuffs[target][stat]["turn"] -= 1
+                if debuffs[target][stat]["turn"] <= 0:
+                    del debuffs[target][stat]
+            # 空になったターゲットを削除
+            if not debuffs[target]:
+                del debuffs[target]
 
         request.session["debuffs"] = debuffs
-        debufatk = int(enemy.atk * debuffs.get("atk_down", {}).get("multiplier", 1.0))
-        debufdef = int(enemy.defense * debuffs.get("def_down", {}).get("multiplier", 1.0))
-
+        
+        # 【修正】表示用ステータスを再計算（バフとデバフの両方を適用）
+        # プレイヤーのステータス
+        player_atk_buff = buffs.get("player", {}).get("atk", {}).get("multiplier", 1.0)
+        player_atk_debuff = debuffs.get("player", {}).get("atk", {}).get("multiplier", 1.0)
+        showplayer_atk = int(player.atk * player_atk_buff * player_atk_debuff)
+        
+        player_def_buff = buffs.get("player", {}).get("def", {}).get("multiplier", 1.0)
+        player_def_debuff = debuffs.get("player", {}).get("def", {}).get("multiplier", 1.0)
+        showplayer_def = int(player.defense * player_def_buff * player_def_debuff)
+        
+        player_spd_buff = buffs.get("player", {}).get("spd", {}).get("multiplier", 1.0)
+        player_spd_debuff = debuffs.get("player", {}).get("spd", {}).get("multiplier", 1.0)
+        showplayer_spd = int(player.spd * player_spd_buff * player_spd_debuff)
+        
+        # 敵のステータス
+        enemy_atk_buff = buffs.get("enemy", {}).get("atk", {}).get("multiplier", 1.0)
+        enemy_atk_debuff = debuffs.get("enemy", {}).get("atk", {}).get("multiplier", 1.0)
+        showenemy_atk = int(enemy.atk * enemy_atk_buff * enemy_atk_debuff)
+        
+        enemy_def_buff = buffs.get("enemy", {}).get("def", {}).get("multiplier", 1.0)
+        enemy_def_debuff = debuffs.get("enemy", {}).get("def", {}).get("multiplier", 1.0)
+        showenemy_def = int(enemy.defense * enemy_def_buff * enemy_def_debuff)
+        
+        enemy_spd_buff = buffs.get("enemy", {}).get("spd", {}).get("multiplier", 1.0)
+        enemy_spd_debuff = debuffs.get("enemy", {}).get("spd", {}).get("multiplier", 1.0)
+        showenemy_spd = int(enemy.spd * enemy_spd_buff * enemy_spd_debuff)
 
         player.save()
         return render(request, "game/battle.html", {
             "player": player,
             "enemy": enemy,
             "message": message,
-            "bufatk": bufatk,
-            "bufdef": bufdef,
+            "showplayer_atk": showplayer_atk,
+            "showplayer_def": showplayer_def,
+            "showplayer_spd": showplayer_spd,
             "buffs": buffs,
-            "debufatk": debufatk,
-            "debufdef": debufdef,
+            "showenemy_atk": showenemy_atk,
+            "showenemy_def": showenemy_def,
+            "showenemy_spd": showenemy_spd,
             "debuffs": debuffs,
+            "player_skills": player_skills,
         })
     
     return render(request, "game/battle.html", {
         "player": player,
         "enemy": enemy,
         "message": message,
-        "bufatk": bufatk,
-        "bufdef": bufdef,
+        "showplayer_atk": showplayer_atk,
+        "showplayer_def": showplayer_def,
+        "showplayer_spd": showplayer_spd,
         "buffs": buffs,
-        "debufatk": debufatk,
-        "debufdef": debufdef,
+        "showenemy_atk": showenemy_atk,
+        "showenemy_def": showenemy_def,
+        "showenemy_spd": showenemy_spd,
         "debuffs": debuffs,
+        "player_skills": player_skills,
     })

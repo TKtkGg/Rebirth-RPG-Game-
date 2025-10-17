@@ -25,6 +25,10 @@ class Player(models.Model):
     job = models.CharField(max_length=20, default="戦士")
     item = models.CharField(max_length=30, default="なし")
     defeats = models.IntegerField(default=0)
+    
+    @property
+    def name(self):
+        return self.profile.name
 
 
 class Enemy(models.Model):
