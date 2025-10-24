@@ -3,13 +3,135 @@
 {% block title %}ゲーム開始 | RPG Game{% endblock %}
 
 {% block content %}
-    <h2>名前を登録しよう</h2>
+<style>
+    .character-creation {
+        max-width: 600px;
+        margin: 50px auto;
+        padding: 40px;
+        background: rgba(0, 0, 0, 0.8);
+        border: 3px solid #8b6914;
+        border-radius: 15px;
+        color: #f0e6d2;
+    }
+    
+    .character-creation h2 {
+        color: #d4af37;
+        text-align: center;
+        margin-bottom: 30px;
+        font-size: 32px;
+        text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.8);
+    }
+    
+    .form-group {
+        margin-bottom: 25px;
+    }
+    
+    .form-label {
+        display: block;
+        font-size: 20px;
+        font-weight: bold;
+        margin-bottom: 10px;
+        color: #d4af37;
+    }
+    
+    .form-control {
+        width: 100%;
+        padding: 12px;
+        font-size: 18px;
+        border: 2px solid #8b6914;
+        border-radius: 8px;
+        background: rgba(255, 255, 255, 0.9);
+        color: #000;
+    }
+    
+    .form-control:focus {
+        outline: none;
+        border-color: #d4af37;
+        box-shadow: 0 0 10px rgba(212, 175, 55, 0.5);
+    }
+    
+    .job-select {
+        width: 100%;
+        padding: 12px;
+        font-size: 18px;
+        border: 2px solid #8b6914;
+        border-radius: 8px;
+        background: rgba(255, 255, 255, 0.9);
+        color: #000;
+        cursor: pointer;
+    }
+    
+    .job-description {
+        margin-top: 10px;
+        padding: 15px;
+        background: rgba(139, 105, 20, 0.3);
+        border-radius: 8px;
+        font-size: 16px;
+        line-height: 1.6;
+    }
+    
+    .start-button {
+        width: 100%;
+        padding: 18px;
+        font-size: 24px;
+        font-weight: bold;
+        background: linear-gradient(135deg, #dc3545 0%, #c82333 100%);
+        color: white;
+        border: 3px solid #d4af37;
+        border-radius: 10px;
+        cursor: pointer;
+        transition: all 0.3s;
+        text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.8);
+        margin-top: 20px;
+    }
+    
+    .start-button:hover {
+        background: linear-gradient(135deg, #c82333 0%, #bd2130 100%);
+        transform: translateY(-2px);
+        box-shadow: 0 5px 15px rgba(220, 53, 69, 0.6);
+    }
+</style>
+
+<div class="character-creation">
+    <h2>キャラクター作成</h2>
     <form method="POST">
         {% csrf_token %}
-        <div class="mb3">
+        <div class="form-group">
             <label for="name" class="form-label">あなたの名前</label>
-            <input type="text" name="name" id="name" class="form-control" required>
+            <input type="text" name="name" id="name" class="form-control" placeholder="冒険者の名前を入力" required>
         </div>
-        <button type="submit" class="btn btn-primary">Start the Adventure</button>
+        
+        <div class="form-group">
+            <label for="job" class="form-label">職業を選択</label>
+            <select name="job" id="job" class="job-select" required>
+                <option value="戦士">戦士（HP・ATK・DEF重視）</option>
+                <option value="魔法使い">魔法使い（ATK・SPD重視、HP低め）</option>
+                <option value="盗賊">盗賊（ATK・SPD重視）</option>
+            </select>
+            
+            <div class="job-description" id="job-desc">
+                <strong>戦士：</strong>高いHPと防御力を持つ前衛職。攻撃力も高く、安定した戦闘が可能。<br>
+                <strong>初期ボーナス：</strong>HP +20, ATK +5, DEF +3
+            </div>
+        </div>
+        
+        <button type="submit" class="start-button">冒険を始める</button>
     </form>
+</div>
+
+<script>
+    const jobSelect = document.getElementById('job');
+    const jobDesc = document.getElementById('job-desc');
+    
+    const descriptions = {
+        '戦士': '<strong>戦士：</strong>高いHPと防御力を持つ前衛職。攻撃力も高く、安定した戦闘が可能。<br><strong>初期ボーナス：</strong>HP +20, ATK +5, DEF +3',
+        '魔法使い': '<strong>魔法使い：</strong>高い攻撃力と素早さを持つ後衛職。HPと防御力は低いが、強力な魔法で敵を倒す。<br><strong>初期ボーナス：</strong>HP -10, ATK +8, DEF -2, SPD +2',
+        '盗賊': '<strong>盗賊：</strong>高い攻撃力と素早さを持つトリッキーな職業。素早い攻撃で敵を翻弄する。<br><strong>初期ボーナス：</strong>ATK +3, SPD +7'
+    };
+    
+    jobSelect.addEventListener('change', function() {
+        jobDesc.innerHTML = descriptions[this.value];
+    });
+</script>
+
 {% endblock %}

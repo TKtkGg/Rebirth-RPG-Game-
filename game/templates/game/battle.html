@@ -2,72 +2,506 @@
 {% block title %}バトル{% endblock %}
 
 {% block content %}
-    <h2>バトル スタート！</h2>
-    {% if buffs.player.atk or buffs.player.def %}
-        <p style="margin: 0.1px 0;">身体強化:残り{{ buffs.player.atk.turn|default:buffs.player.def.turn }}ターン</p>
-    {% endif %}
-    <p>{{ player.profile.name }} (LV:{{ player.level }} HP:{{ player.hp }}/{{ player.max_hp }} ATK:{{ showplayer_atk }} DEF:{{ showplayer_def }} SPD:{{ showplayer_spd }} SP:{{ player.mp }}/{{ player.max_mp }})</p>
-    {% if debuffs.enemy.atk or debuffs.enemy.def %}
-        <p style="margin: 0.1px 0;">気迫:残り{{ debuffs.enemy.atk.turn|default:debuffs.enemy.def.turn }}ターン</p>
-    {% endif %}
-    <p>{{ enemy.name }} (LV:{{ enemy.level }} HP:{{ enemy.hp }}/{{enemy.max_hp}} ATK:{{ showenemy_atk }} DEF:{{ showenemy_def }} SPD:{{ showenemy_spd }})</p>
+{% load static %}
+<style>
+    /* base.htmlのデフォルトスタイルをリセット */
+    body {
+        margin: 0;
+        padding: 0;
+        overflow: hidden;
+    }
+    
+    .battle-container {
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100vw;
+        height: 100vh;
+        background-image: url("{% static 'game/img/460615.jpg' %}");
+        background-size: cover;
+        background-position: center;
+        background-repeat: no-repeat;
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
+        align-items: center;
+        padding: 20px 40px;
+        box-sizing: border-box;
+        overflow: hidden;
+        gap: 20px;
+    }
+    
+    /* 敵のエリア */
+    .enemy-area {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        flex-shrink: 0;
+    }
+    
+    .enemy-status-box {
+        background: rgba(173, 216, 230, 0.95);
+        border: 4px solid rgba(100, 149, 237, 0.9);
+        border-radius: 20px;
+        padding: 15px 30px;
+        color: #000;
+        font-family: 'Arial', sans-serif;
+        font-size: 22px;
+        font-weight: bold;
+        text-align: center;
+        box-shadow: 0 8px 30px rgba(0, 0, 0, 0.5);
+        margin-bottom: 15px;
+        min-width: 500px;
+        min-height: 80px;
+        flex-shrink: 0;
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
+        align-items: center;
+    }
+    
+    /* バフ・デバフがある場合は上寄せ */
+    .enemy-status-box.has-status-effects {
+        justify-content: flex-start;
+    }
+    
+    .enemy-image {
+        width: 300px;
+        height: 250px;
+        object-fit: contain;
+        margin: 10px 0;
+        filter: drop-shadow(0 10px 20px rgba(0, 0, 0, 0.3));
+        flex-shrink: 0;
+    }
+    
+    /* プレイヤーのエリア */
+    .player-area {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        flex-shrink: 0;
+    }
+    
+    .player-status-box {
+        background: rgba(144, 238, 144, 0.95);
+        border: 4px solid rgba(34, 139, 34, 0.9);
+        border-radius: 20px;
+        padding: 15px 30px;
+        color: #000;
+        font-family: 'Arial', sans-serif;
+        font-size: 22px;
+        font-weight: bold;
+        text-align: center;
+        box-shadow: 0 8px 30px rgba(0, 0, 0, 0.5);
+        margin-bottom: 15px;
+        min-width: 500px;
+        min-height: 80px;
+        flex-shrink: 0;
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
+        align-items: center;
+    }
+    
+    /* バフ・デバフがある場合は上寄せ */
+    .player-status-box.has-status-effects {
+        justify-content: flex-start;
+    }
+    
+    /* 状態異常表示 */
+    .status-effects {
+        display: flex;
+        gap: 10px;
+        justify-content: center;
+        margin-top: 8px;
+        flex-wrap: wrap;
+    }
+    
+    /* バフ・デバフがない時は非表示 */
+    .status-effects:empty {
+        display: none;
+        margin-top: 0;
+    }
+    
+    .status-effect {
+        background: rgba(255, 255, 255, 0.95);
+        border: 3px solid #333;
+        border-radius: 8px;
+        padding: 5px 12px;
+        font-size: 16px;
+        font-weight: bold;
+    }
+    
+    .status-buff {
+        color: #28a745;
+        border-color: #28a745;
+        background: rgba(200, 255, 200, 0.95);
+    }
+    
+    .status-debuff {
+        color: #dc3545;
+        border-color: #dc3545;
+        background: rgba(255, 200, 200, 0.95);
+    }
+    
+    /* メッセージエリア（左下） */
+    .message-area {
+        position: fixed;
+        bottom: 196px;
+        left: 20px;
+        background: rgba(255, 255, 255, 0.7);
+        border: 4px solid rgba(70, 130, 180, 0.9);
+        border-radius: 15px;
+        padding: 20px 25px;
+        width: 35%;
+        max-width: 400px;
+        height: 60vh;
+        max-height: 300px;
+        overflow-y: auto;
+        font-size: 20px;
+        font-weight: bold;
+        text-align: left;
+        box-shadow: 0 8px 30px rgba(0, 0, 0, 0.5);
+        white-space: pre-line;
+        line-height: 1.5;
+        color: #000;
+        overflow-wrap: break-word;
+        word-wrap: break-word;
+        display: flex;
+        flex-direction: column;
+        align-items: flex-start;
+        justify-content: flex-start;
+    }
+    
+    .message-item {
+        margin-bottom: 10px;
+        padding-bottom: 10px;
+        border-bottom: 1px solid rgba(70, 130, 180, 0.3);
+        width: 100%;
+    }
+    
+    .message-item:last-child {
+        border-bottom: none;
+    }
+    
+    /* メッセージエリアのスクロールバー */
+    .message-area::-webkit-scrollbar {
+        width: 8px;
+    }
+    
+    .message-area::-webkit-scrollbar-track {
+        background: rgba(0, 0, 0, 0.1);
+        border-radius: 4px;
+    }
+    
+    .message-area::-webkit-scrollbar-thumb {
+        background: rgba(70, 130, 180, 0.6);
+        border-radius: 4px;
+    }
+    
+    .message-area::-webkit-scrollbar-thumb:hover {
+        background: rgba(70, 130, 180, 0.8);
+    }
+    
+    /* ボタンエリア */
+    .button-area {
+        display: flex;
+        justify-content: center;
+        gap: 15px;
+        flex-wrap: wrap;
+        align-items: center;
+        flex-shrink: 0;
+    }
+    
+    .battle-button {
+        padding: 18px 45px;
+        font-size: 26px;
+        font-weight: bold;
+        border: 4px solid rgba(255, 255, 255, 0.5);
+        border-radius: 15px;
+        cursor: pointer;
+        transition: all 0.3s;
+        text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.7);
+        box-shadow: 0 6px 20px rgba(0, 0, 0, 0.4);
+        color: white;
+        height: 70px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+    }
+    
+    .attack-button {
+        background: linear-gradient(135deg, #ff6b6b 0%, #c92a2a 100%);
+    }
+    
+    .attack-button:hover {
+        background: linear-gradient(135deg, #fa5252 0%, #c92a2a 100%);
+        transform: translateY(-2px);
+        box-shadow: 0 8px 25px rgba(201, 42, 42, 0.6);
+    }
+    
+    .defend-button {
+        background: linear-gradient(135deg, #748ffc 0%, #5c7cfa 100%);
+    }
+    
+    .defend-button:hover {
+        background: linear-gradient(135deg, #5c7cfa 0%, #4c6ef5 100%);
+        transform: translateY(-2px);
+        box-shadow: 0 8px 25px rgba(76, 110, 245, 0.6);
+    }
+    
+    .special-button {
+        background: linear-gradient(135deg, #ffd43b 0%, #fab005 100%);
+    }
+    
+    .special-button:hover {
+        background: linear-gradient(135deg, #fab005 0%, #f59f00 100%);
+        transform: translateY(-2px);
+        box-shadow: 0 8px 25px rgba(245, 159, 0, 0.6);
+    }
+    
+    .back-button {
+        background: linear-gradient(135deg, #868e96 0%, #495057 100%);
+    }
+    
+    .back-button:hover {
+        background: linear-gradient(135deg, #495057 0%, #343a40 100%);
+        transform: translateY(-2px);
+        box-shadow: 0 8px 25px rgba(52, 58, 64, 0.6);
+    }
+    
+    .return-button {
+        background: linear-gradient(135deg, #20c997 0%, #12b886 100%);
+    }
+    
+    .return-button:hover {
+        background: linear-gradient(135deg, #12b886 0%, #0ca678 100%);
+        transform: translateY(-2px);
+        box-shadow: 0 8px 25px rgba(18, 184, 134, 0.6);
+    }
+    
+    /* スクロール対応 */
+    @media (max-height: 800px) {
+        .battle-container {
+            padding: 15px 30px;
+            gap: 15px;
+        }
+        
+        .enemy-image {
+            width: 220px;
+            height: 180px;
+        }
+        
+        .enemy-status-box,
+        .player-status-box {
+            font-size: 18px;
+            padding: 12px 25px;
+            min-width: 400px;
+        }
+        
+        .battle-button {
+            padding: 15px 35px;
+            font-size: 22px;
+            height: 60px;
+        }
+        
+        .message-area {
+            font-size: 18px;
+            padding: 15px 25px;
+            height: 120px;
+        }
+        
+        .status-effect {
+            font-size: 14px;
+            padding: 4px 10px;
+        }
+    }
+    
+    @media (max-width: 768px) {
+        .battle-container {
+            padding: 10px 15px;
+            gap: 10px;
+        }
+        
+        .enemy-status-box,
+        .player-status-box {
+            font-size: 16px;
+            padding: 10px 20px;
+            min-width: auto;
+            max-width: 90%;
+        }
+        
+        .enemy-image {
+            width: 180px;
+            height: 150px;
+        }
+        
+        .battle-button {
+            padding: 12px 30px;
+            font-size: 18px;
+            height: 50px;
+        }
+        
+        .message-area {
+            font-size: 16px;
+            padding: 15px 20px;
+            width: 90%;
+            height: 100px;
+            left: 5%;
+            bottom: 10px;
+        }
+        
+        .status-effect {
+            font-size: 13px;
+            padding: 4px 8px;
+        }
+        
+        .button-area {
+            height: 60px;
+        }
+    }
+</style>
 
-    {% if message %}
-        <p style="white-space: pre-line;">{{ message }}</p>
-
-        {% if redirect_after %}
-            <script>
-                setTimeout(function() {
-                    window.location.href = "{% url 'battle_start_redirect' player.id %}";
-                }, 1500);  // 1.5秒後に戻る
-            </script>
+<div class="battle-container">
+    <!-- 敵のエリア -->
+    <div class="enemy-area">
+        {% if enemy %}
+            <div class="enemy-status-box {% if buffs.enemy or debuffs.enemy %}has-status-effects{% endif %}">
+                <div>{{ enemy.name }} HP:{{ enemy.hp }} ATK:{{ showenemy_atk }} DEF:{{ showenemy_def }} SPD:{{ showenemy_spd }} SP:{{ enemy.mp|default:"30" }}</div>
+                
+                <!-- 敵の状態異常 -->
+                <div class="status-effects">
+                    {% if buffs.enemy or debuffs.enemy %}
+                        {% for stat, data in buffs.enemy.items %}
+                            <span class="status-effect status-buff">
+                                {% if stat == "atk" %}ATK上昇
+                                {% elif stat == "def" %}DEF上昇
+                                {% elif stat == "spd" %}SPD上昇
+                                {% else %}{{ stat|upper }}上昇
+                                {% endif %}：残り{{ data.turn }}ターン
+                            </span>
+                        {% endfor %}
+                        {% for stat, data in debuffs.enemy.items %}
+                            <span class="status-effect status-debuff">
+                                {% if stat == "atk" %}ATK低下
+                                {% elif stat == "def" %}DEF低下
+                                {% elif stat == "spd" %}SPD低下
+                                {% else %}{{ stat|upper }}低下
+                                {% endif %}：残り{{ data.turn }}ターン
+                            </span>
+                        {% endfor %}
+                    {% endif %}
+                </div>
+            </div>
+            
+            <img src="{% static 'game/img/イラストや＿スライム.png' %}" alt="{{ enemy.name }}" class="enemy-image">
         {% endif %}
-    {% endif %}
-
-    {% if "を倒した" in message %}
-            <form action="{% url 'battle_start_redirect' player.id %}" method="get">
-                <button type="submit" class="btn btn-primary mt-3">戻る</button>
-            </form>
+    </div>
+    
+    <!-- プレイヤーのエリア -->
+    <div class="player-area">
+        <div class="player-status-box {% if buffs.player or debuffs.player %}has-status-effects{% endif %}">
+            <div>{{ player.profile.name }} HP:{{ player.total_hp }} ATK:{{ showplayer_atk }} DEF:{{ showplayer_def }} SPD:{{ showplayer_spd }} SP:{{ player.mp }}</div>
+            
+            <!-- プレイヤーの状態異常 -->
+            <div class="status-effects">
+                {% if buffs.player or debuffs.player %}
+                    {% for stat, data in buffs.player.items %}
+                        <span class="status-effect status-buff">
+                            {% if stat == "atk" %}ATK上昇
+                            {% elif stat == "def" %}DEF上昇
+                            {% elif stat == "spd" %}SPD上昇
+                            {% else %}{{ stat|upper }}上昇
+                            {% endif %}：残り{{ data.turn }}ターン
+                        </span>
+                    {% endfor %}
+                    {% for stat, data in debuffs.player.items %}
+                        <span class="status-effect status-debuff">
+                            {% if stat == "atk" %}ATK低下
+                            {% elif stat == "def" %}DEF低下
+                            {% elif stat == "spd" %}SPD低下
+                            {% else %}{{ stat|upper }}低下
+                            {% endif %}：残り{{ data.turn }}ターン
+                        </span>
+                    {% endfor %}
+                {% endif %}
+            </div>
+        </div>
+        
+        <!-- ボタンエリア -->
+        {% if "を倒した" in message %}
+            <div class="button-area">
+                <form action="{% url 'battle_start_redirect' player.id %}" method="get" style="margin: 0;">
+                    <button type="submit" class="battle-button return-button">戻る</button>
+                </form>
+            </div>
             
             <script>
                 setTimeout(function() {
                     window.location.href = "{% url 'battle_start_redirect' player.id %}";
                 }, 5000);
             </script>
+        {% elif player.hp > 0 and enemy and not recovering %}
+            <div class="button-area" id="action-buttons">
+                <form method="POST" style="display: contents;">
+                    {% csrf_token %}
+                    <button type="submit" name="action" value="attack" class="battle-button attack-button">攻撃</button>
+                    <button type="submit" name="action" value="defend" class="battle-button defend-button">防御</button>
+                    <button type="button" id="special-skill-btn" class="battle-button special-button">特技</button>
+                </form>
+            </div>
 
-    {% else %}
-        {% if player.hp > 0 and enemy and not recovering %}
-            <form method="POST" id="action-form">
-                {% csrf_token %}
-                <button type="submit" name="action" value="attack" class="btn btn-danger">攻撃する</button>
-                <button type="submit" name="action" value="defend" class="btn btn-secondary">防御する</button>
-                <button type="button" id="special-skill-btn" class="btn btn-warning">得意技</button>
-            </form>
-
-            <div id="special-skills" style="display: none;">
-                <form method="POST">
+            <div class="button-area" id="special-skills" style="display: none;">
+                <form method="POST" style="display: contents;">
                     {% csrf_token %}
                     {% for skill in player_skills %}
-                        <button type="submit" name="special" value="skill{{ forloop.counter }}" class="btn btn-warning">
+                        <button type="submit" name="special" value="skill{{ forloop.counter }}" class="battle-button special-button">
                             {{ skill.name }} (SP:{{ skill.cost }})
                         </button>
                     {% endfor %}
                 </form>
-                <button type="button" id="back-to-actions" class="btn btn-secondary mt-3">戻る</button>
+                <button type="button" id="back-to-actions" class="battle-button back-button">戻る</button>
             </div>
-
-            <script>
-                document.getElementById('special-skill-btn').addEventListener('click', function() {
-                    document.getElementById('action-form').style.display = 'none';
-                    document.getElementById('special-skills').style.display = 'block';
-                });
-
-                document.getElementById('back-to-actions').addEventListener('click', function() {
-                    document.getElementById('special-skills').style.display = 'none';
-                    document.getElementById('action-form').style.display = 'block';
-                });
-            </script>
         {% endif %}
+    </div>
+</div>
+
+<!-- メッセージエリア（左下に固定配置） -->
+<div class="message-area" id="message-area">
+    {% for msg in message_history %}
+        <div class="message-item">{{ msg }}</div>
+    {% endfor %}
+    {% if message and message not in message_history %}
+        <div class="message-item">{{ message }}</div>
     {% endif %}
+</div>
+
+{% if redirect_after %}
+    <script>
+        setTimeout(function() {
+            window.location.href = "{% url 'battle_start_redirect' player.id %}";
+        }, 1500);
+    </script>
+{% endif %}
+
+<script>
+    document.getElementById('special-skill-btn')?.addEventListener('click', function() {
+        document.getElementById('action-buttons').style.display = 'none';
+        document.getElementById('special-skills').style.display = 'flex';
+    });
+
+    document.getElementById('back-to-actions')?.addEventListener('click', function() {
+        document.getElementById('special-skills').style.display = 'none';
+        document.getElementById('action-buttons').style.display = 'flex';
+    });
+    
+    // メッセージエリアを一番下までスクロール
+    window.addEventListener('DOMContentLoaded', function() {
+        const messageArea = document.getElementById('message-area');
+        if (messageArea) {
+            messageArea.scrollTop = messageArea.scrollHeight;
+        }
+    });
+</script>
 
 {% endblock %}

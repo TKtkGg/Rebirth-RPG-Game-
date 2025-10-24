@@ -117,20 +117,20 @@ PLAYER_SKILLS = {
                     "target": "player",
                     "stat": "atk",
                     "multiplier": 1.3,
-                    "turn": 3
+                    "turn": 4
                 },
                 {
                     "type": "buf",
                     "target": "player",
                     "stat": "def",
                     "multiplier": 1.3,
-                    "turn": 3
+                    "turn": 4
                 }
             ]
         },
         {
             "name": "気迫",
-            "cost": 12,
+            "cost": 10,
             "description": "敵を威嚇して攻撃力、防御力を下げる",
             "effects": [
                 {
@@ -138,14 +138,14 @@ PLAYER_SKILLS = {
                     "target": "enemy",
                     "stat": "atk",
                     "multiplier": 0.7,
-                    "turn": 3
+                    "turn": 4
                 },
                 {
                     "type": "debuf",
                     "target": "enemy",
                     "stat": "def",
                     "multiplier": 0.7,
-                    "turn": 3
+                    "turn": 4
                 },
             ]
         },

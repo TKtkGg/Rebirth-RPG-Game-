@@ -1,7 +1,7 @@
 from django.contrib import admin
-from .models import Player, PlayerProfile,Enemy
-# Register your models here.
+from .models import Player, Enemy, PlayerProfile, Equipment
 
 admin.site.register(Player)
-admin.site.register(PlayerProfile)
 admin.site.register(Enemy)
+admin.site.register(PlayerProfile)
+admin.site.register(Equipment)

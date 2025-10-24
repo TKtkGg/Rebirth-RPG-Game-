@@ -1,6 +1,6 @@
 import random
 from django.shortcuts import render,redirect
-from .models import Player, PlayerProfile,Enemy
+from .models import Player, PlayerProfile,Enemy, Equipment
 from .skills import ENEMY_SKILLS, PLAYER_SKILLS
 
 
@@ -9,14 +9,154 @@ def home(request):
 
 
 def start_game(request):
+    """新規プレイヤー作成（職業選択あり）"""
     if request.method == 'POST':
         name = request.POST.get('name')
-
+        job = request.POST.get('job', '戦士')  # デフォルトは戦士
+        
+        # プロフィール作成
         profile = PlayerProfile.objects.create(name=name)
-        player = Player.objects.create(profile=profile, hp=100, max_hp=100, mp=30, max_mp=30, job="戦士", item="なし")
-
-        return redirect('battle_start_redirect',player_id=player.id)
+        
+        # ジョブに応じたステータス設定
+        if job == "戦士":
+            base_hp, base_atk, base_def, base_spd = 100, 10, 5, 5
+            job_bonus_hp, job_bonus_atk, job_bonus_def, job_bonus_spd = 20, 5, 3, 0
+            stat_points = 5
+        elif job == "魔法使い":
+            base_hp, base_atk, base_def, base_spd = 100, 10, 5, 5
+            job_bonus_hp, job_bonus_atk, job_bonus_def, job_bonus_spd = -10, 8, -2, 2
+            stat_points = 5
+        elif job == "盗賊":
+            base_hp, base_atk, base_def, base_spd = 100, 10, 5, 5
+            job_bonus_hp, job_bonus_atk, job_bonus_def, job_bonus_spd = 0, 3, 0, 7
+            stat_points = 5
+        else:
+            base_hp, base_atk, base_def, base_spd = 100, 10, 5, 5
+            job_bonus_hp, job_bonus_atk, job_bonus_def, job_bonus_spd = 0, 0, 0, 0
+            stat_points = 5
+        
+        # 初期装備を取得または作成
+        wooden_sword, _ = Equipment.objects.get_or_create(
+            name="木の剣",
+            equipment_type="weapon",
+            defaults={
+                'atk_bonus': 5,
+                'spd_bonus': 1,
+                'price': 50,
+                'description': '初心者用の木製の剣'
+            }
+        )
+        
+        leather_armor, _ = Equipment.objects.get_or_create(
+            name="皮の服",
+            equipment_type="armor",
+            defaults={
+                'hp_bonus': 10,
+                'def_bonus': 3,
+                'spd_bonus': -1,
+                'price': 50,
+                'description': '初心者用の革製の防具'
+            }
+        )
+        
+        # プレイヤー作成
+        player = Player.objects.create(
+            profile=profile,
+            level=1,
+            exp=0,
+            next_exp=500,
+            max_hp=base_hp + job_bonus_hp,
+            hp=base_hp + job_bonus_hp,
+            atk=base_atk + job_bonus_atk,
+            defense=base_def + job_bonus_def,
+            spd=base_spd + job_bonus_spd,
+            max_mp=50,
+            mp=50,
+            stat_points=stat_points,
+            job=job,
+            weapon=wooden_sword,
+            armor=leather_armor,
+            gold=100,
+        )
+        
+        return redirect('battle_start_redirect', player_id=player.id)
+    
     return render(request, 'game/start.html')
+
+def create_player(request):
+    if request.method == "POST":
+        profile_id = request.POST.get("profile_id")
+        job = request.POST.get("job")
+        
+        profile = PlayerProfile.objects.get(id=profile_id)
+        
+        # ジョブに応じたステータス設定
+        if job == "戦士":
+            base_hp, base_atk, base_def, base_spd = 100, 10, 5, 5
+            job_bonus_hp, job_bonus_atk, job_bonus_def, job_bonus_spd = 20, 5, 3, 0
+            stat_points = 5
+        elif job == "魔法使い":
+            base_hp, base_atk, base_def, base_spd = 100, 10, 5, 5
+            job_bonus_hp, job_bonus_atk, job_bonus_def, job_bonus_spd = -10, 8, -2, 2
+            stat_points = 5
+        elif job == "盗賊":
+            base_hp, base_atk, base_def, base_spd = 100, 10, 5, 5
+            job_bonus_hp, job_bonus_atk, job_bonus_def, job_bonus_spd = 0, 3, 0, 7
+            stat_points = 5
+        else:
+            base_hp, base_atk, base_def, base_spd = 100, 10, 5, 5
+            job_bonus_hp, job_bonus_atk, job_bonus_def, job_bonus_spd = 0, 0, 0, 0
+            stat_points = 5
+        
+        # 初期装備を取得または作成
+        wooden_sword, _ = Equipment.objects.get_or_create(
+            name="木の剣",
+            equipment_type="weapon",
+            defaults={
+                'atk_bonus': 5,
+                'spd_bonus': 1,
+                'price': 50,
+                'description': '初心者用の木製の剣'
+            }
+        )
+        
+        leather_armor, _ = Equipment.objects.get_or_create(
+            name="皮の服",
+            equipment_type="armor",
+            defaults={
+                'hp_bonus': 10,
+                'def_bonus': 3,
+                'spd_bonus': -1,
+                'price': 50,
+                'description': '初心者用の革製の防具'
+            }
+        )
+        
+        player = Player(
+            profile=profile,
+            level=1,
+            exp=0,
+            next_exp=500,
+            max_hp=base_hp + job_bonus_hp,
+            hp=base_hp + job_bonus_hp,
+            atk=base_atk + job_bonus_atk,
+            defense=base_def + job_bonus_def,
+            spd=base_spd + job_bonus_spd,
+            max_mp=50,
+            mp=50,
+            stat_points=stat_points,
+            job=job,
+            weapon=wooden_sword,  # 初期装備
+            armor=leather_armor,   # 初期装備
+            gold=100,
+        )
+        player.save()
+        
+        return redirect('battle_start_redirect', player_id=player.id)
+    
+    # GETリクエストの場合
+    profiles = PlayerProfile.objects.all()
+    return render(request, 'game/create_player.html', {'profiles': profiles})
 
 def battle_start(request, player_id, enemy_id=None):
     player = Player.objects.get(id=player_id)
@@ -75,6 +215,9 @@ def battle_start(request, player_id, enemy_id=None):
 
     # セッションに敵のIDを保存
     request.session["enemy_id"] = enemy.id
+    
+    # 新しい戦闘開始時にメッセージ履歴をクリア
+    request.session["message_history"] = []
 
     exp_percent = int(player.exp / player.next_exp * 100)
 
@@ -115,6 +258,9 @@ def battle(request,player_id,enemy_id):
     enemy_id = request.session.get("enemy_id")
     enemy = Enemy.objects.get(id=enemy_id)
     message = ""
+    
+    # メッセージ履歴を取得（累積表示用）
+    message_history = request.session.get("message_history", [])
 
     buffs = request.session.get("buffs", {})
     debuffs = request.session.get("debuffs", {})
@@ -122,18 +268,18 @@ def battle(request,player_id,enemy_id):
     # プレイヤーのスキルを取得
     player_skills = PLAYER_SKILLS.get(player.job, [])
     
-    # プレイヤーの表示用ステータス（自分へのバフ × 敵からのデバフ）
+    # プレイヤーの表示用ステータス（装備ボーナス + バフ × デバフ）
     player_atk_buff = buffs.get("player", {}).get("atk", {}).get("multiplier", 1.0)
     player_atk_debuff = debuffs.get("player", {}).get("atk", {}).get("multiplier", 1.0)
-    showplayer_atk = int(player.atk * player_atk_buff * player_atk_debuff)
+    showplayer_atk = int(player.total_atk * player_atk_buff * player_atk_debuff)
     
     player_def_buff = buffs.get("player", {}).get("def", {}).get("multiplier", 1.0)
     player_def_debuff = debuffs.get("player", {}).get("def", {}).get("multiplier", 1.0)
-    showplayer_def = int(player.defense * player_def_buff * player_def_debuff)
+    showplayer_def = int(player.total_def * player_def_buff * player_def_debuff)
     
     player_spd_buff = buffs.get("player", {}).get("spd", {}).get("multiplier", 1.0)
     player_spd_debuff = debuffs.get("player", {}).get("spd", {}).get("multiplier", 1.0)
-    showplayer_spd = int(player.spd * player_spd_buff * player_spd_debuff)
+    showplayer_spd = int(player.total_spd * player_spd_buff * player_spd_debuff)
     
     # 敵の表示用ステータス（自分へのバフ × プレイヤーからのデバフ）
     enemy_atk_buff = buffs.get("enemy", {}).get("atk", {}).get("multiplier", 1.0)
@@ -219,10 +365,10 @@ def battle(request,player_id,enemy_id):
         Returns:
             damage: 計算されたダメージ値
         """
-        # プレイヤーの攻撃力にバフとデバフを適用
+        # プレイヤーの攻撃力にバフとデバフを適用（装備ボーナス込み）
         player_atk_buff = buffs.get("player", {}).get("atk", {}).get("multiplier", 1.0)
         player_atk_debuff = debuffs.get("player", {}).get("atk", {}).get("multiplier", 1.0)
-        atk = int(player.atk * multiplier * player_atk_buff * player_atk_debuff)
+        atk = int(player.total_atk * multiplier * player_atk_buff * player_atk_debuff)
         
         # 敵の防御力にバフとデバフを適用
         enemy_def_buff = buffs.get("enemy", {}).get("def", {}).get("multiplier", 1.0)
@@ -343,10 +489,10 @@ def battle(request,player_id,enemy_id):
                 enemy_atk_debuff = debuffs.get("enemy", {}).get("atk", {}).get("multiplier", 1.0)
                 atk = int(me_obj.atk * multiplier * enemy_atk_buff * enemy_atk_debuff)
                 
-                # 【修正】プレイヤーの防御力にバフとデバフの両方を適用
+                # 【修正】プレイヤーの防御力にバフとデバフを適用（装備ボーナス込み）
                 player_def_buff = buffs.get("player", {}).get("def", {}).get("multiplier", 1.0)
                 player_def_debuff = debuffs.get("player", {}).get("def", {}).get("multiplier", 1.0)
-                player_def = int(target_obj.defense * player_def_buff * player_def_debuff)
+                player_def = int(target_obj.total_def * player_def_buff * player_def_debuff)
                 
                 # ステップ2: 防御アクションを考慮してダメージ計算
                 damage_base = int(atk - (player_def if actionp == "defend" else player_def // 3))                
@@ -381,10 +527,10 @@ def battle(request,player_id,enemy_id):
         elif is_defense_action(actione):
             return False
         else:
-            # プレイヤーの素早さにバフとデバフを適用
+            # プレイヤーの素早さにバフとデバフを適用（装備ボーナス込み）
             player_spd_buff = buffs.get("player", {}).get("spd", {}).get("multiplier", 1.0)
             player_spd_debuff = debuffs.get("player", {}).get("spd", {}).get("multiplier", 1.0)
-            effective_player_spd = player.spd * player_spd_buff * player_spd_debuff
+            effective_player_spd = player.total_spd * player_spd_buff * player_spd_debuff
             
             # 敵の素早さにバフとデバフを適用
             enemy_spd_buff = buffs.get("enemy", {}).get("spd", {}).get("multiplier", 1.0)
@@ -407,6 +553,7 @@ def battle(request,player_id,enemy_id):
                     "player": player,
                     "enemy": enemy,
                     "message": message,
+                    "message_history": message_history,
                     "showplayer_atk": showplayer_atk,
                     "showplayer_def": showplayer_def,
                     "showplayer_spd": showplayer_spd,
@@ -423,6 +570,7 @@ def battle(request,player_id,enemy_id):
                     "player": player,
                     "enemy": None,
                     "message": message,
+                    "message_history": message_history,
                     "showplayer_atk": showplayer_atk,
                     "showplayer_def": showplayer_def,
                     "showplayer_spd": showplayer_spd,
@@ -433,7 +581,6 @@ def battle(request,player_id,enemy_id):
                     "debuffs": debuffs,
                     "player_skills": player_skills,
                 })
-            
             ex_message,buffs,debuffs = enemyAction(message,enemy,player,buffs,debuffs,actionp,actione)
             # 【追加】セッションに保存
             request.session["buffs"] = buffs
@@ -450,6 +597,7 @@ def battle(request,player_id,enemy_id):
                         "player": player,
                         "enemy": enemy,
                         "message": message,
+                        "message_history": message_history,
                         "showplayer_atk": showplayer_atk,
                         "showplayer_def": showplayer_def,
                         "showplayer_spd": showplayer_spd,
@@ -479,6 +627,7 @@ def battle(request,player_id,enemy_id):
                         "player": player,
                         "enemy": enemy,
                         "message": message,
+                        "message_history": message_history,
                         "showplayer_atk": showplayer_atk,
                         "showplayer_def": showplayer_def,
                         "showplayer_spd": showplayer_spd,
@@ -500,6 +649,7 @@ def battle(request,player_id,enemy_id):
                     "player": player,
                     "enemy": enemy,
                     "message": message,
+                    "message_history": message_history,
                     "showplayer_atk": showplayer_atk,
                     "showplayer_def": showplayer_def,
                     "showplayer_spd": showplayer_spd,
@@ -516,6 +666,7 @@ def battle(request,player_id,enemy_id):
                     "player": player,
                     "enemy": None,
                     "message": message,
+                    "message_history": message_history,
                     "showplayer_atk": showplayer_atk,
                     "showplayer_def": showplayer_def,
                     "showplayer_spd": showplayer_spd,
@@ -552,19 +703,19 @@ def battle(request,player_id,enemy_id):
 
         request.session["debuffs"] = debuffs
         
-        # 【修正】表示用ステータスを再計算（バフとデバフの両方を適用）
+        # 【修正】表示用ステータスを再計算（装備ボーナス + バフとデバフの両方を適用）
         # プレイヤーのステータス
         player_atk_buff = buffs.get("player", {}).get("atk", {}).get("multiplier", 1.0)
         player_atk_debuff = debuffs.get("player", {}).get("atk", {}).get("multiplier", 1.0)
-        showplayer_atk = int(player.atk * player_atk_buff * player_atk_debuff)
+        showplayer_atk = int(player.total_atk * player_atk_buff * player_atk_debuff)
         
         player_def_buff = buffs.get("player", {}).get("def", {}).get("multiplier", 1.0)
         player_def_debuff = debuffs.get("player", {}).get("def", {}).get("multiplier", 1.0)
-        showplayer_def = int(player.defense * player_def_buff * player_def_debuff)
+        showplayer_def = int(player.total_def * player_def_buff * player_def_debuff)
         
         player_spd_buff = buffs.get("player", {}).get("spd", {}).get("multiplier", 1.0)
         player_spd_debuff = debuffs.get("player", {}).get("spd", {}).get("multiplier", 1.0)
-        showplayer_spd = int(player.spd * player_spd_buff * player_spd_debuff)
+        showplayer_spd = int(player.total_spd * player_spd_buff * player_spd_debuff)
         
         # 敵のステータス
         enemy_atk_buff = buffs.get("enemy", {}).get("atk", {}).get("multiplier", 1.0)
@@ -579,11 +730,17 @@ def battle(request,player_id,enemy_id):
         enemy_spd_debuff = debuffs.get("enemy", {}).get("spd", {}).get("multiplier", 1.0)
         showenemy_spd = int(enemy.spd * enemy_spd_buff * enemy_spd_debuff)
 
+        # メッセージを履歴に追加
+        if message:
+            message_history.append(message)
+            request.session["message_history"] = message_history
+
         player.save()
         return render(request, "game/battle.html", {
             "player": player,
             "enemy": enemy,
             "message": message,
+            "message_history": message_history,
             "showplayer_atk": showplayer_atk,
             "showplayer_def": showplayer_def,
             "showplayer_spd": showplayer_spd,
@@ -599,6 +756,7 @@ def battle(request,player_id,enemy_id):
         "player": player,
         "enemy": enemy,
         "message": message,
+        "message_history": message_history,
         "showplayer_atk": showplayer_atk,
         "showplayer_def": showplayer_def,
         "showplayer_spd": showplayer_spd,
