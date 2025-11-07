@@ -1,0 +1,404 @@
+{% extends 'game/base.html' %}
+{% block title %}ショップ{% endblock %}
+
+{% block content %}
+{% load static %}
+<style>
+    body {
+        margin: 0;
+        padding: 0;
+        overflow: hidden;
+    }
+    
+    .shop-container {
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100vw;
+        height: 100vh;
+        background-image: url("{% static 'game/img/ショップ_背景.png' %}");
+        background-size: cover;
+        background-position: center;
+        background-repeat: no-repeat;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        padding: 40px;
+        box-sizing: border-box;
+        overflow-y: auto;
+        overflow-x: hidden;
+    }
+    
+    .shop-container::before {
+        content: '';
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100vw;
+        height: 100vh;
+        background-image: url("{% static 'game/img/ショップ_背景.png' %}");
+        background-size: cover;
+        background-position: center;
+        background-repeat: no-repeat;
+        transform: scale(1.1);
+        z-index: -1;
+    }
+    
+    .shop-title {
+        font-size: 60px;
+        font-weight: bold;
+        color: white;
+        text-shadow: 4px 4px 8px rgba(0, 0, 0, 0.9);
+        margin-bottom: 40px;
+        letter-spacing: 10px;
+    }
+    
+    .shop-grid {
+        display: grid;
+        grid-template-columns: repeat(4, 1fr);
+        gap: 30px;
+        max-width: 1400px;
+        margin-bottom: 40px;
+    }
+    
+    .shop-item {
+        background: rgba(255, 255, 255, 0.15);
+        border: 3px solid rgba(255, 255, 255, 0.4);
+        border-radius: 15px;
+        padding: 20px;
+        width: 280px;
+        height: 320px;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        cursor: pointer;
+        transition: all 0.3s;
+        box-shadow: 0 8px 20px rgba(0, 0, 0, 0.5);
+    }
+    
+    .shop-item:hover {
+        background: rgba(255, 255, 255, 0.25);
+        border-color: rgba(255, 255, 255, 0.6);
+        transform: translateY(-5px);
+        box-shadow: 0 12px 30px rgba(0, 0, 0, 0.7);
+    }
+    
+    .shop-item-icon {
+        width: 120px;
+        height: 120px;
+        margin-bottom: 20px;
+        filter: drop-shadow(0 4px 8px rgba(0, 0, 0, 0.7));
+    }
+    
+    .shop-item-name {
+        font-size: 28px;
+        font-weight: bold;
+        color: white;
+        text-align: center;
+        margin-bottom: 10px;
+        text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.9);
+        line-height: 1.3;
+        word-wrap: break-word;
+        max-width: 100%;
+    }
+    
+    .shop-item-price {
+        font-size: 32px;
+        font-weight: bold;
+        color: white;
+        text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.9);
+    }
+    
+    .back-button-container {
+        position: fixed;
+        bottom: 40px;
+        left: 40px;
+    }
+    
+    .back-button {
+        padding: 20px 50px;
+        font-size: 28px;
+        font-weight: bold;
+        background: rgba(100, 100, 100, 0.8);
+        border: 3px solid rgba(255, 255, 255, 0.5);
+        border-radius: 15px;
+        color: white;
+        cursor: pointer;
+        transition: all 0.3s;
+        text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.9);
+        box-shadow: 0 6px 20px rgba(0, 0, 0, 0.6);
+        text-decoration: none;
+        display: inline-block;
+    }
+    
+    .back-button:hover {
+        background: rgba(80, 80, 80, 0.9);
+        transform: translateY(-3px);
+        box-shadow: 0 8px 25px rgba(0, 0, 0, 0.8);
+    }
+    
+    @media (max-width: 1400px) {
+        .shop-grid {
+            grid-template-columns: repeat(3, 1fr);
+        }
+    }
+    
+    @media (max-width: 1000px) {
+        .shop-grid {
+            grid-template-columns: repeat(2, 1fr);
+            gap: 20px;
+        }
+        
+        .shop-item {
+            width: 240px;
+            height: 280px;
+        }
+        
+        .shop-title {
+            font-size: 48px;
+        }
+    }
+    
+    @media (max-width: 600px) {
+        .shop-grid {
+            grid-template-columns: 1fr;
+        }
+    }
+    
+    /* モーダル関連のスタイル */
+    .modal-overlay {
+        display: none;
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100vw;
+        height: 100vh;
+        background: rgba(0, 0, 0, 0.7);
+        z-index: 1000;
+        justify-content: center;
+        align-items: center;
+    }
+    
+    .modal-overlay.active {
+        display: flex;
+    }
+    
+    .shop-container.dimmed {
+        filter: brightness(1.3);
+    }
+    
+    .modal-content {
+        background: rgba(0, 0, 0, 0.7);
+        padding: 60px 80px;
+        box-shadow: 0 10px 40px rgba(0, 0, 0, 0.8);
+        text-align: center;
+        z-index: 1001;
+        max-width: 800px;
+    }
+    
+    .modal-text {
+        font-size: 36px;
+        font-weight: bold;
+        color: #ffffff;
+        margin-bottom: 100px;
+        line-height: 1.5;
+    }
+    
+    .modal-buttons {
+        display: flex;
+        gap: 40px;
+        justify-content: center;
+    }
+    
+    .modal-button {
+        padding: 20px 60px;
+        font-size: 36px;
+        font-weight: bold;
+        border: none;
+        border-radius: 10px;
+        cursor: pointer;
+        transition: all 0.3s;
+        box-shadow: 0 4px 15px rgba(0, 0, 0, 0.3);
+        color: black;
+    }
+    
+    .modal-button.yes {
+        background: #d3d3d3;
+    }
+    
+    .modal-button.yes:hover {
+        background: #bfbfbf;
+        transform: translateY(-2px);
+        box-shadow: 0 6px 20px rgba(0, 0, 0, 0.4);
+    }
+    
+    .modal-button.no {
+        background: #d3d3d3;
+    }
+    
+    .modal-button.no:hover {
+        background: #bfbfbf;
+        transform: translateY(-2px);
+        box-shadow: 0 6px 20px rgba(0, 0, 0, 0.4);
+    }
+    
+    .shop-item.sold {
+        opacity: 0.6;
+        cursor: not-allowed;
+    }
+    
+    .shop-item.sold:hover {
+        background: rgba(255, 255, 255, 0.15);
+        border-color: rgba(255, 255, 255, 0.4);
+        transform: none;
+        box-shadow: 0 8px 20px rgba(0, 0, 0, 0.5);
+    }
+    
+    .shop-item.sold .shop-item-price {
+        color: #ff6b6b;
+    }
+</style>
+
+<div class="shop-container" id="shopContainer">
+    <div class="shop-title">ショップ</div>
+    
+    <div class="shop-grid">
+        <!-- 鋼の剣 -->
+        <div class="shop-item" data-item-name="鋼の剣">
+            <img src="{% static 'game/img/武器_アイコン.png' %}" alt="剣" class="shop-item-icon">
+            <div class="shop-item-name">鋼の剣</div>
+            <div class="shop-item-price">¥500</div>
+        </div>
+        
+        <!-- 気合いの一発 -->
+        <div class="shop-item" data-item-name="気合いの一発">
+            <img src="{% static 'game/img/特技_アイコン.png' %}" alt="本" class="shop-item-icon">
+            <div class="shop-item-name">気合いの<br>一発</div>
+            <div class="shop-item-price">¥3000</div>
+        </div>
+        
+        <!-- 鋼の鎧 -->
+        <div class="shop-item" data-item-name="鋼の鎧">
+            <img src="{% static 'game/img/防具_アイコン.png' %}" alt="鎧" class="shop-item-icon">
+            <div class="shop-item-name">鋼の鎧</div>
+            <div class="shop-item-price">¥500</div>
+        </div>
+        
+        <!-- 回復キット(小) -->
+        <div class="shop-item" data-item-name="回復キット(小)">
+            <img src="{% static 'game/img/回復_アイコン.png' %}" alt="キット" class="shop-item-icon">
+            <div class="shop-item-name">回復キット<br>(小)</div>
+            <div class="shop-item-price">¥200</div>
+        </div>
+        
+        <!-- 森の剣 -->
+        <div class="shop-item" data-item-name="森の剣">
+            <img src="{% static 'game/img/武器_アイコン.png' %}" alt="剣" class="shop-item-icon">
+            <div class="shop-item-name">森の剣</div>
+            <div class="shop-item-price">¥500</div>
+        </div>
+        
+        <!-- タックル -->
+        <div class="shop-item" data-item-name="タックル">
+            <img src="{% static 'game/img/特技_アイコン.png' %}" alt="本" class="shop-item-icon">
+            <div class="shop-item-name">タックル</div>
+            <div class="shop-item-price">¥3000</div>
+        </div>
+        
+        <!-- 森の鎧 -->
+        <div class="shop-item" data-item-name="森の鎧">
+            <img src="{% static 'game/img/防具_アイコン.png' %}" alt="鎧" class="shop-item-icon">
+            <div class="shop-item-name">森の鎧</div>
+            <div class="shop-item-price">¥500</div>
+        </div>
+        
+        <!-- 魔法キット(小) -->
+        <div class="shop-item" data-item-name="魔法キット(小)">
+            <img src="{% static 'game/img/回復_アイコン.png' %}" alt="キット" class="shop-item-icon">
+            <div class="shop-item-name">魔法キット<br>(小)</div>
+            <div class="shop-item-price">¥200</div>
+        </div>
+    </div>
+    
+    <div class="back-button-container">
+        <a href="{% url 'battle_start_redirect' player.id %}" class="back-button">戻る</a>
+    </div>
+</div>
+
+<!-- 確認モーダル -->
+<div class="modal-overlay" id="modalOverlay">
+    <div class="modal-content" id="modalContent">
+        <div class="modal-text" id="modalText"></div>
+        <div class="modal-buttons">
+            <button class="modal-button yes" id="yesButton">Yes</button>
+            <button class="modal-button no" id="noButton">No</button>
+        </div>
+    </div>
+</div>
+
+<script>
+    const shopContainer = document.getElementById('shopContainer');
+    const modalOverlay = document.getElementById('modalOverlay');
+    const modalContent = document.getElementById('modalContent');
+    const modalText = document.getElementById('modalText');
+    const yesButton = document.getElementById('yesButton');
+    const noButton = document.getElementById('noButton');
+    const shopItems = document.querySelectorAll('.shop-item');
+    
+    let currentItem = null;
+    
+    // アイテムクリック時の処理
+    shopItems.forEach(item => {
+        item.addEventListener('click', function() {
+            // 既に購入済みの場合は何もしない
+            if (this.classList.contains('sold')) {
+                return;
+            }
+            
+            currentItem = this;
+            const itemName = this.dataset.itemName;
+            
+            // モーダルテキストを設定
+            modalText.textContent = `${itemName} を購入しますか？`;
+            
+            // 背景を暗くしてモーダルを表示
+            shopContainer.classList.add('dimmed');
+            modalOverlay.classList.add('active');
+        });
+    });
+    
+    // Yesボタンクリック時の処理
+    yesButton.addEventListener('click', function() {
+        if (currentItem) {
+            // アイテムを購入済みにする
+            currentItem.classList.add('sold');
+            const priceElement = currentItem.querySelector('.shop-item-price');
+            priceElement.textContent = 'Sold';
+        }
+        closeModal();
+    });
+    
+    // Noボタンクリック時の処理
+    noButton.addEventListener('click', function() {
+        closeModal();
+    });
+    
+    // オーバーレイクリック時の処理（モーダルの外をクリック）
+    modalOverlay.addEventListener('click', function(e) {
+        // モーダルコンテンツ自体がクリックされた場合は閉じない
+        if (e.target === modalOverlay) {
+            closeModal();
+        }
+    });
+    
+    // モーダルを閉じる処理
+    function closeModal() {
+        shopContainer.classList.remove('dimmed');
+        modalOverlay.classList.remove('active');
+        currentItem = null;
+    }
+</script>
+
+{% endblock %}

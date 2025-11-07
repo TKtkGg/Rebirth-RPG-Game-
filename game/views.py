@@ -2,6 +2,7 @@ import random
 from django.shortcuts import render,redirect
 from .models import Player, PlayerProfile,Enemy, Equipment
 from .skills import ENEMY_SKILLS, PLAYER_SKILLS
+from .weapons_armors import WEAPONS, ARMORS
 
 
 def home(request):
@@ -20,7 +21,7 @@ def start_game(request):
         # ジョブに応じたステータス設定
         if job == "戦士":
             base_hp, base_atk, base_def, base_spd = 100, 10, 5, 5
-            job_bonus_hp, job_bonus_atk, job_bonus_def, job_bonus_spd = 20, 5, 3, 0
+            job_bonus_hp, job_bonus_atk, job_bonus_def, job_bonus_spd = 5, 3, 2, 0
             stat_points = 5
         elif job == "魔法使い":
             base_hp, base_atk, base_def, base_spd = 100, 10, 5, 5
@@ -35,29 +36,9 @@ def start_game(request):
             job_bonus_hp, job_bonus_atk, job_bonus_def, job_bonus_spd = 0, 0, 0, 0
             stat_points = 5
         
-        # 初期装備を取得または作成
-        wooden_sword, _ = Equipment.objects.get_or_create(
-            name="木の剣",
-            equipment_type="weapon",
-            defaults={
-                'atk_bonus': 5,
-                'spd_bonus': 1,
-                'price': 50,
-                'description': '初心者用の木製の剣'
-            }
-        )
-        
-        leather_armor, _ = Equipment.objects.get_or_create(
-            name="皮の服",
-            equipment_type="armor",
-            defaults={
-                'hp_bonus': 10,
-                'def_bonus': 3,
-                'spd_bonus': -1,
-                'price': 50,
-                'description': '初心者用の革製の防具'
-            }
-        )
+        # 初期装備をデータベースから取得
+        wooden_sword = Equipment.objects.get(name="木の剣")
+        leather_armor = Equipment.objects.get(name="皮の服")
         
         # プレイヤー作成
         player = Player.objects.create(
@@ -83,85 +64,13 @@ def start_game(request):
     
     return render(request, 'game/start.html')
 
-def create_player(request):
-    if request.method == "POST":
-        profile_id = request.POST.get("profile_id")
-        job = request.POST.get("job")
-        
-        profile = PlayerProfile.objects.get(id=profile_id)
-        
-        # ジョブに応じたステータス設定
-        if job == "戦士":
-            base_hp, base_atk, base_def, base_spd = 100, 10, 5, 5
-            job_bonus_hp, job_bonus_atk, job_bonus_def, job_bonus_spd = 20, 5, 3, 0
-            stat_points = 5
-        elif job == "魔法使い":
-            base_hp, base_atk, base_def, base_spd = 100, 10, 5, 5
-            job_bonus_hp, job_bonus_atk, job_bonus_def, job_bonus_spd = -10, 8, -2, 2
-            stat_points = 5
-        elif job == "盗賊":
-            base_hp, base_atk, base_def, base_spd = 100, 10, 5, 5
-            job_bonus_hp, job_bonus_atk, job_bonus_def, job_bonus_spd = 0, 3, 0, 7
-            stat_points = 5
-        else:
-            base_hp, base_atk, base_def, base_spd = 100, 10, 5, 5
-            job_bonus_hp, job_bonus_atk, job_bonus_def, job_bonus_spd = 0, 0, 0, 0
-            stat_points = 5
-        
-        # 初期装備を取得または作成
-        wooden_sword, _ = Equipment.objects.get_or_create(
-            name="木の剣",
-            equipment_type="weapon",
-            defaults={
-                'atk_bonus': 5,
-                'spd_bonus': 1,
-                'price': 50,
-                'description': '初心者用の木製の剣'
-            }
-        )
-        
-        leather_armor, _ = Equipment.objects.get_or_create(
-            name="皮の服",
-            equipment_type="armor",
-            defaults={
-                'hp_bonus': 10,
-                'def_bonus': 3,
-                'spd_bonus': -1,
-                'price': 50,
-                'description': '初心者用の革製の防具'
-            }
-        )
-        
-        player = Player(
-            profile=profile,
-            level=1,
-            exp=0,
-            next_exp=500,
-            max_hp=base_hp + job_bonus_hp,
-            hp=base_hp + job_bonus_hp,
-            atk=base_atk + job_bonus_atk,
-            defense=base_def + job_bonus_def,
-            spd=base_spd + job_bonus_spd,
-            max_mp=50,
-            mp=50,
-            stat_points=stat_points,
-            job=job,
-            weapon=wooden_sword,  # 初期装備
-            armor=leather_armor,   # 初期装備
-            gold=100,
-        )
-        player.save()
-        
-        return redirect('battle_start_redirect', player_id=player.id)
-    
-    # GETリクエストの場合
-    profiles = PlayerProfile.objects.all()
-    return render(request, 'game/create_player.html', {'profiles': profiles})
 
 def battle_start(request, player_id, enemy_id=None):
     player = Player.objects.get(id=player_id)
-    if player.hp <= 0:
-        player.hp = player.max_hp
+    
+    # プレイヤーのHPが0以下の場合、最大HPに回復
+    if player.total_hp <= 0:
+        player.hp = player.max_hp  # 素のHPを最大値に戻す
         player.save()
 
     # 敵のレベル範囲を設定
@@ -227,8 +136,8 @@ def battle_start(request, player_id, enemy_id=None):
         # 休む機能の処理
         action = request.POST.get('action')
         if action == 'rest':
-            player.hp = player.max_hp
-            player.mp = player.max_mp
+            player.hp = player.max_hp  # 素のHPを最大値に戻す
+            player.mp = player.max_mp  # SPも最大値に戻す
             player.save()
             return redirect('battle_start_redirect', player_id=player.id)
 
@@ -236,17 +145,17 @@ def battle_start(request, player_id, enemy_id=None):
         stat = request.POST.get('stat')
         if stat and player.stat_points > 0:
             if stat == 'atk':
-                player.atk += 1
+                player.atk += 1  # 【素のATK】を増やす
             elif stat == 'defense':
-                player.defense += 1
+                player.defense += 1  # 【素のDEF】を増やす
             elif stat == 'hp':
-                player.max_hp += 10
-                player.hp += 10
+                player.max_hp += 10  # 【素の最大HP】を増やす
+                player.hp += 10  # 【素の現在HP】も増やす
             elif stat == 'spd':
-                player.spd += 1
+                player.spd += 1  # 【素のSPD】を増やす
             elif stat == 'mp':
-                player.max_mp += 5
-                player.mp += 5
+                player.max_mp += 5  # 【最大SP】を増やす
+                player.mp += 5  # 【現在SP】も増やす
             player.stat_points -= 1
             player.save()
             return redirect('battle_start_redirect', player_id=player.id)
@@ -268,7 +177,8 @@ def battle(request,player_id,enemy_id):
     # プレイヤーのスキルを取得
     player_skills = PLAYER_SKILLS.get(player.job, [])
     
-    # プレイヤーの表示用ステータス（装備ボーナス + バフ × デバフ）
+    # 【表示用ステータス】装備ボーナス込み + バフ×デバフ適用
+    # プレイヤー（total_atk, total_def, total_spdは装備込みのプロパティ）
     player_atk_buff = buffs.get("player", {}).get("atk", {}).get("multiplier", 1.0)
     player_atk_debuff = debuffs.get("player", {}).get("atk", {}).get("multiplier", 1.0)
     showplayer_atk = int(player.total_atk * player_atk_buff * player_atk_debuff)
@@ -281,7 +191,7 @@ def battle(request,player_id,enemy_id):
     player_spd_debuff = debuffs.get("player", {}).get("spd", {}).get("multiplier", 1.0)
     showplayer_spd = int(player.total_spd * player_spd_buff * player_spd_debuff)
     
-    # 敵の表示用ステータス（自分へのバフ × プレイヤーからのデバフ）
+    # 敵（装備なし）
     enemy_atk_buff = buffs.get("enemy", {}).get("atk", {}).get("multiplier", 1.0)
     enemy_atk_debuff = debuffs.get("enemy", {}).get("atk", {}).get("multiplier", 1.0)
     showenemy_atk = int(enemy.atk * enemy_atk_buff * enemy_atk_debuff)
@@ -300,11 +210,11 @@ def battle(request,player_id,enemy_id):
         player.level = 1
         player.exp = 0
         player.next_exp = 500
-        player.max_hp = 100
-        player.hp = 100
-        player.atk = 10
-        player.defense = 5
-        player.spd = 5
+        player.max_hp = 100  # 【素の最大HP】をリセット
+        player.hp = 100  # 【素の現在HP】をリセット
+        player.atk = 10  # 【素のATK】をリセット
+        player.defense = 5  # 【素のDEF】をリセット
+        player.spd = 5  # 【素のSPD】をリセット
         player.max_mp = 30
         player.mp = 30
         player.stat_points = 0
@@ -360,12 +270,11 @@ def battle(request,player_id,enemy_id):
         Args:
             multiplier: 攻撃力の倍率（デフォルト1.0）
             damage_variance: ダメージのランダム範囲（デフォルト-1〜+2）
-            ignore_defense_action: 敵の防御アクションを無視するか（デフォルトFalse）
         
         Returns:
             damage: 計算されたダメージ値
         """
-        # プレイヤーの攻撃力にバフとデバフを適用（装備ボーナス込み）
+        # プレイヤーの攻撃力【装備ボーナス込み】にバフとデバフを適用
         player_atk_buff = buffs.get("player", {}).get("atk", {}).get("multiplier", 1.0)
         player_atk_debuff = debuffs.get("player", {}).get("atk", {}).get("multiplier", 1.0)
         atk = int(player.total_atk * multiplier * player_atk_buff * player_atk_debuff)
@@ -375,6 +284,7 @@ def battle(request,player_id,enemy_id):
         enemy_def_debuff = debuffs.get("enemy", {}).get("def", {}).get("multiplier", 1.0)
         enemy_def = int(enemy.defense * enemy_def_buff * enemy_def_debuff)
         
+        # 敵が防御アクション中か確認
         effective_def = enemy_def if is_defense_action(actione) else enemy_def // 3
         
         # 基礎ダメージ計算
@@ -484,19 +394,21 @@ def battle(request,player_id,enemy_id):
             me_obj = enemy if target == "player" else player
 
             if etype == "attack":
-                # 【修正】敵の攻撃力にバフとデバフの両方を適用
+                # 敵の攻撃力にバフとデバフの両方を適用
                 enemy_atk_buff = buffs.get("enemy", {}).get("atk", {}).get("multiplier", 1.0)
                 enemy_atk_debuff = debuffs.get("enemy", {}).get("atk", {}).get("multiplier", 1.0)
                 atk = int(me_obj.atk * multiplier * enemy_atk_buff * enemy_atk_debuff)
                 
-                # 【修正】プレイヤーの防御力にバフとデバフを適用（装備ボーナス込み）
+                # プレイヤーの防御力にバフとデバフを適用【装備ボーナス込み】
                 player_def_buff = buffs.get("player", {}).get("def", {}).get("multiplier", 1.0)
                 player_def_debuff = debuffs.get("player", {}).get("def", {}).get("multiplier", 1.0)
                 player_def = int(target_obj.total_def * player_def_buff * player_def_debuff)
                 
-                # ステップ2: 防御アクションを考慮してダメージ計算
+                # 防御アクションを考慮してダメージ計算
                 damage_base = int(atk - (player_def if actionp == "defend" else player_def // 3))                
-                damage = max(random.randint(damage_base - 2, damage_base + 1),1)
+                damage = max(random.randint(damage_base - 2, damage_base + 1), 1)
+                
+                # プレイヤーが対象の場合は【素のHP】を減らす（total_hpは自動計算される）
                 target_obj.hp = max(0, target_obj.hp - damage)
                 message += f"{target_obj.name}に{damage}のダメージ！\n"
 
@@ -549,6 +461,11 @@ def battle(request,player_id,enemy_id):
         if spdcheck:
             message,success = playerAction(message,actionp,special,actione)
             if not success:
+                # HP・SPのゲージ用パーセンテージを計算
+                player_hp_percent = int((player.total_hp / player.total_max_hp) * 100) if player.total_max_hp > 0 else 0
+                player_sp_percent = int((player.mp / player.max_mp) * 100) if player.max_mp > 0 else 0
+                enemy_hp_percent = int((enemy.hp / enemy.max_hp) * 100) if enemy.max_hp > 0 else 0
+                
                 return render(request, "game/battle.html", {
                     "player": player,
                     "enemy": enemy,
@@ -563,9 +480,17 @@ def battle(request,player_id,enemy_id):
                     "showenemy_spd": showenemy_spd,
                     "debuffs": debuffs,
                     "player_skills": player_skills,
+                    "player_hp_percent": player_hp_percent,
+                    "player_sp_percent": player_sp_percent,
+                    "enemy_hp_percent": enemy_hp_percent,
                 })
             if enemy.hp <= 0:
                 message = win(message)
+                # HP・SPのゲージ用パーセンテージを計算
+                player_hp_percent = int((player.total_hp / player.total_max_hp) * 100) if player.total_max_hp > 0 else 0
+                player_sp_percent = int((player.mp / player.max_mp) * 100) if player.max_mp > 0 else 0
+                enemy_hp_percent = 0  # 敵は倒された
+                
                 return render(request, "game/battle.html", {
                     "player": player,
                     "enemy": None,
@@ -580,12 +505,17 @@ def battle(request,player_id,enemy_id):
                     "showenemy_spd": showenemy_spd,
                     "debuffs": debuffs,
                     "player_skills": player_skills,
+                    "player_hp_percent": player_hp_percent,
+                    "player_sp_percent": player_sp_percent,
+                    "enemy_hp_percent": enemy_hp_percent,
                 })
             ex_message,buffs,debuffs = enemyAction(message,enemy,player,buffs,debuffs,actionp,actione)
-            # 【追加】セッションに保存
+            # セッションに保存
             request.session["buffs"] = buffs
             request.session["debuffs"] = debuffs
             message += ex_message    
+            
+            # プレイヤーの【素のHP】が0以下になったかチェック
             if player.hp <= 0:
                 player.defeats += 1
                 if player.defeats >= 3:
@@ -593,6 +523,11 @@ def battle(request,player_id,enemy_id):
                     return render(request, "game/gameover.html", {"player": player, "message": message})
                 else:
                     message = tohome(message)
+                    # HP・SPのゲージ用パーセンテージを計算
+                    player_hp_percent = int((player.total_hp / player.total_max_hp) * 100) if player.total_max_hp > 0 else 0
+                    player_sp_percent = int((player.mp / player.max_mp) * 100) if player.max_mp > 0 else 0
+                    enemy_hp_percent = int((enemy.hp / enemy.max_hp) * 100) if enemy.max_hp > 0 else 0
+                    
                     return render(request, "game/battle.html", {
                         "player": player,
                         "enemy": enemy,
@@ -610,12 +545,17 @@ def battle(request,player_id,enemy_id):
                         "redirect_url": "battle_start",
                         "recovering": True,
                         "player_skills": player_skills,
+                        "player_hp_percent": player_hp_percent,
+                        "player_sp_percent": player_sp_percent,
+                        "enemy_hp_percent": enemy_hp_percent,
                     })          
         else:
             message,buffs,debuffs = enemyAction(message,enemy,player,buffs,debuffs,actionp,actione)
-            # 【追加】セッションに保存
+            # セッションに保存
             request.session["buffs"] = buffs
             request.session["debuffs"] = debuffs
+            
+            # プレイヤーの【素のHP】が0以下になったかチェック
             if player.hp <= 0:
                 player.defeats += 1
                 if player.defeats >= 3:
@@ -623,6 +563,11 @@ def battle(request,player_id,enemy_id):
                     return render(request, "game/gameover.html", {"player": player, "message": message})
                 else:
                     message = tohome(message)
+                    # HP・SPのゲージ用パーセンテージを計算
+                    player_hp_percent = int((player.total_hp / player.total_max_hp) * 100) if player.total_max_hp > 0 else 0
+                    player_sp_percent = int((player.mp / player.max_mp) * 100) if player.max_mp > 0 else 0
+                    enemy_hp_percent = int((enemy.hp / enemy.max_hp) * 100) if enemy.max_hp > 0 else 0
+                    
                     return render(request, "game/battle.html", {
                         "player": player,
                         "enemy": enemy,
@@ -640,11 +585,19 @@ def battle(request,player_id,enemy_id):
                         "redirect_url": "battle_start",
                         "recovering": True,
                         "player_skills": player_skills,
+                        "player_hp_percent": player_hp_percent,
+                        "player_sp_percent": player_sp_percent,
+                        "enemy_hp_percent": enemy_hp_percent,
                     })
             
             ex_message,success = playerAction(message,actionp,special,actione)
             message += ex_message
             if not success:
+                # HP・SPのゲージ用パーセンテージを計算
+                player_hp_percent = int((player.total_hp / player.total_max_hp) * 100) if player.total_max_hp > 0 else 0
+                player_sp_percent = int((player.mp / player.max_mp) * 100) if player.max_mp > 0 else 0
+                enemy_hp_percent = int((enemy.hp / enemy.max_hp) * 100) if enemy.max_hp > 0 else 0
+                
                 return render(request, "game/battle.html", {
                     "player": player,
                     "enemy": enemy,
@@ -659,9 +612,17 @@ def battle(request,player_id,enemy_id):
                     "showenemy_spd": showenemy_spd,
                     "debuffs": debuffs,
                     "player_skills": player_skills,
+                    "player_hp_percent": player_hp_percent,
+                    "player_sp_percent": player_sp_percent,
+                    "enemy_hp_percent": enemy_hp_percent,
                 })
             if enemy.hp <= 0:
                 message = win(message)
+                # HP・SPのゲージ用パーセンテージを計算
+                player_hp_percent = int((player.total_hp / player.total_max_hp) * 100) if player.total_max_hp > 0 else 0
+                player_sp_percent = int((player.mp / player.max_mp) * 100) if player.max_mp > 0 else 0
+                enemy_hp_percent = 0  # 敵は倒された
+                
                 return render(request, "game/battle.html", {
                     "player": player,
                     "enemy": None,
@@ -676,6 +637,9 @@ def battle(request,player_id,enemy_id):
                     "showenemy_spd": showenemy_spd,
                     "debuffs": debuffs,
                     "player_skills": player_skills,
+                    "player_hp_percent": player_hp_percent,
+                    "player_sp_percent": player_sp_percent,
+                    "enemy_hp_percent": enemy_hp_percent,
                 })
           
 
@@ -703,8 +667,8 @@ def battle(request,player_id,enemy_id):
 
         request.session["debuffs"] = debuffs
         
-        # 【修正】表示用ステータスを再計算（装備ボーナス + バフとデバフの両方を適用）
-        # プレイヤーのステータス
+        # 表示用ステータスを再計算【装備ボーナス込み + バフ×デバフ適用】
+        # プレイヤーのステータス（total_atk, total_def, total_spdは装備込み）
         player_atk_buff = buffs.get("player", {}).get("atk", {}).get("multiplier", 1.0)
         player_atk_debuff = debuffs.get("player", {}).get("atk", {}).get("multiplier", 1.0)
         showplayer_atk = int(player.total_atk * player_atk_buff * player_atk_debuff)
@@ -717,7 +681,7 @@ def battle(request,player_id,enemy_id):
         player_spd_debuff = debuffs.get("player", {}).get("spd", {}).get("multiplier", 1.0)
         showplayer_spd = int(player.total_spd * player_spd_buff * player_spd_debuff)
         
-        # 敵のステータス
+        # 敵のステータス（装備なし）
         enemy_atk_buff = buffs.get("enemy", {}).get("atk", {}).get("multiplier", 1.0)
         enemy_atk_debuff = debuffs.get("enemy", {}).get("atk", {}).get("multiplier", 1.0)
         showenemy_atk = int(enemy.atk * enemy_atk_buff * enemy_atk_debuff)
@@ -736,6 +700,12 @@ def battle(request,player_id,enemy_id):
             request.session["message_history"] = message_history
 
         player.save()
+        
+        # HP・SPのゲージ用パーセンテージを計算
+        player_hp_percent = int((player.total_hp / player.total_max_hp) * 100) if player.total_max_hp > 0 else 0
+        player_sp_percent = int((player.mp / player.max_mp) * 100) if player.max_mp > 0 else 0
+        enemy_hp_percent = int((enemy.hp / enemy.max_hp) * 100) if enemy.max_hp > 0 else 0
+        
         return render(request, "game/battle.html", {
             "player": player,
             "enemy": enemy,
@@ -750,7 +720,16 @@ def battle(request,player_id,enemy_id):
             "showenemy_spd": showenemy_spd,
             "debuffs": debuffs,
             "player_skills": player_skills,
+            "player_hp_percent": player_hp_percent,
+            "player_sp_percent": player_sp_percent,
+            "enemy_hp_percent": enemy_hp_percent,
         })
+    
+    
+    # HP・SPのゲージ用パーセンテージを計算
+    player_hp_percent = int((player.total_hp / player.total_max_hp) * 100) if player.total_max_hp > 0 else 0
+    player_sp_percent = int((player.mp / player.max_mp) * 100) if player.max_mp > 0 else 0
+    enemy_hp_percent = int((enemy.hp / enemy.max_hp) * 100) if enemy.max_hp > 0 else 0
     
     return render(request, "game/battle.html", {
         "player": player,
@@ -766,4 +745,22 @@ def battle(request,player_id,enemy_id):
         "showenemy_spd": showenemy_spd,
         "debuffs": debuffs,
         "player_skills": player_skills,
+        "player_hp_percent": player_hp_percent,
+        "player_sp_percent": player_sp_percent,
+        "enemy_hp_percent": enemy_hp_percent,
+    })
+
+
+def shop(request, player_id):
+    """ショップページ"""
+    player = Player.objects.get(id=player_id)
+    
+    # データベースから全装備を取得
+    weapons = Equipment.objects.filter(equipment_type='weapon')
+    armors = Equipment.objects.filter(equipment_type='armor')
+    
+    return render(request, 'game/shop.html', {
+        'player': player,
+        'weapons': weapons,
+        'armors': armors,
     })

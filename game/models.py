@@ -86,6 +86,56 @@ class Player(models.Model):
         """防具のボーナスを含めた現在のHP"""
         bonus = self.armor.hp_bonus if self.armor else 0
         return min(self.hp + bonus, self.total_max_hp)
+    
+    def change_weapon(self, new_weapon):
+        """武器を変更する（戦闘外専用）        
+        Args:new_weapon: 新しい装備するEquipmentオブジェクト
+        Returns:bool: 変更成功ならTrue"""
+
+        self.weapon = new_weapon
+        self.save()
+        return True
+    
+    def change_armor(self, new_armor):
+        """防具を変更する（戦闘外専用、HPを調整）  
+        Args:new_armor: 新しい装備するEquipmentオブジェクト（Noneで装備解除）
+        Returns:bool: 変更成功ならTrue
+        Note:
+            - 現在の総HPから古い装備ボーナスを引き、新しい装備ボーナスを足す
+            - HPが0以下になる場合は最低1HPを保証
+            - 新しい最大HPを超える場合は最大HPに制限"""
+            
+        # 現在の総HPを取得
+        current_total_hp = self.total_hp
+        
+        # 古い装備のボーナスを取得
+        old_bonus = self.armor.hp_bonus if self.armor else 0
+        
+        # 新しい装備のボーナスを取得
+        new_bonus = new_armor.hp_bonus if new_armor else 0
+        
+        # 装備を変更
+        self.armor = new_armor
+        
+        # 素のHPを調整（現在の総HP - 古いボーナス + 新しいボーナス）
+        # 実質的に: 現在の総HP + (新しいボーナス - 古いボーナス)
+        adjusted_hp = current_total_hp - old_bonus
+        
+        # 最低1HP、最大は素の最大HPまで
+        self.hp = max(1, min(adjusted_hp, self.max_hp))
+        
+        self.save()
+        return True
+    
+    def unequip_weapon(self):
+        """武器を外す"""
+        self.weapon = None
+        self.save()
+        return True
+    
+    def unequip_armor(self):
+        """防具を外す（HPを調整）"""
+        return self.change_armor(None)
 
 
 class Enemy(models.Model):

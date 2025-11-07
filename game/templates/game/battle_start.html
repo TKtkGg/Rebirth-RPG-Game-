@@ -17,7 +17,7 @@
         left: 0;
         width: 100vw;
         height: 100vh;
-        background-image: url("{% static 'game/img/25303128.jpg' %}");
+        background-image: url("{% static 'game/img/ホーム.jpg' %}");
         background-size: cover;
         background-position: center;
         background-repeat: no-repeat;
@@ -38,7 +38,7 @@
         color: #fff;
         font-family: 'Arial', sans-serif;
         min-width: 450px;
-        max-height: 80vh;
+        max-height: 95vh;
         overflow-y: auto;
         box-shadow: 0 10px 40px rgba(0, 0, 0, 0.8);
     }
@@ -58,11 +58,12 @@
         font-size: 24px;
         font-weight: bold;
         text-shadow: 2px 2px 4px rgba(0, 0, 0, 1);
+        flex-wrap: wrap;
     }
     
     .status-label {
         color: #fff;
-        min-width: 120px;
+        min-width: 200px;
     }
     
     .status-value {
@@ -74,19 +75,28 @@
         background: rgba(74, 124, 89, 0.9);
         border: 3px solid rgba(107, 155, 127, 0.9);
         color: white;
-        padding: 8px 20px;
-        margin-left: 20px;
+        padding: 0;
+        width: 32px;
+        height:32px;
         cursor: pointer;
         border-radius: 8px;
-        font-size: 24px;
+        font-size: 20px;
         font-weight: bold;
         transition: all 0.3s;
         text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.8);
+        display: flex;
+        align-items: center;
+        justify-content: center;
     }
     
     .stat-plus:hover {
         background: rgba(90, 156, 105, 0.9);
-        transform: scale(1.1);
+    }
+    
+    .stat-plus-form {
+        margin: 0;
+        display: inline;
+        width: auto;
     }
     
     .equipment-section {
@@ -242,7 +252,7 @@
         <div class="status-row">
             <span class="status-label">HP：{{ player.total_hp }} / {{ player.total_max_hp }}</span>
             {% if player.stat_points > 0 %}
-                <form method="POST" style="display: inline;">
+                <form method="POST" class="stat-plus-form">
                     {% csrf_token %}
                     <button type="submit" name="stat" value="hp" class="stat-plus">＋</button>
                 </form>
@@ -252,7 +262,7 @@
         <div class="status-row">
             <span class="status-label">ATK：{{ player.total_atk }}</span>
             {% if player.stat_points > 0 %}
-                <form method="POST" style="display: inline;">
+                <form method="POST" class="stat-plus-form">
                     {% csrf_token %}
                     <button type="submit" name="stat" value="atk" class="stat-plus">＋</button>
                 </form>
@@ -262,7 +272,7 @@
         <div class="status-row">
             <span class="status-label">DEF：{{ player.total_def }}</span>
             {% if player.stat_points > 0 %}
-                <form method="POST" style="display: inline;">
+                <form method="POST" class="stat-plus-form">
                     {% csrf_token %}
                     <button type="submit" name="stat" value="defense" class="stat-plus">＋</button>
                 </form>
@@ -272,7 +282,7 @@
         <div class="status-row">
             <span class="status-label">SPD：{{ player.total_spd }}</span>
             {% if player.stat_points > 0 %}
-                <form method="POST" style="display: inline;">
+                <form method="POST" class="stat-plus-form">
                     {% csrf_token %}
                     <button type="submit" name="stat" value="spd" class="stat-plus">＋</button>
                 </form>
@@ -282,11 +292,15 @@
         <div class="status-row">
             <span class="status-label">SP：{{ player.mp }}</span>
             {% if player.stat_points > 0 %}
-                <form method="POST" style="display: inline;">
+                <form method="POST" class="stat-plus-form">
                     {% csrf_token %}
                     <button type="submit" name="stat" value="mp" class="stat-plus">＋</button>
                 </form>
             {% endif %}
+        </div>
+        
+        <div class="status-row">
+            <span class="status-label">残りポイント：{{ player.stat_points }}</span>
         </div>
         
         <div class="equipment-section">
@@ -305,7 +319,9 @@
             <button class="rpg-button adventure-button">冒険</button>
         </a>
         
-        <button class="rpg-button shop-button" onclick="alert('ショップ機能は準備中です')">ショップ</button>
+        <a href="{% url 'shop' player.id %}" style="text-decoration: none;">
+            <button class="rpg-button shop-button">ショップ</button>
+        </a>
         
         <form method="POST" style="margin: 0;">
             {% csrf_token %}
