@@ -8,4 +8,5 @@ urlpatterns = [
     path('battle/<int:player_id>/<int:enemy_id>/',views.battle,name='battle'),
     path('battle/<int:player_id>/',views.battle_start,name='battle_start_redirect'),  # enemy_idなしの場合
     path('shop/<int:player_id>/',views.shop,name='shop'),  # ショップページ
+    path('buy_item/<int:player_id>/', views.buy_item, name='buy_item'),  # アイテム購入
 ]

@@ -1,6 +1,6 @@
 import random
 from django.shortcuts import render,redirect
-from .models import Player, PlayerProfile,Enemy, Equipment
+from .models import Player, PlayerProfile,Enemy, Equipment, Item
 from .skills import ENEMY_SKILLS, PLAYER_SKILLS
 from .weapons_armors import WEAPONS, ARMORS
 
@@ -72,6 +72,19 @@ def battle_start(request, player_id, enemy_id=None):
     if player.total_hp <= 0:
         player.hp = player.max_hp  # 素のHPを最大値に戻す
         player.save()
+        
+        # 敗北時にショップのセッション購入履歴をクリアし、在庫をリセット
+        request.session['session_purchased_items'] = []
+        request.session['reset_shop'] = True
+    
+    # 戦闘回数をカウント(セッションで管理)
+    battle_count = request.session.get('battle_count', 0)
+    
+    # 3回戦闘終了後にショップのセッション購入履歴をクリアし、在庫をリセット
+    if battle_count >= 3:
+        request.session['session_purchased_items'] = []
+        request.session['reset_shop'] = True
+        request.session['battle_count'] = 0
 
     # 敵のレベル範囲を設定
     if player.level <= 5:
@@ -222,6 +235,13 @@ def battle(request,player_id,enemy_id):
         player.item = "なし"
         request.session["buffs"] = {}
         request.session["debuffs"] = {}
+        request.session["battle_count"] = 0  # 戦闘回数をリセット
+        request.session['session_purchased_items'] = []  # ショップセッション購入履歴をクリア
+        request.session['reset_shop'] = True  # ショップ在庫をリセット
+        
+        # 装備のis_purchasedは永続的なので、ゲームオーバー時にのみリセット
+        Equipment.objects.all().update(is_purchased=False)
+        
         player.save()
 
         # 敵のステータスをデフォルトに戻す
@@ -246,8 +266,11 @@ def battle(request,player_id,enemy_id):
     def win(message):
         gained_exp = enemy.exp
         player.exp += gained_exp
+        player.gold += enemy.drop_gold
+        existLevel = player.level
         message += f"{enemy.name}を倒した！\n"
         message += f"経験値を{gained_exp}ゲットした！\n"
+        message += f"{enemy.drop_gold}Gゲットした！\n"
         enemy.hp = 0
         enemy.is_defeated = True
         enemy.save()
@@ -259,10 +282,14 @@ def battle(request,player_id,enemy_id):
             player.next_exp = int(500 + player.level * 20 * player.level)
             message += f"レベルアップ！ レベル{player.level}になった！ ステータスポイント+3\n"
 
+        # 戦闘回数をカウントアップ
+        battle_count = request.session.get('battle_count', 0)
+        request.session['battle_count'] = battle_count + 1
+
         request.session["buffs"] = {}
         request.session["debuffs"] = {}
         player.save()
-        return message
+        return message,gained_exp,existLevel
     
     def calculate_player_attack(multiplier=1.0, damage_variance=(-1, 2)):
         """プレイヤーの攻撃ダメージを計算する共通関数
@@ -485,7 +512,7 @@ def battle(request,player_id,enemy_id):
                     "enemy_hp_percent": enemy_hp_percent,
                 })
             if enemy.hp <= 0:
-                message = win(message)
+                message, gained_exp, existLevel = win(message)
                 # HP・SPのゲージ用パーセンテージを計算
                 player_hp_percent = int((player.total_hp / player.total_max_hp) * 100) if player.total_max_hp > 0 else 0
                 player_sp_percent = int((player.mp / player.max_mp) * 100) if player.max_mp > 0 else 0
@@ -508,6 +535,9 @@ def battle(request,player_id,enemy_id):
                     "player_hp_percent": player_hp_percent,
                     "player_sp_percent": player_sp_percent,
                     "enemy_hp_percent": enemy_hp_percent,
+                    "gained_exp": gained_exp,
+                    "existLevel": existLevel,
+                    "gained_gold": enemy.drop_gold,
                 })
             ex_message,buffs,debuffs = enemyAction(message,enemy,player,buffs,debuffs,actionp,actione)
             # セッションに保存
@@ -617,7 +647,7 @@ def battle(request,player_id,enemy_id):
                     "enemy_hp_percent": enemy_hp_percent,
                 })
             if enemy.hp <= 0:
-                message = win(message)
+                message,gained_exp,existLevel = win(message)
                 # HP・SPのゲージ用パーセンテージを計算
                 player_hp_percent = int((player.total_hp / player.total_max_hp) * 100) if player.total_max_hp > 0 else 0
                 player_sp_percent = int((player.mp / player.max_mp) * 100) if player.max_mp > 0 else 0
@@ -640,6 +670,9 @@ def battle(request,player_id,enemy_id):
                     "player_hp_percent": player_hp_percent,
                     "player_sp_percent": player_sp_percent,
                     "enemy_hp_percent": enemy_hp_percent,
+                    "gained_exp": gained_exp,
+                    "existLevel": existLevel,
+                    "gained_gold": enemy.drop_gold,
                 })
           
 
@@ -753,14 +786,112 @@ def battle(request,player_id,enemy_id):
 
 def shop(request, player_id):
     """ショップページ"""
+    import json
+    import random
     player = Player.objects.get(id=player_id)
     
-    # データベースから全装備を取得
-    weapons = Equipment.objects.filter(equipment_type='weapon')
-    armors = Equipment.objects.filter(equipment_type='armor')
+    # セッションからショップ在庫を取得
+    shop_inventory = request.session.get('shop_inventory', None)
+    
+    # ショップ在庫が存在しない場合、または強制リセットフラグがある場合は新規生成
+    if shop_inventory is None or request.session.get('reset_shop', False):
+        # データベースから未購入の装備を取得
+        available_weapons = list(Equipment.objects.filter(equipment_type='weapon', is_purchased=False))
+        available_armors = list(Equipment.objects.filter(equipment_type='armor', is_purchased=False))
+        available_items = list(Item.objects.filter(is_purchased=False))
+        
+        # 全てのアイテムを結合
+        all_items = available_weapons + available_armors + available_items
+        
+        # ランダムに最大8個を選択
+        if len(all_items) > 8:
+            shop_items = random.sample(all_items, 8)
+        else:
+            shop_items = all_items
+        
+        # アイテム情報をセッションに保存(IDとタイプのみ)
+        shop_inventory = []
+        for item in shop_items:
+            if isinstance(item, Equipment):
+                shop_inventory.append({
+                    'id': item.id,
+                    'type': 'equipment',
+                    'equipment_type': item.equipment_type
+                })
+            else:  # Item
+                shop_inventory.append({
+                    'id': item.id,
+                    'type': 'item'
+                })
+        
+        request.session['shop_inventory'] = shop_inventory
+        request.session['reset_shop'] = False
+    
+    # セッションに保存されたIDからアイテムを取得
+    weapons = []
+    armors = []
+    items = []
+    
+    session_purchased = request.session.get('session_purchased_items', [])
+    
+    for item_data in shop_inventory:
+        if item_data['type'] == 'equipment':
+            equipment = Equipment.objects.filter(id=item_data['id']).first()
+            # 永続的に購入済みになった装備は表示しない
+            if equipment and not equipment.is_purchased:
+                if equipment.equipment_type == 'weapon':
+                    weapons.append(equipment)
+                else:
+                    armors.append(equipment)
+        else:  # item
+            item = Item.objects.filter(id=item_data['id']).first()
+            # セッション内で購入済みのアイテムは表示しない
+            if item and item.name not in session_purchased:
+                items.append(item)
     
     return render(request, 'game/shop.html', {
         'player': player,
         'weapons': weapons,
         'armors': armors,
+        'items': items,
+        'session_purchased': json.dumps(session_purchased),
     })
+
+
+def buy_item(request, player_id):
+    """アイテム購入処理"""
+    if request.method == 'POST':
+        player = Player.objects.get(id=player_id)
+        item_name = request.POST.get('item_name')
+        item_price = int(request.POST.get('item_price'))
+        item_type = request.POST.get('item_type')  # 'weapon', 'armor', 'item'
+        
+        # 所持金チェック
+        if player.gold >= item_price:
+            # お金を減らす
+            player.gold -= item_price
+            player.save()
+            
+            # Equipmentの場合は永続的にis_purchasedをTrueに更新
+            if item_type == 'weapon' or item_type == 'armor':
+                equipment = Equipment.objects.filter(name=item_name, equipment_type=item_type).first()
+                if equipment:
+                    equipment.is_purchased = True
+                    equipment.save()
+            # Itemの場合はセッションにのみ追加(データベースは更新しない)
+            elif item_type == 'item':
+                pass  # アイテムは永続的に非表示にしない
+            
+            # セッションに今回のショップで購入済みのアイテムを追加
+            session_purchased = request.session.get('session_purchased_items', [])
+            if item_name not in session_purchased:
+                session_purchased.append(item_name)
+                request.session['session_purchased_items'] = session_purchased
+            
+            # TODO: ここでアイテムをインベントリに追加する処理
+        
+        # ショップに戻る
+        return redirect('shop', player_id=player.id)
+    
+    return redirect('shop', player_id=player_id)
+

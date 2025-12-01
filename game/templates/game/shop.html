@@ -243,6 +243,21 @@
         transform: translateY(-2px);
         box-shadow: 0 6px 20px rgba(0, 0, 0, 0.4);
     }
+
+    .modal-button.return {
+        background: #d3d3d3;
+        display:none;
+    }
+
+    .modal-button.return.active {
+        display:flex;
+    }
+    
+    .modal-button.return:hover {
+        background: #bfbfbf;
+        transform: translateY(-2px);
+        box-shadow: 0 6px 20px rgba(0, 0, 0, 0.4);
+    }
     
     .shop-item.sold {
         opacity: 0.6;
@@ -264,63 +279,41 @@
 <div class="shop-container" id="shopContainer">
     <div class="shop-title">ショップ</div>
     
-    <div class="shop-grid">
-        <!-- 鋼の剣 -->
-        <div class="shop-item" data-item-name="鋼の剣">
-            <img src="{% static 'game/img/武器_アイコン.png' %}" alt="剣" class="shop-item-icon">
-            <div class="shop-item-name">鋼の剣</div>
-            <div class="shop-item-price">¥500</div>
-        </div>
+    <form id="purchaseForm" method="POST" action="{% url 'buy_item' player.id %}">
+        {% csrf_token %}
+        <input type="hidden" name="item_name" id="itemNameInput">
+        <input type="hidden" name="item_price" id="itemPriceInput">
+        <input type="hidden" name="item_type" id="itemTypeInput">
         
-        <!-- 気合いの一発 -->
-        <div class="shop-item" data-item-name="気合いの一発">
-            <img src="{% static 'game/img/特技_アイコン.png' %}" alt="本" class="shop-item-icon">
-            <div class="shop-item-name">気合いの<br>一発</div>
-            <div class="shop-item-price">¥3000</div>
+        <div class="shop-grid">
+            <!-- 武器 -->
+            {% for weapon in weapons %}
+            <div class="shop-item" data-item-name="{{ weapon.name }}" data-item-price="{{ weapon.price }}" data-item-type="weapon">
+                <img src="{% static 'game/img/武器_アイコン.png' %}" alt="武器" class="shop-item-icon">
+                <div class="shop-item-name">{{ weapon.name }}</div>
+                <div class="shop-item-price">¥{{ weapon.price }}</div>
+            </div>
+            {% endfor %}
+            
+            <!-- 防具 -->
+            {% for armor in armors %}
+            <div class="shop-item" data-item-name="{{ armor.name }}" data-item-price="{{ armor.price }}" data-item-type="armor">
+                <img src="{% static 'game/img/防具_アイコン.png' %}" alt="防具" class="shop-item-icon">
+                <div class="shop-item-name">{{ armor.name }}</div>
+                <div class="shop-item-price">¥{{ armor.price }}</div>
+            </div>
+            {% endfor %}
+            
+            <!-- アイテム -->
+            {% for item in items %}
+            <div class="shop-item" data-item-name="{{ item.name }}" data-item-price="{{ item.price }}" data-item-type="item">
+                <img src="{% static 'game/img/回復_アイコン.png' %}" alt="アイテム" class="shop-item-icon">
+                <div class="shop-item-name">{{ item.name }}</div>
+                <div class="shop-item-price">¥{{ item.price }}</div>
+            </div>
+            {% endfor %}
         </div>
-        
-        <!-- 鋼の鎧 -->
-        <div class="shop-item" data-item-name="鋼の鎧">
-            <img src="{% static 'game/img/防具_アイコン.png' %}" alt="鎧" class="shop-item-icon">
-            <div class="shop-item-name">鋼の鎧</div>
-            <div class="shop-item-price">¥500</div>
-        </div>
-        
-        <!-- 回復キット(小) -->
-        <div class="shop-item" data-item-name="回復キット(小)">
-            <img src="{% static 'game/img/回復_アイコン.png' %}" alt="キット" class="shop-item-icon">
-            <div class="shop-item-name">回復キット<br>(小)</div>
-            <div class="shop-item-price">¥200</div>
-        </div>
-        
-        <!-- 森の剣 -->
-        <div class="shop-item" data-item-name="森の剣">
-            <img src="{% static 'game/img/武器_アイコン.png' %}" alt="剣" class="shop-item-icon">
-            <div class="shop-item-name">森の剣</div>
-            <div class="shop-item-price">¥500</div>
-        </div>
-        
-        <!-- タックル -->
-        <div class="shop-item" data-item-name="タックル">
-            <img src="{% static 'game/img/特技_アイコン.png' %}" alt="本" class="shop-item-icon">
-            <div class="shop-item-name">タックル</div>
-            <div class="shop-item-price">¥3000</div>
-        </div>
-        
-        <!-- 森の鎧 -->
-        <div class="shop-item" data-item-name="森の鎧">
-            <img src="{% static 'game/img/防具_アイコン.png' %}" alt="鎧" class="shop-item-icon">
-            <div class="shop-item-name">森の鎧</div>
-            <div class="shop-item-price">¥500</div>
-        </div>
-        
-        <!-- 魔法キット(小) -->
-        <div class="shop-item" data-item-name="魔法キット(小)">
-            <img src="{% static 'game/img/回復_アイコン.png' %}" alt="キット" class="shop-item-icon">
-            <div class="shop-item-name">魔法キット<br>(小)</div>
-            <div class="shop-item-price">¥200</div>
-        </div>
-    </div>
+    </form>
     
     <div class="back-button-container">
         <a href="{% url 'battle_start_redirect' player.id %}" class="back-button">戻る</a>
@@ -334,20 +327,36 @@
         <div class="modal-buttons">
             <button class="modal-button yes" id="yesButton">Yes</button>
             <button class="modal-button no" id="noButton">No</button>
+            <button class="modal-button return" id="returnButton">戻る</button>
         </div>
     </div>
 </div>
 
 <script>
+    // DjangoテンプレートからJavaScriptに値を渡す
+    const playerGold = {{ player.gold }};
+    const sessionPurchased = {{ session_purchased|safe }};
+    
     const shopContainer = document.getElementById('shopContainer');
     const modalOverlay = document.getElementById('modalOverlay');
     const modalContent = document.getElementById('modalContent');
     const modalText = document.getElementById('modalText');
     const yesButton = document.getElementById('yesButton');
     const noButton = document.getElementById('noButton');
+    const returnButton = document.getElementById('returnButton');
     const shopItems = document.querySelectorAll('.shop-item');
     
     let currentItem = null;
+    
+    // ページ読み込み時にセッション購入済みアイテムを「Sold」表示
+    shopItems.forEach(item => {
+        const itemName = item.dataset.itemName;
+        if (sessionPurchased.includes(itemName)) {
+            item.classList.add('sold');
+            const priceElement = item.querySelector('.shop-item-price');
+            priceElement.textContent = 'Sold';
+        }
+    });
     
     // アイテムクリック時の処理
     shopItems.forEach(item => {
@@ -371,19 +380,46 @@
     
     // Yesボタンクリック時の処理
     yesButton.addEventListener('click', function() {
-        if (currentItem) {
-            // アイテムを購入済みにする
-            currentItem.classList.add('sold');
-            const priceElement = currentItem.querySelector('.shop-item-price');
-            priceElement.textContent = 'Sold';
+        const itemName = currentItem.dataset.itemName;
+        const itemPrice = parseInt(currentItem.dataset.itemPrice);
+        const itemType = currentItem.dataset.itemType;
+        
+        if (playerGold < itemPrice) {
+            yesButton.style.display = 'none';
+            noButton.style.display = 'none';
+            modalText.textContent = 'ゴールドが足りません。';
+            returnButton.classList.add('active');
+            return;
         }
-        closeModal();
+
+        // hidden inputに値を設定
+        document.getElementById('itemNameInput').value = itemName;
+        document.getElementById('itemPriceInput').value = itemPrice;
+        document.getElementById('itemTypeInput').value = itemType;
+        
+        // フォームを送信
+        document.getElementById('purchaseForm').submit();
     });
     
     // Noボタンクリック時の処理
     noButton.addEventListener('click', function() {
         closeModal();
     });
+
+    returnButton.addEventListener('click', function() {
+        closeModal();
+    });
+
+    function closeModal() {
+        shopContainer.classList.remove('dimmed');
+        modalOverlay.classList.remove('active');
+
+        yesButton.style.display = 'flex';
+        noButton.style.display = 'flex';
+        returnButton.classList.remove('active');
+
+        currentItem = null;
+    }
     
     // オーバーレイクリック時の処理（モーダルの外をクリック）
     modalOverlay.addEventListener('click', function(e) {
@@ -392,13 +428,6 @@
             closeModal();
         }
     });
-    
-    // モーダルを閉じる処理
-    function closeModal() {
-        shopContainer.classList.remove('dimmed');
-        modalOverlay.classList.remove('active');
-        currentItem = null;
-    }
 </script>
 
 {% endblock %}

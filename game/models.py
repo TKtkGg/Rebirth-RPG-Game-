@@ -23,10 +23,26 @@ class Equipment(models.Model):
     price = models.IntegerField(default=0)  # ショップ価格
     drop_rate = models.FloatField(default=0.0)  # ドロップ率（0.0〜1.0）
     description = models.TextField(default="")
+    is_purchased = models.BooleanField(default=False)  # 購入済みフラグ（ショップ用）
     
     def __str__(self):
         return f"{self.name} ({self.get_equipment_type_display()})"
 
+class Item(models.Model):
+    TARGET = [
+        ('mp',"MP"),
+        ('hp',"HP"),
+    ]
+
+    name = models.CharField(max_length=30)
+    target = models.CharField(max_length=10, choices=TARGET)
+    effect_amount = models.IntegerField(default=0)
+    price = models.IntegerField(default=0)  # ショップ価格
+    description = models.TextField(default="")
+    is_purchased = models.BooleanField(default=False)  # 購入済みフラグ(ショップ用)
+    
+    def __str__(self):
+        return f"{self.name} ({self.get_target_display()})"
 
 class Player(models.Model):
     profile = models.ForeignKey(PlayerProfile, on_delete=models.CASCADE)
@@ -157,3 +173,4 @@ class Enemy(models.Model):
     
     # ドロップ可能な装備
     drop_equipment = models.ManyToManyField(Equipment, blank=True, related_name='dropped_by')
+    drop_gold = models.IntegerField(default=20)  # ドロップされるゴールド量
