@@ -1,0 +1,459 @@
+{% extends 'game/base.html' %}
+{% block title %}装備変更{% endblock %}
+
+{% block content %}
+{% load static %}
+<style>
+    body {
+        margin: 0;
+        padding: 0;
+        overflow: hidden;
+    }
+    
+    .equipment-container {
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100vw;
+        height: 100vh;
+        background: #E8D68A;
+        display: flex;
+        padding: 20px;
+        box-sizing: border-box;
+        gap: 20px;
+    }
+    
+    .sidebar {
+        background: rgba(255, 255, 255, 0.3);
+        border: 4px solid #8B6914;
+        border-radius: 15px;
+        padding: 20px;
+        width: 180px;
+        display: flex;
+        flex-direction: column;
+        gap: 20px;
+        height: fit-content;
+        align-self: flex-start;
+    }
+    
+    .sidebar-item {
+        font-size: 32px;
+        font-weight: bold;
+        color: #000;
+        padding: 20px;
+        background: rgba(255, 255, 255, 0.5);
+        border: 3px solid #8B6914;
+        border-radius: 10px;
+        text-align: center;
+        cursor: pointer;
+        transition: all 0.3s;
+    }
+    
+    .sidebar-item:hover {
+        background: rgba(200, 220, 255, 0.5);
+    }
+    
+    .sidebar-item.active {
+        background: rgba(173, 216, 230, 0.6);
+    }
+    
+    .main-content {
+        display: flex;
+        flex: 1;
+        gap: 20px;
+    }
+    
+    .equipment-content {
+        flex: 1;
+        background: #F5E6B3;
+        border: 4px solid #8B6914;
+        border-radius: 20px;
+        padding: 40px;
+        overflow-y: auto;
+        position: relative;
+    }
+    
+    .stats-panel {
+        width: 250px;
+        background: #F5E6B3;
+        border: 4px solid #8B6914;
+        border-radius: 20px;
+        padding: 30px;
+        display: flex;
+        flex-direction: column;
+        gap: 20px;
+        height: fit-content;
+        align-self: flex-start;
+    }
+    
+    .stat-item {
+        font-size: 28px;
+        font-weight: bold;
+        color: #000;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 10px 0;
+        border-bottom: 2px solid rgba(139, 105, 20, 0.3);
+    }
+    
+    .stat-item:last-child {
+        border-bottom: none;
+    }
+    
+    .stat-label {
+        color: #000;
+    }
+    
+    .stat-value {
+        color: #000;
+        font-size: 32px;
+    }
+    
+    .stat-change {
+        font-size: 20px;
+        color: #666;
+        margin-top: 5px;
+        text-align: right;
+    }
+    
+    .equipment-section {
+        display: none;
+    }
+    
+    .equipment-section.active {
+        display: block;
+    }
+    
+    .equipment-grid {
+        display: grid;
+        grid-template-columns: repeat(4, 1fr);
+        gap: 30px;
+        margin-top: 20px;
+    }
+    
+    .equipment-item {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        padding: 15px;
+        background: rgba(255, 255, 255, 0.3);
+        border: 2px solid transparent;
+        border-radius: 10px;
+        cursor: pointer;
+        transition: all 0.3s;
+    }
+    
+    .equipment-item:hover {
+        background: rgba(255, 255, 255, 0.5);
+        transform: translateY(-3px);
+    }
+    
+    .equipment-item.equipped {
+        background: rgba(173, 216, 230, 0.6);
+        border-color: #4A90E2;
+    }
+    
+    .equipment-icon {
+        width: 80px;
+        height: 80px;
+        margin-bottom: 10px;
+    }
+    
+    .equipment-name {
+        font-size: 16px;
+        font-weight: bold;
+        color: #000;
+        text-align: center;
+        word-wrap: break-word;
+        width: 100%;
+    }
+    
+    .no-equipment {
+        font-size: 24px;
+        color: #666;
+        text-align: center;
+        padding: 60px;
+        font-style: italic;
+    }
+    
+    .back-button {
+        position: fixed;
+        bottom: 40px;
+        left: 30px;
+        padding: 20px 50px;
+        font-size: 28px;
+        font-weight: bold;
+        background: rgba(139, 105, 20, 0.8);
+        border: 3px solid rgba(255, 255, 255, 0.5);
+        border-radius: 15px;
+        color: white;
+        cursor: pointer;
+        transition: all 0.3s;
+        text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.9);
+        text-decoration: none;
+        display: inline-block;
+        box-shadow: 0 6px 20px rgba(0, 0, 0, 0.6);
+    }
+    
+    .back-button:hover {
+        background: rgba(120, 90, 15, 0.9);
+        transform: translateY(-3px);
+        box-shadow: 0 8px 25px rgba(0, 0, 0, 0.8);
+    }
+</style>
+
+<div class="equipment-container">
+    <div class="sidebar">
+        <div class="sidebar-item" onclick="showSection('weapons')">武器</div>
+        <div class="sidebar-item" onclick="showSection('armors')">防具</div>
+    </div>
+    
+    <div class="main-content">
+        <div class="equipment-content">
+            <!-- 武器セクション -->
+            <div class="equipment-section" id="weapons-section">
+                <div class="equipment-grid">
+                    {% if owned_weapons %}
+                        {% for weapon in owned_weapons %}
+                        <div class="equipment-item {% if player.weapon and player.weapon.id == weapon.id %}equipped{% endif %}" 
+                             data-equipment-id="{{ weapon.id }}"
+                             data-equipment-type="weapon"
+                             data-atk="{{ weapon.atk_bonus }}"
+                             data-def="{{ weapon.def_bonus }}"
+                             data-spd="{{ weapon.spd_bonus }}"
+                             data-hp="{{ weapon.hp_bonus }}">
+                            <img src="{% static 'game/img/武器_アイコン.png' %}" alt="{{ weapon.name }}" class="equipment-icon">
+                            <div class="equipment-name">{{ weapon.name }}</div>
+                        </div>
+                        {% endfor %}
+                    {% else %}
+                        <div class="no-equipment" style="grid-column: 1 / -1;">所持している武器がありません</div>
+                    {% endif %}
+                </div>
+            </div>
+            
+            <!-- 防具セクション -->
+            <div class="equipment-section" id="armors-section">
+                <div class="equipment-grid">
+                    {% if owned_armors %}
+                        {% for armor in owned_armors %}
+                        <div class="equipment-item {% if player.armor and player.armor.id == armor.id %}equipped{% endif %}"
+                             data-equipment-id="{{ armor.id }}"
+                             data-equipment-type="armor"
+                             data-atk="{{ armor.atk_bonus }}"
+                             data-def="{{ armor.def_bonus }}"
+                             data-spd="{{ armor.spd_bonus }}"
+                             data-hp="{{ armor.hp_bonus }}">
+                            <img src="{% static 'game/img/防具_アイコン.png' %}" alt="{{ armor.name }}" class="equipment-icon">
+                            <div class="equipment-name">{{ armor.name }}</div>
+                        </div>
+                        {% endfor %}
+                    {% else %}
+                        <div class="no-equipment" style="grid-column: 1 / -1;">所持している防具がありません</div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+        
+        <div class="stats-panel">
+            <div class="stat-item">
+                <span class="stat-label">HP:</span>
+                <div style="text-align: right;">
+                    <div class="stat-value" id="hp-value">{{ player.total_max_hp }}</div>
+                    <div class="stat-change" id="hp-change"></div>
+                </div>
+            </div>
+            <div class="stat-item">
+                <span class="stat-label">ATK:</span>
+                <div style="text-align: right;">
+                    <div class="stat-value" id="atk-value">{{ player.total_atk }}</div>
+                    <div class="stat-change" id="atk-change"></div>
+                </div>
+            </div>
+            <div class="stat-item">
+                <span class="stat-label">DEF:</span>
+                <div style="text-align: right;">
+                    <div class="stat-value" id="def-value">{{ player.total_def }}</div>
+                    <div class="stat-change" id="def-change"></div>
+                </div>
+            </div>
+            <div class="stat-item">
+                <span class="stat-label">SPD:</span>
+                <div style="text-align: right;">
+                    <div class="stat-value" id="spd-value">{{ player.total_spd }}</div>
+                    <div class="stat-change" id="spd-change"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <a href="{% url 'battle_start' player.id %}" class="back-button">戻る</a>
+</div>
+
+<script>
+    let selectedEquipment = null;
+    let clickCount = 0;
+    
+    // 現在の装備のステータス
+    const currentWeapon = {
+        atk: {{ player.weapon.atk_bonus|default:0 }},
+        def: {{ player.weapon.def_bonus|default:0 }},
+        spd: {{ player.weapon.spd_bonus|default:0 }},
+        hp: {{ player.weapon.hp_bonus|default:0 }}
+    };
+    
+    const currentArmor = {
+        atk: {{ player.armor.atk_bonus|default:0 }},
+        def: {{ player.armor.def_bonus|default:0 }},
+        spd: {{ player.armor.spd_bonus|default:0 }},
+        hp: {{ player.armor.hp_bonus|default:0 }}
+    };
+    
+    const baseStats = {
+        atk: {{ player.atk }},
+        def: {{ player.defense }},
+        spd: {{ player.spd }},
+        maxHp: {{ player.max_hp }}
+    };
+    
+    function showSection(section) {
+        // すべてのセクションを非表示
+        document.querySelectorAll('.equipment-section').forEach(sec => {
+            sec.classList.remove('active');
+        });
+        
+        // すべてのサイドバーアイテムの選択を解除
+        document.querySelectorAll('.sidebar-item').forEach(item => {
+            item.classList.remove('active');
+        });
+        
+        // 選択状態をリセット
+        resetSelection();
+        
+        // 選択されたセクションを表示
+        if (section === 'weapons') {
+            document.getElementById('weapons-section').classList.add('active');
+            document.querySelectorAll('.sidebar-item')[0].classList.add('active');
+        } else if (section === 'armors') {
+            document.getElementById('armors-section').classList.add('active');
+            document.querySelectorAll('.sidebar-item')[1].classList.add('active');
+        }
+    }
+    
+    function resetSelection() {
+        selectedEquipment = null;
+        clickCount = 0;
+        clearStatChanges();
+    }
+    
+    function clearStatChanges() {
+        document.getElementById('hp-change').textContent = '';
+        document.getElementById('atk-change').textContent = '';
+        document.getElementById('def-change').textContent = '';
+        document.getElementById('spd-change').textContent = '';
+    }
+    
+    function calculateStatChange(equipmentType, newEquipment) {
+        let newAtk, newDef, newSpd, newMaxHp;
+        
+        if (equipmentType === 'weapon') {
+            // 武器を変更：ベースステータス + 新しい武器 + 現在の防具
+            newAtk = baseStats.atk + parseInt(newEquipment.atk) + currentArmor.atk;
+            newDef = baseStats.def + parseInt(newEquipment.def) + currentArmor.def;
+            newSpd = baseStats.spd + parseInt(newEquipment.spd) + currentArmor.spd;
+            newMaxHp = baseStats.maxHp + parseInt(newEquipment.hp) + currentArmor.hp;
+        } else {
+            // 防具を変更：ベースステータス + 現在の武器 + 新しい防具
+            newAtk = baseStats.atk + currentWeapon.atk + parseInt(newEquipment.atk);
+            newDef = baseStats.def + currentWeapon.def + parseInt(newEquipment.def);
+            newSpd = baseStats.spd + currentWeapon.spd + parseInt(newEquipment.spd);
+            newMaxHp = baseStats.maxHp + currentWeapon.hp + parseInt(newEquipment.hp);
+        }
+        
+        // 現在のステータス（現在の装備込み）
+        const currentAtk = {{ player.total_atk }};
+        const currentDef = {{ player.total_def }};
+        const currentSpd = {{ player.total_spd }};
+        const currentMaxHp = {{ player.total_max_hp }};
+        
+        return {
+            atk: { old: currentAtk, new: newAtk, diff: newAtk - currentAtk },
+            def: { old: currentDef, new: newDef, diff: newDef - currentDef },
+            spd: { old: currentSpd, new: newSpd, diff: newSpd - currentSpd },
+            hp: { old: currentMaxHp, new: newMaxHp, diff: newMaxHp - currentMaxHp }
+        };
+    }
+    
+    function displayStatChanges(stats) {
+        const formatDiff = (diff) => {
+            if (diff > 0) return `+${diff}`;
+            if (diff < 0) return `${diff}`;
+            return '±0';
+        };
+        
+        document.getElementById('hp-change').textContent = `${stats.hp.old}→${stats.hp.new} (${formatDiff(stats.hp.diff)})`;
+        document.getElementById('atk-change').textContent = `${stats.atk.old}→${stats.atk.new} (${formatDiff(stats.atk.diff)})`;
+        document.getElementById('def-change').textContent = `${stats.def.old}→${stats.def.new} (${formatDiff(stats.def.diff)})`;
+        document.getElementById('spd-change').textContent = `${stats.spd.old}→${stats.spd.new} (${formatDiff(stats.spd.diff)})`;
+    }
+    
+    // 装備アイテムのクリックイベント
+    document.addEventListener('DOMContentLoaded', function() {
+        const equipmentItems = document.querySelectorAll('.equipment-item');
+        
+        equipmentItems.forEach(item => {
+            item.addEventListener('click', function() {
+                // 「所持している○○がありません」の場合は何もしない
+                if (this.classList.contains('no-equipment')) {
+                    return;
+                }
+                
+                const equipmentId = this.dataset.equipmentId;
+                const equipmentType = this.dataset.equipmentType;
+                
+                // 既に装備しているアイテムをクリックした場合は何もしない
+                if (this.classList.contains('equipped')) {
+                    return;
+                }
+                
+                // 1回目のクリック
+                if (selectedEquipment !== equipmentId) {
+                    selectedEquipment = equipmentId;
+                    clickCount = 1;
+                    
+                    // ステータス変動を計算して表示
+                    const newEquipment = {
+                        atk: this.dataset.atk,
+                        def: this.dataset.def,
+                        spd: this.dataset.spd,
+                        hp: this.dataset.hp
+                    };
+                    
+                    const stats = calculateStatChange(equipmentType, newEquipment);
+                    displayStatChanges(stats);
+                } 
+                // 2回目のクリック(同じアイテム)
+                else if (selectedEquipment === equipmentId && clickCount === 1) {
+                    clickCount = 2;
+                    
+                    // 装備を変更
+                    window.location.href = `/equip/{{ player.id }}/${equipmentId}/`;
+                }
+            });
+        });
+        
+        // ページ読み込み時にURLパラメータをチェック
+        const urlParams = new URLSearchParams(window.location.search);
+        const tab = urlParams.get('tab');
+        
+        if (tab === 'armors') {
+            showSection('armors');
+        } else {
+            // デフォルトは武器
+            showSection('weapons');
+        }
+    });
+</script>
+
+{% endblock %}

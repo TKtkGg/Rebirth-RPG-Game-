@@ -111,14 +111,22 @@
         text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.9);
     }
     
+    .shop-item-stock {
+        font-size: 24px;
+        font-weight: bold;
+        color: #90EE90;
+        text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.9);
+        margin-top: 5px;
+    }
+    
     .back-button-container {
         position: fixed;
         bottom: 40px;
-        left: 40px;
+        left: 12px;
     }
     
     .back-button {
-        padding: 20px 50px;
+        padding: 15px 20px;
         font-size: 28px;
         font-weight: bold;
         background: rgba(100, 100, 100, 0.8);
@@ -204,6 +212,53 @@
         color: #ffffff;
         margin-bottom: 100px;
         line-height: 1.5;
+    }
+    
+    .quantity-selector {
+        display: none;
+        align-items: center;
+        justify-content: center;
+        gap: 30px;
+        margin-bottom: 60px;
+    }
+    
+    .quantity-selector.active {
+        display: flex;
+    }
+    
+    .quantity-button {
+        width: 60px;
+        height: 60px;
+        font-size: 40px;
+        font-weight: bold;
+        background: #d3d3d3;
+        border: none;
+        border-radius: 10px;
+        cursor: pointer;
+        transition: all 0.3s;
+        color: black;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+    }
+    
+    .quantity-button:hover {
+        background: #bfbfbf;
+        transform: scale(1.1);
+    }
+    
+    .quantity-button:disabled {
+        background: #808080;
+        cursor: not-allowed;
+        opacity: 0.5;
+    }
+    
+    .quantity-display {
+        font-size: 48px;
+        font-weight: bold;
+        color: white;
+        min-width: 80px;
+        text-align: center;
     }
     
     .modal-buttons {
@@ -306,17 +361,18 @@
             
             <!-- アイテム -->
             {% for item in items %}
-            <div class="shop-item" data-item-name="{{ item.name }}" data-item-price="{{ item.price }}" data-item-type="item">
+            <div class="shop-item" data-item-name="{{ item.name }}" data-item-price="{{ item.price }}" data-item-type="item" data-current-stock="{{ item.current_stock }}" data-max-stock="{{ item.max_stock }}">
                 <img src="{% static 'game/img/回復_アイコン.png' %}" alt="アイテム" class="shop-item-icon">
                 <div class="shop-item-name">{{ item.name }}</div>
                 <div class="shop-item-price">¥{{ item.price }}</div>
+                <div class="shop-item-stock">{{ item.current_stock }}/{{ item.max_stock }}</div>
             </div>
             {% endfor %}
         </div>
     </form>
     
     <div class="back-button-container">
-        <a href="{% url 'battle_start_redirect' player.id %}" class="back-button">戻る</a>
+        <a href="{% url 'battle_start' player.id %}" class="back-button">戻る</a>
     </div>
 </div>
 
@@ -324,6 +380,11 @@
 <div class="modal-overlay" id="modalOverlay">
     <div class="modal-content" id="modalContent">
         <div class="modal-text" id="modalText"></div>
+        <div class="quantity-selector" id="quantitySelector">
+            <button class="quantity-button" id="decreaseButton">&lt;</button>
+            <div class="quantity-display" id="quantityDisplay">1</div>
+            <button class="quantity-button" id="increaseButton">&gt;</button>
+        </div>
         <div class="modal-buttons">
             <button class="modal-button yes" id="yesButton">Yes</button>
             <button class="modal-button no" id="noButton">No</button>
@@ -346,7 +407,14 @@
     const returnButton = document.getElementById('returnButton');
     const shopItems = document.querySelectorAll('.shop-item');
     
+    const quantitySelector = document.getElementById('quantitySelector');
+    const quantityDisplay = document.getElementById('quantityDisplay');
+    const decreaseButton = document.getElementById('decreaseButton');
+    const increaseButton = document.getElementById('increaseButton');
+    
     let currentItem = null;
+    let currentQuantity = 1;
+    let maxQuantity = 1;
     
     // ページ読み込み時にセッション購入済みアイテムを「Sold」表示
     shopItems.forEach(item => {
@@ -368,9 +436,23 @@
             
             currentItem = this;
             const itemName = this.dataset.itemName;
+            const itemType = this.dataset.itemType;
             
-            // モーダルテキストを設定
-            modalText.textContent = `${itemName} を購入しますか？`;
+            // アイテムの場合は数量選択を表示
+            if (itemType === 'item') {
+                const currentStock = parseInt(this.dataset.currentStock);
+                maxQuantity = currentStock;
+                currentQuantity = 1;
+                
+                modalText.textContent = `いくつ買いますか？`;
+                quantitySelector.classList.add('active');
+                quantityDisplay.textContent = currentQuantity;
+                updateQuantityButtons();
+            } else {
+                // 武器・防具の場合は従来通り
+                modalText.textContent = `${itemName} を購入しますか？`;
+                quantitySelector.classList.remove('active');
+            }
             
             // 背景を暗くしてモーダルを表示
             shopContainer.classList.add('dimmed');
@@ -378,24 +460,76 @@
         });
     });
     
+    // 数量減少ボタン
+    decreaseButton.addEventListener('click', function() {
+        if (currentQuantity > 1) {
+            currentQuantity--;
+            quantityDisplay.textContent = currentQuantity;
+            updateQuantityButtons();
+        }
+    });
+    
+    // 数量増加ボタン
+    increaseButton.addEventListener('click', function() {
+        if (currentQuantity < maxQuantity) {
+            currentQuantity++;
+            quantityDisplay.textContent = currentQuantity;
+            updateQuantityButtons();
+        }
+    });
+    
+    // 数量ボタンの有効/無効を更新
+    function updateQuantityButtons() {
+        decreaseButton.disabled = currentQuantity <= 1;
+        increaseButton.disabled = currentQuantity >= maxQuantity;
+    }
+    
     // Yesボタンクリック時の処理
     yesButton.addEventListener('click', function() {
         const itemName = currentItem.dataset.itemName;
         const itemPrice = parseInt(currentItem.dataset.itemPrice);
         const itemType = currentItem.dataset.itemType;
         
-        if (playerGold < itemPrice) {
+        // アイテムの場合は数量を考慮した価格チェック
+        const totalPrice = itemType === 'item' ? itemPrice * currentQuantity : itemPrice;
+        
+        if (playerGold < totalPrice) {
             yesButton.style.display = 'none';
             noButton.style.display = 'none';
+            quantitySelector.classList.remove('active');
             modalText.textContent = 'ゴールドが足りません。';
             returnButton.classList.add('active');
             return;
+        }
+        
+        // アイテムの場合、在庫チェック
+        if (itemType === 'item') {
+            const currentStock = parseInt(currentItem.dataset.currentStock);
+            if (currentStock < currentQuantity) {
+                yesButton.style.display = 'none';
+                noButton.style.display = 'none';
+                quantitySelector.classList.remove('active');
+                modalText.textContent = '在庫が足りません。';
+                returnButton.classList.add('active');
+                return;
+            }
         }
 
         // hidden inputに値を設定
         document.getElementById('itemNameInput').value = itemName;
         document.getElementById('itemPriceInput').value = itemPrice;
         document.getElementById('itemTypeInput').value = itemType;
+        
+        // 数量用のhidden inputを追加
+        let quantityInput = document.getElementById('itemQuantityInput');
+        if (!quantityInput) {
+            quantityInput = document.createElement('input');
+            quantityInput.type = 'hidden';
+            quantityInput.name = 'item_quantity';
+            quantityInput.id = 'itemQuantityInput';
+            document.getElementById('purchaseForm').appendChild(quantityInput);
+        }
+        quantityInput.value = itemType === 'item' ? currentQuantity : 1;
         
         // フォームを送信
         document.getElementById('purchaseForm').submit();
@@ -413,11 +547,13 @@
     function closeModal() {
         shopContainer.classList.remove('dimmed');
         modalOverlay.classList.remove('active');
+        quantitySelector.classList.remove('active');
 
         yesButton.style.display = 'flex';
         noButton.style.display = 'flex';
         returnButton.classList.remove('active');
-
+        
+        currentQuantity = 1;
         currentItem = null;
     }
     

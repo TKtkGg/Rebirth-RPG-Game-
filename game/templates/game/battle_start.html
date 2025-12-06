@@ -33,12 +33,11 @@
     .status-panel {
         background: rgba(0, 0, 0, 0.75);
         border: 4px solid rgba(139, 105, 20, 0.9);
-        border-radius: 15px;
-        padding: 40px;
+        padding: 20px;
         color: #fff;
         font-family: 'Arial', sans-serif;
         min-width: 450px;
-        max-height: 95vh;
+        max-height: 110vh;
         overflow-y: auto;
         box-shadow: 0 10px 40px rgba(0, 0, 0, 0.8);
     }
@@ -54,7 +53,7 @@
     .status-row {
         display: flex;
         align-items: center;
-        margin: 18px 0;
+        margin: 15px 0;
         font-size: 24px;
         font-weight: bold;
         text-shadow: 2px 2px 4px rgba(0, 0, 0, 1);
@@ -73,17 +72,13 @@
     
     .stat-plus {
         background: rgba(74, 124, 89, 0.9);
-        border: 3px solid rgba(107, 155, 127, 0.9);
         color: white;
         padding: 0;
         width: 32px;
         height:32px;
-        cursor: pointer;
-        border-radius: 8px;
         font-size: 20px;
         font-weight: bold;
         transition: all 0.3s;
-        text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.8);
         display: flex;
         align-items: center;
         justify-content: center;
@@ -100,8 +95,6 @@
     }
     
     .equipment-section {
-        margin-top: 25px;
-        padding-top: 25px;
         border-top: 3px solid rgba(139, 105, 20, 0.8);
     }
     
@@ -309,17 +302,31 @@
         
         <div class="equipment-section">
             <div class="status-row">
-                <span class="status-label">武器：鋼の剣</span>
+                <span class="status-label">武器：{{ player.weapon.name|default:"なし" }}</span>
+                <a href="{% url 'equipment_change' player.id %}?tab=weapons" style="text-decoration: none; margin-left: 10px;">
+                    <button type="button" class="stat-plus" style="width: 80px; height: 35px; font-size: 16px;">変更</button>
+                </a>
             </div>
             
             <div class="status-row">
-                <span class="status-label">防具：メタルアーマー</span>
+                <span class="status-label">防具：{{ player.armor.name|default:"なし" }}</span>
+                <a href="{% url 'equipment_change' player.id %}?tab=armors" style="text-decoration: none; margin-left: 10px;">
+                    <button type="button" class="stat-plus" style="width: 80px; height: 35px; font-size: 16px;">変更</button>
+                </a>
+            </div>
+            
+            <div class="status-row" style="margin-top: 0px;">
+                <a href="{% url 'inventory' player.id %}" style="text-decoration: none;">
+                    <div style="background: rgba(234, 234, 234, 0.7); padding: 10px; border-radius: 10px; display: inline-block; transition: all 0.3s;">
+                        <img src="{% static 'game/img/持ち物_アイコン.png' %}" alt="持ち物" style="width: 40px; height: 40px; cursor: pointer; filter: drop-shadow(0 4px 8px rgba(0, 0, 0, 0.5)); transition: transform 0.3s; display: block;" onmouseover="this.style.transform='scale(1.1)'" onmouseout="this.style.transform='scale(1)'">
+                    </div>
+                </a>
             </div>
         </div>
     </div>
     
     <div class="button-panel">
-        <a href="{% url 'battle' player.id enemy.id %}" style="text-decoration: none;">
+        <a href="{% url 'stage_select' player.id %}" style="text-decoration: none;">
             <button class="rpg-button adventure-button">冒険</button>
         </a>
         

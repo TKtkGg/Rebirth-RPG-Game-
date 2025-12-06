@@ -1,6 +1,6 @@
 import random
 from django.shortcuts import render,redirect
-from .models import Player, PlayerProfile,Enemy, Equipment, Item
+from .models import Player, PlayerProfile,Enemy, Equipment, Item, Stage
 from .skills import ENEMY_SKILLS, PLAYER_SKILLS
 from .weapons_armors import WEAPONS, ARMORS
 
@@ -9,12 +9,26 @@ def home(request):
     return render(request, 'game/home.html')
 
 
+def stage_select(request, player_id):
+    """ステージ選択画面"""
+    player = Player.objects.get(id=player_id)
+    stages = Stage.objects.all().order_by('order')
+    
+    return render(request, 'game/stage_select.html', {
+        'player': player,
+        'stages': stages,
+    })
+
+
 def start_game(request):
     """新規プレイヤー作成（職業選択あり）"""
     if request.method == 'POST':
         name = request.POST.get('name')
         job = request.POST.get('job', '戦士')  # デフォルトは戦士
-        
+
+        request.session['session_purchased_items'] = []
+        request.session['reset_shop'] = True
+
         # プロフィール作成
         profile = PlayerProfile.objects.create(name=name)
         
@@ -60,6 +74,9 @@ def start_game(request):
             gold=100,
         )
         
+        # 初期装備を所持装備に追加
+        player.owned_equipment.add(wooden_sword, leather_armor)
+        
         return redirect('battle_start_redirect', player_id=player.id)
     
     return render(request, 'game/start.html')
@@ -86,60 +103,14 @@ def battle_start(request, player_id, enemy_id=None):
         request.session['reset_shop'] = True
         request.session['battle_count'] = 0
 
-    # 敵のレベル範囲を設定
-    if player.level <= 5:
-        min_level = max(1, player.level - 1)
-        max_level = player.level + 1
-    elif player.level <= 10:
-        min_level = max(1, player.level - 3)
-        max_level = player.level + 3
-    else:
-        min_level = max(1, player.level - 10)
-        max_level = player.level + 5
-
-    enemies = Enemy.objects.filter(level__gte=min_level, level__lte=max_level)
-
-    # 敵が存在しない場合のフォールバック
-    if not enemies.exists():
-        enemies = Enemy.objects.all()
-
-    # レベル差に応じて出現確率を調整
-    weighted_enemies = []
-    for enemy in enemies:
-        if player.level <= 5:
-            weight = 10  # 同じレベルまたは±1の敵は均等に出現
-        elif player.level <= 10:
-            level_diff = abs(player.level - enemy.level)
-            weight = max(1, 10 - level_diff * 2)  # レベル差が大きいほど重みが小さくなる
-        else:
-            level_diff = abs(player.level - enemy.level)
-            weight = max(1, 20 - level_diff)  # レベル差が大きいほど重みが小さくなる
-        weighted_enemies.extend([enemy] * weight)
-
-    # ランダムに敵を選択
-    enemy = random.choice(weighted_enemies)
-
-    # 敵のレベルをランダムに変更（範囲内で）
-    if max(min_level, enemy.level, enemy.level_default) > max_level:
-        enemy.level = max_level  # 範囲が無効な場合は最大値を設定
-    else:
-        enemy.level = random.randint(max(min_level, enemy.level_default), max_level)
-
-    # レベルに応じてステータスを変更
-    enemy.max_hp = enemy.max_hp_default + (enemy.level - enemy.level_default) * enemy.max_hp // 10
-    enemy.hp = enemy.max_hp
-    enemy.atk = enemy.atk_default + (enemy.level - enemy.level_default) * enemy.atk // 5
-    enemy.defense = enemy.defense_default + (enemy.level - enemy.level_default) * enemy.defense // 5
-    enemy.spd = enemy.spd_default + (enemy.level - enemy.level_default) * enemy.spd // 5
-    enemy.exp = enemy.exp_default + (enemy.level - enemy.level_default) * enemy.exp // 10
-    enemy.is_defeated = False
-    enemy.save()
-
-    # セッションに敵のIDを保存
-    request.session["enemy_id"] = enemy.id
-    
-    # 新しい戦闘開始時にメッセージ履歴をクリア
-    request.session["message_history"] = []
+    # 戦闘終了後にセッションをクリア
+    if 'enemy_id' in request.session:
+        del request.session['enemy_id']
+    if 'stage_id' in request.session:
+        del request.session['stage_id']
+    request.session['message_history'] = []
+    request.session['buffs'] = {}
+    request.session['debuffs'] = {}
 
     exp_percent = int(player.exp / player.next_exp * 100)
 
@@ -149,10 +120,15 @@ def battle_start(request, player_id, enemy_id=None):
         # 休む機能の処理
         action = request.POST.get('action')
         if action == 'rest':
+            # 休むペナルティ：次のレベルまでの経験値の5%を減少
+            exp_penalty = int(player.next_exp * 0.05)
+            actual_exp_penalty = min(exp_penalty, player.exp)
+            
+            player.exp = max(0, player.exp - exp_penalty)
             player.hp = player.max_hp  # 素のHPを最大値に戻す
             player.mp = player.max_mp  # SPも最大値に戻す
             player.save()
-            return redirect('battle_start_redirect', player_id=player.id)
+            return redirect('battle_start', player_id=player.id)
 
         # ステータスポイント配分の処理
         stat = request.POST.get('stat')
@@ -171,14 +147,90 @@ def battle_start(request, player_id, enemy_id=None):
                 player.mp += 5  # 【現在SP】も増やす
             player.stat_points -= 1
             player.save()
-            return redirect('battle_start_redirect', player_id=player.id)
+            return redirect('battle_start', player_id=player.id)
 
-    return render(request, 'game/battle_start.html', {"player": player, "enemy": enemy, "exp_percent": exp_percent, "continue_count": continue_count,})
+    return render(request, 'game/battle_start.html', {"player": player, "exp_percent": exp_percent, "continue_count": continue_count,})
 
-def battle(request,player_id,enemy_id):
+def battle(request, player_id, enemy_id=None):
+    from .models import PlayerInventory
+    
     player=Player.objects.get(id=player_id)
+    
+    # ステージIDを取得（GETパラメータまたはセッション）
+    stage_id = request.GET.get('stage_id') or request.session.get('stage_id')
+    if stage_id:
+        request.session['stage_id'] = stage_id
+        stage = Stage.objects.get(id=stage_id)
+    else:
+        # デフォルトステージ（草原）
+        stage = Stage.objects.first()
+        request.session['stage_id'] = stage.id if stage else None
+    
     enemy_id = request.session.get("enemy_id")
-    enemy = Enemy.objects.get(id=enemy_id)
+    
+    # 新しい戦闘開始時のみ敵を選択（stage_idがGETパラメータにある場合のみ）
+    if request.GET.get('stage_id') and not enemy_id:
+        # ステージに登録されている敵を取得
+        stage_enemies = list(stage.enemies.all())
+        
+        if not stage_enemies:
+            # ステージに敵が登録されていない場合、レベル範囲で絞り込み
+            stage_enemies = list(Enemy.objects.filter(
+                level__gte=stage.min_enemy_level, 
+                level__lte=stage.max_enemy_level
+            ))
+        
+        if not stage_enemies:
+            # それでも敵がいない場合、全ての敵から選択
+            stage_enemies = list(Enemy.objects.all())
+        
+        # レベル差に応じて出現確率を調整
+        weighted_enemies = []
+        for enemy in stage_enemies:
+            level_diff = abs(player.level - enemy.level)
+            if player.level <= 5:
+                weight = 10
+            elif player.level <= 10:
+                weight = max(1, 10 - level_diff * 2)
+            else:
+                weight = max(1, 20 - level_diff)
+            weighted_enemies.extend([enemy] * weight)
+        
+        # ランダムに敵を選択
+        enemy = random.choice(weighted_enemies)
+        
+        # 敵のレベルをステージの範囲内でランダムに設定
+        min_level = max(stage.min_enemy_level, min(enemy.level_default, stage.max_enemy_level))
+        max_level = stage.max_enemy_level
+        enemy.level = random.randint(min_level, max_level)
+        
+        # 強敵判定（プレイヤーレベル10以上で10%の確率）
+        is_strong = False
+        if player.level >= 10 and random.random() < 0.1:
+            is_strong = True
+            enemy.level += random.randint(8, 15)
+        
+        # レベルに応じてステータスを変更
+        enemy.max_hp = enemy.max_hp_default + (enemy.level - enemy.level_default) * enemy.max_hp_default // 10
+        enemy.hp = enemy.max_hp
+        enemy.atk = enemy.atk_default + (enemy.level - enemy.level_default) * enemy.atk_default // 5
+        enemy.defense = enemy.defense_default + (enemy.level - enemy.level_default) * enemy.defense_default // 5
+        enemy.spd = enemy.spd_default + (enemy.level - enemy.level_default) * enemy.spd_default // 5
+        enemy.exp = enemy.exp_default + (enemy.level - enemy.level_default) * enemy.exp_default // 10
+        enemy.is_defeated = False
+        enemy.is_strong = is_strong
+        enemy.save()
+        
+        # セッションに敵のIDを保存
+        request.session["enemy_id"] = enemy.id
+        
+        # 新しい戦闘開始時にメッセージ履歴をクリア
+        request.session["message_history"] = []
+        request.session["buffs"] = {}
+        request.session["debuffs"] = {}
+    else:
+        enemy = Enemy.objects.get(id=enemy_id)
+    
     message = ""
     
     # メッセージ履歴を取得（累積表示用）
@@ -189,6 +241,9 @@ def battle(request,player_id,enemy_id):
     
     # プレイヤーのスキルを取得
     player_skills = PLAYER_SKILLS.get(player.job, [])
+    
+    # プレイヤーのアイテムを取得
+    player_items = PlayerInventory.objects.filter(player=player, quantity__gt=0).select_related('item')
     
     # 【表示用ステータス】装備ボーナス込み + バフ×デバフ適用
     # プレイヤー（total_atk, total_def, total_spdは装備込みのプロパティ）
@@ -257,20 +312,37 @@ def battle(request,player_id,enemy_id):
         return message
 
     def tohome(message):
+        # 休むペナルティ：経験値を全て失い、ゴールドの30%を減少
+        gold_penalty = int(player.gold * 0.3)
+        
+        actual_exp_penalty = player.exp  # 全ての経験値を失う
+        actual_gold_penalty = min(gold_penalty, player.gold)
+        
+        player.exp = 0
+        player.gold = max(0, player.gold - gold_penalty)
+        
         message += f"{player.name} は倒れてしまった… 休んで回復しよう\n"
+        message += f"経験値を全て失った…\n"
+        message += f"ゴールドを{actual_gold_penalty}失った…\n"
         request.session["buffs"] = {}
         request.session["debuffs"] = {}
         player.save()
         return message
     
     def win(message):
-        gained_exp = enemy.exp
+        # 強敵の場合は経験値とゴールドを5倍
+        exp_multiplier = 5 if enemy.is_strong else 1
+        gold_multiplier = 5 if enemy.is_strong else 1
+        
+        gained_exp = enemy.exp * exp_multiplier
+        gained_gold = enemy.drop_gold * gold_multiplier
+        
         player.exp += gained_exp
-        player.gold += enemy.drop_gold
+        player.gold += gained_gold
         existLevel = player.level
         message += f"{enemy.name}を倒した！\n"
         message += f"経験値を{gained_exp}ゲットした！\n"
-        message += f"{enemy.drop_gold}Gゲットした！\n"
+        message += f"{gained_gold}Gゲットした！\n"
         enemy.hp = 0
         enemy.is_defeated = True
         enemy.save()
@@ -289,7 +361,7 @@ def battle(request,player_id,enemy_id):
         request.session["buffs"] = {}
         request.session["debuffs"] = {}
         player.save()
-        return message,gained_exp,existLevel
+        return message,gained_exp,gained_gold,existLevel
     
     def calculate_player_attack(multiplier=1.0, damage_variance=(-1, 2)):
         """プレイヤーの攻撃ダメージを計算する共通関数
@@ -478,10 +550,249 @@ def battle(request,player_id,enemy_id):
             
             return effective_player_spd >= effective_enemy_spd
 
+    def escape(message):
+        """逃走処理"""
+        # 逃走成功率の計算（レベル差が大きいほど成功しやすい）
+        level_diff = player.level - enemy.level
+        base_chance = 0.8  # 基本成功率80%
+        # レベル差1につき5%加算、最大100%、最小10%
+        escape_chance = max(0.1, min(1.0, base_chance + (level_diff * 0.05)))
+        
+        if random.random() < escape_chance:
+            # 逃走成功
+            # 経験値とゴールドのペナルティ（5%）
+            exp_penalty = int(player.next_exp * 0.05)
+            gold_penalty = int(player.gold * 0.05)
+            
+            # 実際に減らす経験値（現在の経験値を超えない）
+            actual_exp_penalty = min(exp_penalty, player.exp)
+            actual_gold_penalty = min(gold_penalty, player.gold)
+            
+            player.exp = max(0, player.exp - exp_penalty)
+            player.gold = max(0, player.gold - gold_penalty)
+            player.save()
+            
+            # バフ・デバフをリセット
+            request.session["buffs"] = {}
+            request.session["debuffs"] = {}
+            
+            message += f"にげた！\n"
+            return message, True, actual_exp_penalty, actual_gold_penalty
+        else:
+            # 逃走失敗
+            message += f"逃げようとした、しかし失敗した！\n"
+            return message, False, 0, 0
+
     if request.method == 'POST':
         
         actionp = request.POST.get('action')
         special = request.POST.get('special')
+        use_item_id = request.POST.get('use_item')
+        
+        # アイテム使用処理
+        if use_item_id:
+            try:
+                item_id = int(use_item_id)
+                inventory_item = PlayerInventory.objects.get(player=player, item_id=item_id, quantity__gt=0)
+                item = inventory_item.item
+                
+                # アイテムの効果を適用
+                if item.target == 'hp':
+                    old_hp = player.hp
+                    player.hp = min(player.hp + item.effect_amount, player.max_hp)
+                    actual_recovery = player.hp - old_hp
+                    message = f"{player.name}は{item.name}を使った！\nHPが{actual_recovery}回復した！\n"
+                elif item.target == 'mp':
+                    old_mp = player.mp
+                    player.mp = min(player.mp + item.effect_amount, player.max_mp)
+                    actual_recovery = player.mp - old_mp
+                    message = f"{player.name}は{item.name}を使った！\nSPが{actual_recovery}回復した！\n"
+                
+                # アイテムを1つ消費
+                inventory_item.quantity -= 1
+                inventory_item.save()
+                player.save()
+                
+                # アイテム使用後は敵のターン（必ず先手だがターン経過）
+                actione = choose_enemyAction(enemy,player)
+                ex_message,buffs,debuffs = enemyAction(message,enemy,player,buffs,debuffs,'item',actione)
+                request.session["buffs"] = buffs
+                request.session["debuffs"] = debuffs
+                message += ex_message
+                
+                # メッセージ履歴に追加
+                message_history.append(message)
+                request.session["message_history"] = message_history
+                
+                # プレイヤーが倒れたかチェック
+                if player.hp <= 0:
+                    player.defeats += 1
+                    if player.defeats >= 3:
+                        message = game_over(message)
+                        return render(request, "game/gameover.html", {"player": player, "message": message})
+                    else:
+                        message = tohome(message)
+                        player_hp_percent = int((player.total_hp / player.total_max_hp) * 100) if player.total_max_hp > 0 else 0
+                        player_sp_percent = int((player.mp / player.max_mp) * 100) if player.max_mp > 0 else 0
+                        enemy_hp_percent = int((enemy.hp / enemy.max_hp) * 100) if enemy.max_hp > 0 else 0
+                        
+                        return render(request, "game/battle.html", {
+                            "player": player,
+                            "enemy": enemy,
+                            "message": message,
+                            "message_history": message_history,
+                            "showplayer_atk": showplayer_atk,
+                            "showplayer_def": showplayer_def,
+                            "showplayer_spd": showplayer_spd,
+                            "buffs": buffs,
+                            "showenemy_atk": showenemy_atk,
+                            "showenemy_def": showenemy_def,
+                            "showenemy_spd": showenemy_spd,
+                            "debuffs": debuffs,
+                            "player_skills": player_skills,
+            "player_items": player_items,
+            "stage": stage,
+                            "player_items": player_items,
+            "stage": stage,
+                            "player_hp_percent": player_hp_percent,
+                            "player_sp_percent": player_sp_percent,
+                            "enemy_hp_percent": enemy_hp_percent,
+                            "redirect_after": True,
+                        })
+                
+                # 通常の戦闘画面に戻る
+                player_hp_percent = int((player.total_hp / player.total_max_hp) * 100) if player.total_max_hp > 0 else 0
+                player_sp_percent = int((player.mp / player.max_mp) * 100) if player.max_mp > 0 else 0
+                enemy_hp_percent = int((enemy.hp / enemy.max_hp) * 100) if enemy.max_hp > 0 else 0
+                
+                return render(request, "game/battle.html", {
+                    "player": player,
+                    "enemy": enemy,
+                    "message": message,
+                    "message_history": message_history,
+                    "showplayer_atk": showplayer_atk,
+                    "showplayer_def": showplayer_def,
+                    "showplayer_spd": showplayer_spd,
+                    "buffs": buffs,
+                    "showenemy_atk": showenemy_atk,
+                    "showenemy_def": showenemy_def,
+                    "showenemy_spd": showenemy_spd,
+                    "debuffs": debuffs,
+                    "player_skills": player_skills,
+            "player_items": player_items,
+            "stage": stage,
+                    "player_items": player_items,
+            "stage": stage,
+                    "player_hp_percent": player_hp_percent,
+                    "player_sp_percent": player_sp_percent,
+                    "enemy_hp_percent": enemy_hp_percent,
+                })
+            except (PlayerInventory.DoesNotExist, ValueError):
+                pass  # アイテムが存在しない場合は無視
+        
+        # 逃走処理
+        if actionp == 'escape':
+            message, escaped, exp_penalty, gold_penalty = escape(message)
+            if escaped:
+                # 逃走成功
+                player_hp_percent = int((player.total_hp / player.total_max_hp) * 100) if player.total_max_hp > 0 else 0
+                player_sp_percent = int((player.mp / player.max_mp) * 100) if player.max_mp > 0 else 0
+                
+                return render(request, "game/battle.html", {
+                    "player": player,
+                    "enemy": None,
+                    "message": message,
+                    "message_history": message_history,
+                    "showplayer_atk": showplayer_atk,
+                    "showplayer_def": showplayer_def,
+                    "showplayer_spd": showplayer_spd,
+                    "buffs": buffs,
+                    "showenemy_atk": showenemy_atk,
+                    "showenemy_def": showenemy_def,
+                    "showenemy_spd": showenemy_spd,
+                    "debuffs": debuffs,
+                    "player_skills": player_skills,
+            "player_items": player_items,
+            "stage": stage,
+                    "player_hp_percent": player_hp_percent,
+                    "player_sp_percent": player_sp_percent,
+                    "enemy_hp_percent": 0,
+                    "escaped": True,
+                    "exp_penalty": exp_penalty,
+                    "gold_penalty": gold_penalty,
+                })
+            else:
+                # 逃走失敗 - 敵のターンへ
+                actione = choose_enemyAction(enemy,player)
+                ex_message,buffs,debuffs = enemyAction(message,enemy,player,buffs,debuffs,actionp,actione)
+                request.session["buffs"] = buffs
+                request.session["debuffs"] = debuffs
+                message += ex_message
+                
+                # メッセージ履歴に追加
+                message_history.append(message)
+                request.session["message_history"] = message_history
+                
+                # プレイヤーが倒れたかチェック
+                if player.hp <= 0:
+                    player.defeats += 1
+                    if player.defeats >= 3:
+                        message = game_over(message)
+                        return render(request, "game/gameover.html", {"player": player, "message": message})
+                    else:
+                        message = tohome(message)
+                        player_hp_percent = int((player.total_hp / player.total_max_hp) * 100) if player.total_max_hp > 0 else 0
+                        player_sp_percent = int((player.mp / player.max_mp) * 100) if player.max_mp > 0 else 0
+                        enemy_hp_percent = int((enemy.hp / enemy.max_hp) * 100) if enemy.max_hp > 0 else 0
+                        
+                        return render(request, "game/battle.html", {
+                            "player": player,
+                            "enemy": enemy,
+                            "message": message,
+                            "message_history": message_history,
+                            "showplayer_atk": showplayer_atk,
+                            "showplayer_def": showplayer_def,
+                            "showplayer_spd": showplayer_spd,
+                            "buffs": buffs,
+                            "showenemy_atk": showenemy_atk,
+                            "showenemy_def": showenemy_def,
+                            "showenemy_spd": showenemy_spd,
+                            "debuffs": debuffs,
+                            "player_skills": player_skills,
+            "player_items": player_items,
+            "stage": stage,
+                            "player_hp_percent": player_hp_percent,
+                            "player_sp_percent": player_sp_percent,
+                            "enemy_hp_percent": enemy_hp_percent,
+                            "redirect_after": True,
+                        })
+                
+                # 通常の戦闘画面に戻る
+                player_hp_percent = int((player.total_hp / player.total_max_hp) * 100) if player.total_max_hp > 0 else 0
+                player_sp_percent = int((player.mp / player.max_mp) * 100) if player.max_mp > 0 else 0
+                enemy_hp_percent = int((enemy.hp / enemy.max_hp) * 100) if enemy.max_hp > 0 else 0
+                
+                return render(request, "game/battle.html", {
+                    "player": player,
+                    "enemy": enemy,
+                    "message": message,
+                    "message_history": message_history,
+                    "showplayer_atk": showplayer_atk,
+                    "showplayer_def": showplayer_def,
+                    "showplayer_spd": showplayer_spd,
+                    "buffs": buffs,
+                    "showenemy_atk": showenemy_atk,
+                    "showenemy_def": showenemy_def,
+                    "showenemy_spd": showenemy_spd,
+                    "debuffs": debuffs,
+                    "player_skills": player_skills,
+            "player_items": player_items,
+            "stage": stage,
+                    "player_hp_percent": player_hp_percent,
+                    "player_sp_percent": player_sp_percent,
+                    "enemy_hp_percent": enemy_hp_percent,
+                })
+        
         actione = choose_enemyAction(enemy,player)
 
         spdcheck = spdcheck(actionp,actione)
@@ -507,12 +818,14 @@ def battle(request,player_id,enemy_id):
                     "showenemy_spd": showenemy_spd,
                     "debuffs": debuffs,
                     "player_skills": player_skills,
+            "player_items": player_items,
+            "stage": stage,
                     "player_hp_percent": player_hp_percent,
                     "player_sp_percent": player_sp_percent,
                     "enemy_hp_percent": enemy_hp_percent,
                 })
             if enemy.hp <= 0:
-                message, gained_exp, existLevel = win(message)
+                message, gained_exp, gained_gold, existLevel = win(message)
                 # HP・SPのゲージ用パーセンテージを計算
                 player_hp_percent = int((player.total_hp / player.total_max_hp) * 100) if player.total_max_hp > 0 else 0
                 player_sp_percent = int((player.mp / player.max_mp) * 100) if player.max_mp > 0 else 0
@@ -532,12 +845,14 @@ def battle(request,player_id,enemy_id):
                     "showenemy_spd": showenemy_spd,
                     "debuffs": debuffs,
                     "player_skills": player_skills,
+            "player_items": player_items,
+            "stage": stage,
                     "player_hp_percent": player_hp_percent,
                     "player_sp_percent": player_sp_percent,
                     "enemy_hp_percent": enemy_hp_percent,
                     "gained_exp": gained_exp,
                     "existLevel": existLevel,
-                    "gained_gold": enemy.drop_gold,
+                    "gained_gold": gained_gold,
                 })
             ex_message,buffs,debuffs = enemyAction(message,enemy,player,buffs,debuffs,actionp,actione)
             # セッションに保存
@@ -575,6 +890,8 @@ def battle(request,player_id,enemy_id):
                         "redirect_url": "battle_start",
                         "recovering": True,
                         "player_skills": player_skills,
+            "player_items": player_items,
+            "stage": stage,
                         "player_hp_percent": player_hp_percent,
                         "player_sp_percent": player_sp_percent,
                         "enemy_hp_percent": enemy_hp_percent,
@@ -615,6 +932,8 @@ def battle(request,player_id,enemy_id):
                         "redirect_url": "battle_start",
                         "recovering": True,
                         "player_skills": player_skills,
+            "player_items": player_items,
+            "stage": stage,
                         "player_hp_percent": player_hp_percent,
                         "player_sp_percent": player_sp_percent,
                         "enemy_hp_percent": enemy_hp_percent,
@@ -642,12 +961,14 @@ def battle(request,player_id,enemy_id):
                     "showenemy_spd": showenemy_spd,
                     "debuffs": debuffs,
                     "player_skills": player_skills,
+            "player_items": player_items,
+            "stage": stage,
                     "player_hp_percent": player_hp_percent,
                     "player_sp_percent": player_sp_percent,
                     "enemy_hp_percent": enemy_hp_percent,
                 })
             if enemy.hp <= 0:
-                message,gained_exp,existLevel = win(message)
+                message,gained_exp,gained_gold,existLevel = win(message)
                 # HP・SPのゲージ用パーセンテージを計算
                 player_hp_percent = int((player.total_hp / player.total_max_hp) * 100) if player.total_max_hp > 0 else 0
                 player_sp_percent = int((player.mp / player.max_mp) * 100) if player.max_mp > 0 else 0
@@ -667,12 +988,14 @@ def battle(request,player_id,enemy_id):
                     "showenemy_spd": showenemy_spd,
                     "debuffs": debuffs,
                     "player_skills": player_skills,
+            "player_items": player_items,
+            "stage": stage,
                     "player_hp_percent": player_hp_percent,
                     "player_sp_percent": player_sp_percent,
                     "enemy_hp_percent": enemy_hp_percent,
                     "gained_exp": gained_exp,
                     "existLevel": existLevel,
-                    "gained_gold": enemy.drop_gold,
+                    "gained_gold": gained_gold,
                 })
           
 
@@ -753,6 +1076,10 @@ def battle(request,player_id,enemy_id):
             "showenemy_spd": showenemy_spd,
             "debuffs": debuffs,
             "player_skills": player_skills,
+            "player_items": player_items,
+            "stage": stage,
+            "player_items": player_items,
+            "stage": stage,
             "player_hp_percent": player_hp_percent,
             "player_sp_percent": player_sp_percent,
             "enemy_hp_percent": enemy_hp_percent,
@@ -778,6 +1105,10 @@ def battle(request,player_id,enemy_id):
         "showenemy_spd": showenemy_spd,
         "debuffs": debuffs,
         "player_skills": player_skills,
+            "player_items": player_items,
+            "stage": stage,
+        "player_items": player_items,
+            "stage": stage,
         "player_hp_percent": player_hp_percent,
         "player_sp_percent": player_sp_percent,
         "enemy_hp_percent": enemy_hp_percent,
@@ -795,9 +1126,12 @@ def shop(request, player_id):
     
     # ショップ在庫が存在しない場合、または強制リセットフラグがある場合は新規生成
     if shop_inventory is None or request.session.get('reset_shop', False):
-        # データベースから未購入の装備を取得
-        available_weapons = list(Equipment.objects.filter(equipment_type='weapon', is_purchased=False))
-        available_armors = list(Equipment.objects.filter(equipment_type='armor', is_purchased=False))
+        # プレイヤーが所持している装備を取得
+        owned_equipment_ids = player.owned_equipment.values_list('id', flat=True)
+        
+        # データベースから未所持の装備を取得（is_purchasedは使わない）
+        available_weapons = list(Equipment.objects.filter(equipment_type='weapon').exclude(id__in=owned_equipment_ids))
+        available_armors = list(Equipment.objects.filter(equipment_type='armor').exclude(id__in=owned_equipment_ids))
         available_items = list(Item.objects.filter(is_purchased=False))
         
         # 全てのアイテムを結合
@@ -821,7 +1155,8 @@ def shop(request, player_id):
             else:  # Item
                 shop_inventory.append({
                     'id': item.id,
-                    'type': 'item'
+                    'type': 'item',
+                    'current_stock': item.max_stock  # 現在の在庫を最大在庫数で初期化
                 })
         
         request.session['shop_inventory'] = shop_inventory
@@ -837,17 +1172,21 @@ def shop(request, player_id):
     for item_data in shop_inventory:
         if item_data['type'] == 'equipment':
             equipment = Equipment.objects.filter(id=item_data['id']).first()
-            # 永続的に購入済みになった装備は表示しない
-            if equipment and not equipment.is_purchased:
+            # 装備が存在する場合のみ表示（is_purchasedチェックは不要）
+            if equipment:
                 if equipment.equipment_type == 'weapon':
                     weapons.append(equipment)
                 else:
                     armors.append(equipment)
         else:  # item
             item = Item.objects.filter(id=item_data['id']).first()
-            # セッション内で購入済みのアイテムは表示しない
-            if item and item.name not in session_purchased:
-                items.append(item)
+            # アイテムの現在在庫を取得
+            if item:
+                # 在庫数をアイテムオブジェクトに動的に追加
+                item.current_stock = item_data.get('current_stock', item.max_stock)
+                # 在庫が残っている場合のみ表示
+                if item.current_stock > 0:
+                    items.append(item)
     
     return render(request, 'game/shop.html', {
         'player': player,
@@ -860,38 +1199,148 @@ def shop(request, player_id):
 
 def buy_item(request, player_id):
     """アイテム購入処理"""
+    from .models import PlayerInventory
+    
     if request.method == 'POST':
         player = Player.objects.get(id=player_id)
         item_name = request.POST.get('item_name')
         item_price = int(request.POST.get('item_price'))
         item_type = request.POST.get('item_type')  # 'weapon', 'armor', 'item'
+        item_quantity = int(request.POST.get('item_quantity', 1))  # 購入個数（デフォルト1）
+        
+        # 合計金額を計算
+        total_price = item_price * item_quantity
         
         # 所持金チェック
-        if player.gold >= item_price:
+        if player.gold >= total_price:
             # お金を減らす
-            player.gold -= item_price
+            player.gold -= total_price
             player.save()
             
-            # Equipmentの場合は永続的にis_purchasedをTrueに更新
+            # Equipmentの場合はプレイヤーの所持装備に追加
             if item_type == 'weapon' or item_type == 'armor':
                 equipment = Equipment.objects.filter(name=item_name, equipment_type=item_type).first()
                 if equipment:
-                    equipment.is_purchased = True
-                    equipment.save()
-            # Itemの場合はセッションにのみ追加(データベースは更新しない)
+                    # プレイヤーの所持装備に追加（is_purchasedは更新しない）
+                    player.owned_equipment.add(equipment)
+            # Itemの場合は在庫を減らし、PlayerInventoryに追加
             elif item_type == 'item':
-                pass  # アイテムは永続的に非表示にしない
+                # ショップ在庫を取得
+                shop_inventory = request.session.get('shop_inventory', [])
+                
+                # 該当アイテムの在庫を減らす
+                for item_data in shop_inventory:
+                    if item_data['type'] == 'item':
+                        item = Item.objects.filter(id=item_data['id']).first()
+                        if item and item.name == item_name:
+                            current_stock = item_data.get('current_stock', item.max_stock)
+                            item_data['current_stock'] = max(0, current_stock - item_quantity)
+                            
+                            # PlayerInventoryに追加
+                            inventory_item, created = PlayerInventory.objects.get_or_create(
+                                player=player,
+                                item=item
+                            )
+                            inventory_item.quantity += item_quantity
+                            inventory_item.save()
+                            break
+                
+                # セッションを更新
+                request.session['shop_inventory'] = shop_inventory
             
-            # セッションに今回のショップで購入済みのアイテムを追加
-            session_purchased = request.session.get('session_purchased_items', [])
-            if item_name not in session_purchased:
-                session_purchased.append(item_name)
-                request.session['session_purchased_items'] = session_purchased
-            
-            # TODO: ここでアイテムをインベントリに追加する処理
+            # セッションに今回のショップで購入済みのアイテムを追加（装備のみ）
+            if item_type in ['weapon', 'armor']:
+                session_purchased = request.session.get('session_purchased_items', [])
+                if item_name not in session_purchased:
+                    session_purchased.append(item_name)
+                    request.session['session_purchased_items'] = session_purchased
         
         # ショップに戻る
         return redirect('shop', player_id=player.id)
     
     return redirect('shop', player_id=player_id)
+
+
+def equipment_change(request, player_id):
+    """装備変更画面"""
+    player = Player.objects.get(id=player_id)
+    
+    # 初期装備がない場合は追加
+    if not player.owned_equipment.exists():
+        wooden_sword = Equipment.objects.get(name="木の剣")
+        leather_armor = Equipment.objects.get(name="皮の服")
+        player.owned_equipment.add(wooden_sword, leather_armor)
+        if not player.weapon:
+            player.weapon = wooden_sword
+        if not player.armor:
+            player.armor = leather_armor
+        player.save()
+    
+    # 所持している装備を取得
+    owned_weapons = player.owned_equipment.filter(equipment_type='weapon')
+    owned_armors = player.owned_equipment.filter(equipment_type='armor')
+    
+    return render(request, 'game/equipment_change.html', {
+        'player': player,
+        'owned_weapons': owned_weapons,
+        'owned_armors': owned_armors,
+    })
+
+
+def equip_item(request, player_id, equipment_id):
+    """装備を変更する"""
+    player = Player.objects.get(id=player_id)
+    equipment = Equipment.objects.get(id=equipment_id)
+    
+    # プレイヤーが所持している装備かチェック
+    if equipment in player.owned_equipment.all():
+        if equipment.equipment_type == 'weapon':
+            player.change_weapon(equipment)
+            # 武器タブに戻る
+            return redirect(f'/equipment/{player.id}/?tab=weapons')
+        elif equipment.equipment_type == 'armor':
+            player.change_armor(equipment)
+            # 防具タブに戻る
+            return redirect(f'/equipment/{player.id}/?tab=armors')
+    
+    # 装備変更画面に戻る（デフォルト）
+    return redirect('equipment_change', player_id=player.id)
+
+
+def inventory(request, player_id):
+    """持ち物画面"""
+    from .models import PlayerInventory
+    
+    player = Player.objects.get(id=player_id)
+    
+    # カテゴリーフィルター（デフォルトは'全て'）
+    category = request.GET.get('category', '全て')
+    
+    # プレイヤーのインベントリを取得
+    inventory_items = PlayerInventory.objects.filter(player=player, quantity__gt=0).select_related('item')
+    
+    # カテゴリーでフィルタリング
+    if category == '回復':
+        inventory_items = inventory_items.filter(item__target='hp')
+    elif category == '魔法':
+        inventory_items = inventory_items.filter(item__target='mp')
+    
+    # 最初に選択されているアイテム（最初のアイテム）
+    selected_item = None
+    if inventory_items.exists():
+        selected_item_id = request.GET.get('selected_item')
+        if selected_item_id:
+            try:
+                selected_item = inventory_items.get(id=int(selected_item_id))
+            except (PlayerInventory.DoesNotExist, ValueError):
+                selected_item = inventory_items.first()
+        else:
+            selected_item = inventory_items.first()
+    
+    return render(request, 'game/inventory.html', {
+        'player': player,
+        'inventory_items': inventory_items,
+        'selected_item': selected_item,
+        'category': category,
+    })
 

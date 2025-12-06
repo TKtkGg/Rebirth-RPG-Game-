@@ -1,6 +1,22 @@
 from django.db import models
 
 
+class Stage(models.Model):
+    """ステージ情報を管理するモデル"""
+    name = models.CharField(max_length=30)
+    unlock_level = models.IntegerField(default=0)  # 開放レベル
+    background_image = models.CharField(max_length=100)  # 背景画像ファイル名
+    min_enemy_level = models.IntegerField(default=1)  # 出現する敵の最小レベル
+    max_enemy_level = models.IntegerField(default=10)  # 出現する敵の最大レベル
+    order = models.IntegerField(default=0)  # 表示順序
+    
+    class Meta:
+        ordering = ['order']
+    
+    def __str__(self):
+        return self.name
+
+
 class PlayerProfile(models.Model):
     name = models.CharField(max_length=20)
     total_score = models.IntegerField(default=0)
@@ -40,9 +56,22 @@ class Item(models.Model):
     price = models.IntegerField(default=0)  # ショップ価格
     description = models.TextField(default="")
     is_purchased = models.BooleanField(default=False)  # 購入済みフラグ(ショップ用)
+    max_stock = models.IntegerField(default=10)  # 最大在庫数
     
     def __str__(self):
         return f"{self.name} ({self.get_target_display()})"
+
+class PlayerInventory(models.Model):
+    """プレイヤーのアイテム所持数を管理"""
+    player = models.ForeignKey('Player', on_delete=models.CASCADE, related_name='inventory')
+    item = models.ForeignKey(Item, on_delete=models.CASCADE)
+    quantity = models.IntegerField(default=0)
+    
+    class Meta:
+        unique_together = ('player', 'item')
+    
+    def __str__(self):
+        return f"{self.player.name} - {self.item.name}: {self.quantity}"
 
 class Player(models.Model):
     profile = models.ForeignKey(PlayerProfile, on_delete=models.CASCADE)
@@ -64,6 +93,9 @@ class Player(models.Model):
     # 装備スロット
     weapon = models.ForeignKey(Equipment, on_delete=models.SET_NULL, null=True, blank=True, related_name='equipped_as_weapon')
     armor = models.ForeignKey(Equipment, on_delete=models.SET_NULL, null=True, blank=True, related_name='equipped_as_armor')
+    
+    # 所持している装備（インベントリ）
+    owned_equipment = models.ManyToManyField(Equipment, blank=True, related_name='owned_by_players')
     
     # 所持金
     gold = models.IntegerField(default=100)
@@ -171,6 +203,14 @@ class Enemy(models.Model):
     exp_default = models.IntegerField(default=120)
     level_default = models.IntegerField(default=1)
     
+    # 強敵フラグ
+    is_strong = models.BooleanField(default=False)
+    
     # ドロップ可能な装備
     drop_equipment = models.ManyToManyField(Equipment, blank=True, related_name='dropped_by')
     drop_gold = models.IntegerField(default=20)  # ドロップされるゴールド量
+    
+    # 出現するステージ
+    stages = models.ManyToManyField(Stage, blank=True, related_name='enemies')
+
+    

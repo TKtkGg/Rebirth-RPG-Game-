@@ -1,0 +1,256 @@
+{% extends 'game/base.html' %}
+{% block title %}持ち物{% endblock %}
+
+{% block content %}
+{% load static %}
+<style>
+    body {
+        margin: 0;
+        padding: 0;
+        overflow: hidden;
+    }
+    
+    .inventory-container {
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100vw;
+        height: 100vh;
+        background: #E8D68A;
+        display: flex;
+        padding: 20px;
+        box-sizing: border-box;
+        gap: 20px;
+    }
+    
+    .sidebar {
+        background: rgba(255, 255, 255, 0.3);
+        border: 4px solid #8B6914;
+        border-radius: 15px;
+        padding: 20px;
+        width: 180px;
+        display: flex;
+        flex-direction: column;
+        gap: 20px;
+        height: fit-content;
+        align-self: flex-start;
+    }
+    
+    .sidebar-item {
+        font-size: 32px;
+        font-weight: bold;
+        color: #000;
+        padding: 20px;
+        background: rgba(255, 255, 255, 0.5);
+        border: 3px solid #8B6914;
+        border-radius: 10px;
+        text-align: center;
+        cursor: pointer;
+        transition: all 0.3s;
+        text-decoration: none;
+        display: block;
+    }
+    
+    .sidebar-item:hover {
+        background: rgba(200, 220, 255, 0.5);
+    }
+    
+    .sidebar-item.active {
+        background: rgba(173, 216, 230, 0.6);
+    }
+    
+    .main-content {
+        display: flex;
+        flex: 1;
+        gap: 20px;
+    }
+    
+    .items-content {
+        flex: 1;
+        background: #F5E6B3;
+        border: 4px solid #8B6914;
+        border-radius: 20px;
+        padding: 40px;
+        overflow-y: auto;
+        position: relative;
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+        gap: 30px;
+        align-content: start;
+    }
+    
+    .item-card {
+        background: rgba(255, 255, 255, 0.6);
+        border: 3px solid #8B6914;
+        border-radius: 15px;
+        padding: 20px;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        cursor: pointer;
+        transition: all 0.3s;
+        height: 280px;
+    }
+    
+    .item-card:hover {
+        background: rgba(200, 220, 255, 0.6);
+        transform: translateY(-5px);
+    }
+    
+    .item-card.selected {
+        background: rgba(173, 216, 230, 0.7);
+        border-color: #4169E1;
+        border-width: 4px;
+    }
+    
+    .item-icon {
+        width: 100px;
+        height: 100px;
+        margin-bottom: 15px;
+        filter: drop-shadow(0 4px 8px rgba(0, 0, 0, 0.3));
+    }
+    
+    .item-name {
+        font-size: 24px;
+        font-weight: bold;
+        color: #000;
+        text-align: center;
+        margin-bottom: 10px;
+    }
+    
+    .item-quantity {
+        font-size: 20px;
+        color: #000;
+        font-weight: bold;
+    }
+    
+    .detail-panel {
+        width: 400px;
+        background: #F5E6B3;
+        border: 4px solid #8B6914;
+        border-radius: 20px;
+        padding: 30px;
+        display: flex;
+        flex-direction: column;
+        gap: 20px;
+        height: fit-content;
+        align-self: flex-start;
+    }
+    
+    .detail-title {
+        font-size: 36px;
+        font-weight: bold;
+        color: #000;
+        text-align: center;
+        padding-bottom: 20px;
+        border-bottom: 3px solid rgba(139, 105, 20, 0.5);
+    }
+    
+    .detail-description {
+        font-size: 20px;
+        color: #000;
+        line-height: 1.6;
+        padding: 15px;
+        background: rgba(255, 255, 255, 0.4);
+        border-radius: 10px;
+        min-height: 100px;
+    }
+    
+    .detail-stats {
+        font-size: 24px;
+        font-weight: bold;
+        color: #000;
+        padding: 15px;
+        background: rgba(255, 255, 255, 0.4);
+        border-radius: 10px;
+    }
+    
+    .detail-count {
+        font-size: 24px;
+        font-weight: bold;
+        color: #000;
+        padding: 15px;
+        background: rgba(255, 255, 255, 0.4);
+        border-radius: 10px;
+        text-align: center;
+    }
+    
+    .back-button {
+        position: fixed;
+        bottom: 30px;
+        left: 30px;
+        padding: 15px 40px;
+        font-size: 28px;
+        font-weight: bold;
+        background: rgba(139, 105, 20, 0.8);
+        border: 3px solid #8B6914;
+        border-radius: 15px;
+        color: white;
+        cursor: pointer;
+        transition: all 0.3s;
+        text-decoration: none;
+        display: inline-block;
+        box-shadow: 0 4px 15px rgba(0, 0, 0, 0.3);
+    }
+    
+    .back-button:hover {
+        background: rgba(139, 105, 20, 1);
+        transform: translateY(-3px);
+        box-shadow: 0 6px 20px rgba(0, 0, 0, 0.4);
+    }
+    
+    .empty-message {
+        grid-column: 1 / -1;
+        font-size: 32px;
+        font-weight: bold;
+        color: #666;
+        text-align: center;
+        padding: 100px 20px;
+    }
+</style>
+
+<div class="inventory-container">
+    <div class="sidebar">
+        <a href="{% url 'inventory' player.id %}?category=全て" class="sidebar-item {% if category == '全て' %}active{% endif %}">全て</a>
+        <a href="{% url 'inventory' player.id %}?category=回復" class="sidebar-item {% if category == '回復' %}active{% endif %}">回復</a>
+        <a href="{% url 'inventory' player.id %}?category=未定" class="sidebar-item">未定</a>
+        <a href="{% url 'inventory' player.id %}?category=未定" class="sidebar-item">未定</a>
+        <a href="{% url 'inventory' player.id %}?category=未定" class="sidebar-item">未定</a>
+    </div>
+    
+    <div class="main-content">
+        <div class="items-content">
+            {% if inventory_items %}
+                {% for inv_item in inventory_items %}
+                <a href="{% url 'inventory' player.id %}?category={{ category }}&selected_item={{ inv_item.id }}" style="text-decoration: none;">
+                    <div class="item-card {% if selected_item and selected_item.id == inv_item.id %}selected{% endif %}">
+                        <img src="{% static 'game/img/回復_アイコン.png' %}" alt="{{ inv_item.item.name }}" class="item-icon">
+                        <div class="item-name">{{ inv_item.item.name }}</div>
+                        <div class="item-quantity">({{ inv_item.quantity }})</div>
+                    </div>
+                </a>
+                {% endfor %}
+            {% else %}
+                <div class="empty-message">アイテムがありません</div>
+            {% endif %}
+        </div>
+        
+        <div class="detail-panel">
+            {% if selected_item %}
+                <div class="detail-title">{{ selected_item.item.name }}</div>
+                <div class="detail-description">{{ selected_item.item.description|default:"説明なし" }}</div>
+                <div class="detail-stats">{{ selected_item.item.get_target_display }} : +{{ selected_item.item.effect_amount }}</div>
+                <div class="detail-count">所持数 : {{ selected_item.quantity }}</div>
+            {% else %}
+                <div class="detail-title">-</div>
+                <div class="detail-description">アイテムを選択してください</div>
+                <div class="detail-stats">-</div>
+                <div class="detail-count">所持数 : 0</div>
+            {% endif %}
+        </div>
+    </div>
+    
+    <a href="{% url 'battle_start' player.id %}" class="back-button">戻る</a>
+</div>
+
+{% endblock %}

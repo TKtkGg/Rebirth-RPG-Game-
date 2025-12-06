@@ -1,0 +1,165 @@
+{% extends 'game/base.html' %}
+{% block title %}ステージ選択{% endblock %}
+
+{% block content %}
+{% load static %}
+<style>
+    body {
+        margin: 0;
+        padding: 0;
+        overflow: hidden;
+    }
+    
+    .stage-container {
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100vw;
+        height: 100vh;
+        background-image: url("{% static 'game/img/ステージ選択.png' %}");
+        background-size: 105% 105vh;
+        background-position: center;
+        background-repeat: no-repeat;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        padding: 40px;
+        box-sizing: border-box;
+    }
+    
+    .stage-board {
+        position: relative;
+        left: 38px;
+        padding: 30px;
+        width: 90%;
+        max-width: 1200px;
+        height: 100%;
+        display: flex;
+        flex-direction: column;
+        gap: 20px;
+    }
+    
+    .stages-grid {
+        display: grid;
+        grid-template-columns: repeat(2, 1fr);
+        flex: 1;
+    }
+    
+    .stage-card {
+        position: relative;
+        border-radius: 15px;
+        overflow: hidden;
+        cursor: pointer;
+        transition: transform 0.3s, box-shadow 0.3s;
+        box-shadow: 0 5px 20px rgba(0, 0, 0, 0.3);
+        display: flex;
+        flex-direction: column;
+        height: 85%;
+        width: 85%;
+    }
+    
+    .stage-card:hover:not(.locked) {
+        transform: scale(1.05);
+        box-shadow: 0 8px 30px rgba(0, 0, 0, 0.4);
+    }
+    
+    .stage-card.locked {
+        cursor: not-allowed;
+    }
+    
+    .stage-image {
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
+        display: block;
+    }
+    
+    .stage-overlay {
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background: rgba(0, 0, 0, 0.6);
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
+        align-items: center;
+        color: white;
+        font-size: 40px;
+        font-weight: bold;
+        text-shadow: 3px 3px 6px rgba(0, 0, 0, 0.8);
+    }
+    
+    .stage-name {
+        position: absolute;
+        bottom: 0;
+        left: 50%;
+        transform: translateX(-50%);
+        font-size: 48px;
+        font-weight: bold;
+        color: white;
+        text-shadow: 3px 3px 6px rgba(0, 0, 0, 0.8);
+        z-index: 10;
+    }
+    
+    .unlock-text {
+        font-size: 32px;
+        margin-top: 20px;
+        line-height: 1.5;
+    }
+    
+    .back-link {
+        text-align: center;
+        margin-top: -100px;
+    }
+    
+    .back-button {
+        position: relative;
+        display: inline-block;
+        padding: 15px 40px;
+        background: rgba(100, 100, 100, 0.8);
+        border: 3px solid rgba(255, 255, 255, 0.5);
+        color: white;
+        text-decoration: none;
+        border-radius: 10px;
+        font-size: 24px;
+        font-weight: bold;
+        box-shadow: 0 5px 15px rgba(0, 0, 0, 0.3);
+        transition: all 0.3s;
+        right: 675px;
+    }
+    
+    .back-button:hover {
+        background: rgba(80, 80, 80, 0.9);
+        transform: translateY(-2px);
+        box-shadow: 0 7px 20px rgba(0, 0, 0, 0.4);
+    }
+</style>
+
+<div class="stage-container">
+    <div class="stage-board">
+        <div class="stages-grid">
+            {% for stage in stages %}
+            <div class="stage-card {% if stage.unlock_level > player.level %}locked{% endif %}" 
+                 {% if stage.unlock_level <= player.level %}onclick="location.href='{% url 'battle_start_redirect' player.id %}?stage_id={{ stage.id }}'"{% endif %}>
+                <img src="{% static 'game/img/' %}{{ stage.background_image }}" alt="{{ stage.name }}" class="stage-image">
+                
+                {% if stage.unlock_level > player.level %}
+                <div class="stage-overlay">
+                    <div>開放条件</div>
+                    <div class="unlock-text">レベル{{ stage.unlock_level }}以上</div>
+                </div>
+                {% endif %}
+                
+                <div class="stage-name">{{ stage.name }}</div>
+            </div>
+            {% endfor %}
+        </div>
+        
+        <div class="back-link">
+            <a href="{% url 'battle_start' player.id %}" class="back-button">戻る</a>
+        </div>
+    </div>
+</div>
+{% endblock %}

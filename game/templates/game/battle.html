@@ -17,7 +17,7 @@
         left: 0;
         width: 100vw;
         height: 100vh;
-        background-image: url("{% static 'game/img/ステージ_草原.jpg' %}");
+        background-image: url("{% static 'game/img/' %}{{ stage.background_image }}");
         background-size: 100%;
         background-position: center bottom;
         background-repeat: no-repeat;
@@ -46,6 +46,23 @@
         color: #000;
         text-shadow: 3px 3px 6px rgba(255, 255, 255, 0.8);
         margin-bottom: 10px;
+        text-align: center;
+        display: flex;
+        align-items: center;
+        gap: 10px;
+    }
+    
+    .enemy-name.strong {
+        color: #ff0000;
+        text-shadow: 3px 3px 6px rgba(255, 200, 200, 0.8);
+    }
+    
+    .enemy-level {
+        font-size: 28px;
+        font-weight: bold;
+        color: #000;
+        text-shadow: 2px 2px 4px rgba(255, 255, 255, 0.8);
+        margin-bottom: 5px;
         text-align: center;
     }
     
@@ -176,11 +193,22 @@
         gap: 10px;
     }
     
+    .player-status-box.item-mode {
+        min-width: 700px;
+    }
+    
     /* 状態異常表示 */
     .status-effects {
         display: flex;
         gap: 5px;
-        margin-top: -8px;
+        flex-wrap: wrap;
+        align-items: center;
+    }
+    
+    /* 敵の状態異常（名前の右側） */
+    .enemy-status-effects {
+        display: flex;
+        gap: 5px;
         flex-wrap: wrap;
         align-items: center;
     }
@@ -198,18 +226,18 @@
         filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.3));
     }
     
-    /* メッセージエリア（左下） */
+    /* メッセージエリア（左） */
     .message-area {
         position: fixed;
-        bottom: 87px;
-        left: 20px;
+        left: 40px;
+        top: 20px;
         background: rgba(255, 255, 255, 0.7);
         border-radius: 15px;
         padding: 20px 25px;
         width: 35%;
         max-width: 350px;
         height: 60vh;
-        max-height: 300px;
+        max-height: 410px;
         overflow-y: auto;
         font-size: 20px;
         font-weight: bold;
@@ -275,7 +303,6 @@
         cursor: pointer;
         transition: all 0.3s;
         text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.7);
-        box-shadow: 0 6px 20px rgba(0, 0, 0, 0.4);
         color: white;
         height: 70px;
         display: flex;
@@ -444,34 +471,36 @@
     <!-- 敵のエリア -->
     <div class="enemy-area">
         {% if enemy %}
-            <div class="enemy-name">{{ enemy.name }}</div>
-            <img src="{% static 'game/img/スライム.png' %}" alt="{{ enemy.name }}" class="enemy-image">
-            
-            <!-- 敵の状態異常アイコン -->
-            <div class="status-effects">
-                {% if buffs.enemy %}
-                    {% if buffs.enemy.atk %}
-                        <img src="{% static 'game/img/ATKバフ.png' %}" alt="ATKバフ" class="status-effect-icon">
+            <div class="enemy-level">LV : {{ enemy.level }}</div>
+            <div class="enemy-name {% if enemy.is_strong %}strong{% endif %}">
+                <span>{{ enemy.name }}</span>
+                <!-- 敵の状態異常アイコン -->
+                <div class="enemy-status-effects">
+                    {% if buffs.enemy %}
+                        {% if buffs.enemy.atk %}
+                            <img src="{% static 'game/img/ATKバフ.png' %}" alt="ATKバフ" class="status-effect-icon">
+                        {% endif %}
+                        {% if buffs.enemy.def %}
+                            <img src="{% static 'game/img/DEFバフ.png' %}" alt="DEFバフ" class="status-effect-icon">
+                        {% endif %}
+                        {% if buffs.enemy.spd %}
+                            <img src="{% static 'game/img/SPDバフ.png' %}" alt="SPDバフ" class="status-effect-icon">
+                        {% endif %}
                     {% endif %}
-                    {% if buffs.enemy.def %}
-                        <img src="{% static 'game/img/DEFバフ.png' %}" alt="DEFバフ" class="status-effect-icon">
+                    {% if debuffs.enemy %}
+                        {% if debuffs.enemy.atk %}
+                            <img src="{% static 'game/img/ATKデバフ.png' %}" alt="ATKデバフ" class="status-effect-icon">
+                        {% endif %}
+                        {% if debuffs.enemy.def %}
+                            <img src="{% static 'game/img/DEFデバフ.png' %}" alt="DEFデバフ" class="status-effect-icon">
+                        {% endif %}
+                        {% if debuffs.enemy.spd %}
+                            <img src="{% static 'game/img/SPDデバフ.png' %}" alt="SPDデバフ" class="status-effect-icon">
+                        {% endif %}
                     {% endif %}
-                    {% if buffs.enemy.spd %}
-                        <img src="{% static 'game/img/SPDバフ.png' %}" alt="SPDバフ" class="status-effect-icon">
-                    {% endif %}
-                {% endif %}
-                {% if debuffs.enemy %}
-                    {% if debuffs.enemy.atk %}
-                        <img src="{% static 'game/img/ATKデバフ.png' %}" alt="ATKデバフ" class="status-effect-icon">
-                    {% endif %}
-                    {% if debuffs.enemy.def %}
-                        <img src="{% static 'game/img/DEFデバフ.png' %}" alt="DEFデバフ" class="status-effect-icon">
-                    {% endif %}
-                    {% if debuffs.enemy.spd %}
-                        <img src="{% static 'game/img/SPDデバフ.png' %}" alt="SPDデバフ" class="status-effect-icon">
-                    {% endif %}
-                {% endif %}
+                </div>
             </div>
+            <img src="{% static 'game/img/スライム.png' %}" alt="{{ enemy.name }}" class="enemy-image">
             
             <div class="enemy-hp-bar-container">
                 <div class="enemy-hp-bar-fill" style="width: {{ enemy_hp_percent }}%;"></div>
@@ -502,7 +531,7 @@
                     </div>
                 </div>
                 
-                <div style="display: flex; align-items: center; gap: 8px; width: 100%;">
+                <div id="player-stats" style="display: flex; align-items: center; gap: 8px; width: 100%;">
                     <div style="width: 120px;"></div>
                     <div>ATK:{{ showplayer_atk }} DEF:{{ showplayer_def }} SPD:{{ showplayer_spd }}</div>
                 </div>
@@ -538,7 +567,20 @@
             {% endif %}
             
             <!-- ボタンエリア -->
-            {% if "を倒した" in message %}
+            {% if escaped %}
+                <div class="reward-info">
+                    <div style="font-size: 24px; font-weight: bold; color: #333; margin-top: 10px; text-align: center;">
+                        <h3>にげた！</h3>
+                        <p>経験値 : -{{ exp_penalty }}</p>
+                        <p>ゴールド : -{{ gold_penalty }}</p>
+                    </div>
+                </div>
+                <div class="button-area">
+                    <a href="{% url 'battle_start' player.id %}" style="text-decoration: none;">
+                        <button type="button" class="battle-button return-button">戻る</button>
+                    </a>
+                </div>
+            {% elif "を倒した" in message %}
                 <div class="reward-info">
                     <div style="font-size: 24px; font-weight: bold; color: #333; margin-top: 10px; text-align: center;">
                         <h3>勝利！</h3>
@@ -551,9 +593,9 @@
                     </div>
                 </div>
                 <div class="button-area">
-                    <form action="{% url 'battle_start_redirect' player.id %}" method="get" style="margin: 0;">
-                        <button type="submit" class="battle-button return-button">戻る</button>
-                    </form>
+                    <a href="{% url 'battle_start' player.id %}" style="text-decoration: none;">
+                        <button type="button" class="battle-button return-button">戻る</button>
+                    </a>
                 </div>
             {% elif player.hp > 0 and enemy and not recovering %}
                 <div class="button-area" id="action-buttons">
@@ -562,6 +604,8 @@
                         <button type="submit" name="action" value="attack" class="battle-button attack-button">攻撃</button>
                         <button type="submit" name="action" value="defend" class="battle-button defend-button">防御</button>
                         <button type="button" id="special-skill-btn" class="battle-button special-button">特技</button>
+                        <button type="button" id="item-btn" class="battle-button special-button">アイテム</button>
+                        <button type="submit" name="action" value="escape" class="battle-button back-button">逃げる</button>
                     </form>
                 </div>
 
@@ -575,6 +619,29 @@
                         {% endfor %}
                     </form>
                     <button type="button" id="back-to-actions" class="battle-button back-button">戻る</button>
+                </div>
+                
+                <div class="button-area" id="item-menu" style="display: none; flex-direction: column; gap: 10px; width: 100%; padding: 0;">
+                    <div style="display: flex; gap: 10px; margin-bottom: 10px; width: 100%;">
+                        <button type="button" class="item-category-btn active" data-category="全て" style="flex: 1; padding: 10px; background: rgba(173, 216, 230, 0.6); border: 2px solid #8B6914; border-radius: 8px; font-size: 18px; font-weight: bold; cursor: pointer;">全て</button>
+                        <button type="button" class="item-category-btn" data-category="回復" style="flex: 1; padding: 10px; background: rgba(255, 255, 255, 0.5); border: 2px solid #8B6914; border-radius: 8px; font-size: 18px; font-weight: bold; cursor: pointer;">回復</button>
+                        <button type="button" class="item-category-btn" data-category="魔法" style="flex: 1; padding: 10px; background: rgba(255, 255, 255, 0.5); border: 2px solid #8B6914; border-radius: 8px; font-size: 18px; font-weight: bold; cursor: pointer;">魔法</button>
+                        <button type="button" class="item-category-btn" data-category="未定" style="flex: 1; padding: 10px; background: rgba(255, 255, 255, 0.5); border: 2px solid #8B6914; border-radius: 8px; font-size: 18px; font-weight: bold; cursor: pointer;">未定</button>
+                        <button type="button" class="item-category-btn" data-category="未定2" style="flex: 1; padding: 10px; background: rgba(255, 255, 255, 0.5); border: 2px solid #8B6914; border-radius: 8px; font-size: 18px; font-weight: bold; cursor: pointer;">未定</button>
+                    </div>
+                    <div id="item-list" style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; max-height: 300px; overflow-y: auto; width: 100%; border-radius: 10px; padding: 10px;">
+                        {% for inv_item in player_items %}
+                        <form method="POST" style="margin: 0;" class="item-form" data-item-target="{{ inv_item.item.target }}">
+                            {% csrf_token %}
+                            <button type="submit" name="use_item" value="{{ inv_item.item.id }}" class="battle-button special-button" style="width: 100%; text-align: center; padding: 8px; font-size: 16px;">
+                                {{ inv_item.item.name }}<br>(×{{ inv_item.quantity }})
+                            </button>
+                        </form>
+                        {% empty %}
+                        <div style="grid-column: 1 / -1; padding: 20px; text-align: center; color: #666; font-size: 20px;">アイテムがありません</div>
+                        {% endfor %}
+                    </div>
+                    <button type="button" id="back-from-items" class="battle-button back-button">戻る</button>
                 </div>
             {% endif %}
         </div>
@@ -608,6 +675,51 @@
     document.getElementById('back-to-actions')?.addEventListener('click', function() {
         document.getElementById('special-skills').style.display = 'none';
         document.getElementById('action-buttons').style.display = 'flex';
+    });
+    
+    document.getElementById('item-btn')?.addEventListener('click', function() {
+        document.getElementById('action-buttons').style.display = 'none';
+        document.getElementById('item-menu').style.display = 'flex';
+        document.getElementById('player-stats').style.display = 'none';
+        document.querySelector('.player-status-box').classList.add('item-mode');
+    });
+    
+    document.getElementById('back-from-items')?.addEventListener('click', function() {
+        document.getElementById('item-menu').style.display = 'none';
+        document.getElementById('action-buttons').style.display = 'flex';
+        document.getElementById('player-stats').style.display = 'flex';
+        document.querySelector('.player-status-box').classList.remove('item-mode');
+    });
+    
+    // アイテムカテゴリーフィルタリング
+    document.querySelectorAll('.item-category-btn').forEach(btn => {
+        btn.addEventListener('click', function() {
+            // アクティブボタンのスタイルを切り替え
+            document.querySelectorAll('.item-category-btn').forEach(b => {
+                b.style.background = 'rgba(255, 255, 255, 0.5)';
+                b.classList.remove('active');
+            });
+            this.style.background = 'rgba(173, 216, 230, 0.6)';
+            this.classList.add('active');
+            
+            const category = this.dataset.category;
+            const itemForms = document.querySelectorAll('.item-form');
+            
+            itemForms.forEach(form => {
+                const itemTarget = form.dataset.itemTarget;
+                if (category === '全て') {
+                    form.style.display = 'block';
+                } else if (category === '回復' && itemTarget === 'hp') {
+                    form.style.display = 'block';
+                } else if (category === '魔法' && itemTarget === 'mp') {
+                    form.style.display = 'block';
+                } else if (category === '未定' || category === '未定2') {
+                    form.style.display = 'none';
+                } else {
+                    form.style.display = 'none';
+                }
+            });
+        });
     });
     
     // メッセージエリアを一番下までスクロール
