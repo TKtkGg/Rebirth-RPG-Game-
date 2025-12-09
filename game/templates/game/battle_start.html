@@ -287,7 +287,7 @@
         </div>
         
         <div class="status-row">
-            <span class="status-label">SP：{{ player.mp }}</span>
+            <span class="status-label">SP：{{ player.mp }} / {{ player.max_mp }}</span>
             {% if player.stat_points > 0 %}
                 <form method="POST" class="stat-plus-form">
                     {% csrf_token %}

@@ -519,7 +519,7 @@
                         <span>HP:</span>
                         <div class="status-gauge-bar">
                             <div class="status-gauge-fill hp" style="width: {{ player_hp_percent }}%;"></div>
-                            <span class="status-gauge-value">{{ player.total_hp }}</span>
+                            <span class="status-gauge-value">{{ player.total_hp_battle }}</span>
                         </div>
                     </div>
                     <div class="status-gauge">
@@ -661,7 +661,7 @@
 {% if redirect_after %}
     <script>
         setTimeout(function() {
-            window.location.href = "{% url 'battle_start_redirect' player.id %}";
+            window.location.href = "{% url 'battle_start' player.id %}";
         }, 1500);
     </script>
 {% endif %}

@@ -22,6 +22,9 @@ class PlayerProfile(models.Model):
     total_score = models.IntegerField(default=0)
     bonus_points = models.IntegerField(default=0)
     unlocked_jobs = models.JSONField(default=list)
+    
+    def __str__(self):
+        return self.name
 
 
 class Equipment(models.Model):
@@ -69,9 +72,11 @@ class PlayerInventory(models.Model):
     
     class Meta:
         unique_together = ('player', 'item')
+        verbose_name = 'プレイヤーアイテム'
+        verbose_name_plural = 'プレイヤーアイテム'
     
     def __str__(self):
-        return f"{self.player.name} - {self.item.name}: {self.quantity}"
+        return f"{self.player.profile.name} - {self.item.name}: {self.quantity}個"
 
 class Player(models.Model):
     profile = models.ForeignKey(PlayerProfile, on_delete=models.CASCADE)
@@ -99,6 +104,16 @@ class Player(models.Model):
     
     # 所持金
     gold = models.IntegerField(default=100)
+    
+    # 戦闘用の総ステータス（装備ボーナス込み）
+    total_max_hp_battle = models.IntegerField(default=100)
+    total_hp_battle = models.IntegerField(default=100)
+    total_atk_battle = models.IntegerField(default=10)
+    total_def_battle = models.IntegerField(default=5)
+    total_spd_battle = models.IntegerField(default=5)
+    
+    def __str__(self):
+        return f"{self.profile.name} (Lv.{self.level})"
     
     @property
     def name(self):
@@ -135,12 +150,33 @@ class Player(models.Model):
         bonus = self.armor.hp_bonus if self.armor else 0
         return min(self.hp + bonus, self.total_max_hp)
     
+    def update_battle_stats(self):
+        """戦闘用ステータスを装備ボーナス込みで更新"""
+        # 武器ボーナス
+        weapon_atk = self.weapon.atk_bonus if self.weapon else 0
+        weapon_spd = self.weapon.spd_bonus if self.weapon else 0
+        
+        # 防具ボーナス
+        armor_def = self.armor.def_bonus if self.armor else 0
+        armor_hp = self.armor.hp_bonus if self.armor else 0
+        armor_spd = self.armor.spd_bonus if self.armor else 0
+        
+        # 戦闘用ステータスを更新
+        self.total_atk_battle = self.atk + weapon_atk
+        self.total_def_battle = self.defense + armor_def
+        self.total_spd_battle = self.spd + weapon_spd + armor_spd
+        self.total_max_hp_battle = self.max_hp + armor_hp
+        
+        # 現在のHPも調整（最大HPを超えないように）
+        self.total_hp_battle = min(self.hp + armor_hp, self.total_max_hp_battle)
+    
     def change_weapon(self, new_weapon):
         """武器を変更する（戦闘外専用）        
         Args:new_weapon: 新しい装備するEquipmentオブジェクト
         Returns:bool: 変更成功ならTrue"""
 
         self.weapon = new_weapon
+        self.update_battle_stats()
         self.save()
         return True
     
@@ -172,6 +208,7 @@ class Player(models.Model):
         # 最低1HP、最大は素の最大HPまで
         self.hp = max(1, min(adjusted_hp, self.max_hp))
         
+        self.update_battle_stats()
         self.save()
         return True
     
@@ -184,6 +221,12 @@ class Player(models.Model):
     def unequip_armor(self):
         """防具を外す（HPを調整）"""
         return self.change_armor(None)
+    
+    def sync_hp_from_battle(self):
+        """戦闘用HPを素のHPに反映（戦闘終了時に使用）"""
+        armor_bonus = self.armor.hp_bonus if self.armor else 0
+        self.hp = max(0, self.total_hp_battle - armor_bonus)
+        self.save()
 
 
 class Enemy(models.Model):
@@ -208,9 +251,13 @@ class Enemy(models.Model):
     
     # ドロップ可能な装備
     drop_equipment = models.ManyToManyField(Equipment, blank=True, related_name='dropped_by')
-    drop_gold = models.IntegerField(default=20)  # ドロップされるゴールド量
+    drop_gold = models.IntegerField(default=20)  # ドロップされるゴールド量（レベル変動）
+    drop_gold_default = models.IntegerField(default=20)  # デフォルトのドロップゴールド量
     
     # 出現するステージ
     stages = models.ManyToManyField(Stage, blank=True, related_name='enemies')
+    
+    def __str__(self):
+        return f"{self.name} (Lv.{self.level}) (ステージ: {', '.join([stage.name for stage in self.stages.all()])})"
 
     
