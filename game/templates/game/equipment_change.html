@@ -288,7 +288,7 @@
         </div>
     </div>
     
-    <a href="{% url 'battle_start' player.id %}" class="back-button">戻る</a>
+    <a href="{% url 'game:battle_start' player.id %}" class="back-button">戻る</a>
 </div>
 
 <script>
@@ -437,8 +437,9 @@
                 else if (selectedEquipment === equipmentId && clickCount === 1) {
                     clickCount = 2;
                     
-                    // 装備を変更
-                    window.location.href = `/equip/{{ player.id }}/${equipmentId}/`;
+                    // 装備を変更（namespaced URL）
+                    const equipBase = "{% url 'game:equip_item' player.id 0 %}".replace(/0\/$/, '');
+                    window.location.href = `${equipBase}${equipmentId}/`;
                 }
             });
         });

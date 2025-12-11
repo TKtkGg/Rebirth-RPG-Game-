@@ -211,18 +211,18 @@
 
 <div class="inventory-container">
     <div class="sidebar">
-        <a href="{% url 'inventory' player.id %}?category=全て" class="sidebar-item {% if category == '全て' %}active{% endif %}">全て</a>
-        <a href="{% url 'inventory' player.id %}?category=回復" class="sidebar-item {% if category == '回復' %}active{% endif %}">回復</a>
-        <a href="{% url 'inventory' player.id %}?category=未定" class="sidebar-item">未定</a>
-        <a href="{% url 'inventory' player.id %}?category=未定" class="sidebar-item">未定</a>
-        <a href="{% url 'inventory' player.id %}?category=未定" class="sidebar-item">未定</a>
+        <a href="{% url 'game:inventory' player.id %}?category=全て" class="sidebar-item {% if category == '全て' %}active{% endif %}">全て</a>
+        <a href="{% url 'game:inventory' player.id %}?category=回復" class="sidebar-item {% if category == '回復' %}active{% endif %}">回復</a>
+        <a href="{% url 'game:inventory' player.id %}?category=未定" class="sidebar-item">未定</a>
+        <a href="{% url 'game:inventory' player.id %}?category=未定" class="sidebar-item">未定</a>
+        <a href="{% url 'game:inventory' player.id %}?category=未定" class="sidebar-item">未定</a>
     </div>
     
     <div class="main-content">
         <div class="items-content">
             {% if inventory_items %}
                 {% for inv_item in inventory_items %}
-                <a href="{% url 'inventory' player.id %}?category={{ category }}&selected_item={{ inv_item.id }}" style="text-decoration: none;">
+                <a href="{% url 'game:inventory' player.id %}?category={{ category }}&selected_item={{ inv_item.id }}" style="text-decoration: none;">
                     <div class="item-card {% if selected_item and selected_item.id == inv_item.id %}selected{% endif %}">
                         <img src="{% static 'game/img/回復_アイコン.png' %}" alt="{{ inv_item.item.name }}" class="item-icon">
                         <div class="item-name">{{ inv_item.item.name }}</div>
@@ -250,7 +250,7 @@
         </div>
     </div>
     
-    <a href="{% url 'battle_start' player.id %}" class="back-button">戻る</a>
+    <a href="{% url 'game:battle_start' player.id %}" class="back-button">戻る</a>
 </div>
 
 {% endblock %}

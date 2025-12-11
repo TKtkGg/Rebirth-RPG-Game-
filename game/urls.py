@@ -1,9 +1,11 @@
 from django.urls import path
 from . import views
 
+app_name = 'game'  # 名前空間を追加
+
 urlpatterns = [
     path('', views.home, name='home'),          # トップページ
-    path('start/', views.start_game, name='start_game'),  # ゲーム開始ページなど
+    path('start/', views.start_game, name='start'),  # ゲーム開始ページ（名前をstartに変更）
     path('stage_select/<int:player_id>/', views.stage_select, name='stage_select'),  # ステージ選択
     path('battle/<int:player_id>/home/', views.battle_start, name='battle_start'),  # ホーム画面
     path('battle/<int:player_id>/<int:enemy_id>/start/',views.battle_start,name='battle_start_old'),  # 旧URL（互換性）

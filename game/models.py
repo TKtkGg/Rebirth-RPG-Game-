@@ -1,4 +1,5 @@
 from django.db import models
+from django.contrib.auth.models import User
 
 
 class Stage(models.Model):
@@ -12,16 +13,6 @@ class Stage(models.Model):
     
     class Meta:
         ordering = ['order']
-    
-    def __str__(self):
-        return self.name
-
-
-class PlayerProfile(models.Model):
-    name = models.CharField(max_length=20)
-    total_score = models.IntegerField(default=0)
-    bonus_points = models.IntegerField(default=0)
-    unlocked_jobs = models.JSONField(default=list)
     
     def __str__(self):
         return self.name
@@ -76,10 +67,17 @@ class PlayerInventory(models.Model):
         verbose_name_plural = 'プレイヤーアイテム'
     
     def __str__(self):
-        return f"{self.player.profile.name} - {self.item.name}: {self.quantity}個"
+        return f"{self.player.name} - {self.item.name}: {self.quantity}個"
 
 class Player(models.Model):
-    profile = models.ForeignKey(PlayerProfile, on_delete=models.CASCADE)
+    # 認証システムとの連携（null=Trueでゲストプレイ対応）
+    user = models.OneToOneField(User, on_delete=models.CASCADE, null=True, blank=True, related_name='player')
+    
+    # プレイヤー情報
+    name = models.CharField(max_length=20, default="ゲスト")
+    is_guest = models.BooleanField(default=False)  # ゲストプレイヤーかどうか
+    
+    # ゲームステータス
     level = models.IntegerField(default=1)
     exp = models.IntegerField(default=0)
     next_exp = models.IntegerField(default=500)
@@ -113,11 +111,7 @@ class Player(models.Model):
     total_spd_battle = models.IntegerField(default=5)
     
     def __str__(self):
-        return f"{self.profile.name} (Lv.{self.level})"
-    
-    @property
-    def name(self):
-        return self.profile.name
+        return f"{self.name} (Lv.{self.level})"
     
     @property
     def total_atk(self):

@@ -334,7 +334,7 @@
 <div class="shop-container" id="shopContainer">
     <div class="shop-title">ショップ</div>
     
-    <form id="purchaseForm" method="POST" action="{% url 'buy_item' player.id %}">
+    <form id="purchaseForm" method="POST" action="{% url 'game:buy_item' player.id %}">
         {% csrf_token %}
         <input type="hidden" name="item_name" id="itemNameInput">
         <input type="hidden" name="item_price" id="itemPriceInput">
@@ -372,7 +372,7 @@
     </form>
     
     <div class="back-button-container">
-        <a href="{% url 'battle_start' player.id %}" class="back-button">戻る</a>
+        <a href="{% url 'game:battle_start' player.id %}" class="back-button">戻る</a>
     </div>
 </div>
 

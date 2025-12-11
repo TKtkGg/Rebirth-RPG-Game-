@@ -143,7 +143,7 @@
 <div class="rpg-container">
     <div class="rpg-overlay">
         <div class="status-panel">
-            <div class="status-title">名前：{{ player.profile.name }} 職業：{{ player.job }}</div>
+            <div class="status-title">名前：{{ player.name }} 職業：{{ player.job }}</div>
             
             <div class="status-row">
                 <span class="status-label">ATK：</span>
@@ -185,7 +185,7 @@
         </div>
         
         <div class="button-panel">
-            <form action="{% url 'battle_start_redirect' player.id %}" method="get">
+            <form action="{% url 'game:battle_start_redirect' player.id %}" method="get">
                 <button type="submit" class="rpg-button adventure-button">冒険</button>
             </form>
             

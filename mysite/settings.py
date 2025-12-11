@@ -56,7 +56,7 @@ ROOT_URLCONF = 'mysite.urls'
 TEMPLATES = [
     {
         'BACKEND': 'django.template.backends.django.DjangoTemplates',
-        'DIRS': [],
+        'DIRS': [BASE_DIR / 'templates'],  # プロジェクトレベルのtemplatesディレクトリを追加
         'APP_DIRS': True,
         'OPTIONS': {
             'context_processors': [
@@ -121,7 +121,16 @@ STATICFILES_DIRS = [
     BASE_DIR / 'game' / 'static',
 ]
 
+# Media files (ユーザーアップロードファイル)
+MEDIA_URL = '/media/'
+MEDIA_ROOT = BASE_DIR / 'media'
+
 # Default primary key field type
 # https://docs.djangoproject.com/en/5.2/ref/settings/#default-auto-field
 
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
+
+# 認証関連の設定
+LOGIN_REDIRECT_URL = 'game:start'  # ログイン後はゲーム開始画面へ
+LOGOUT_REDIRECT_URL = 'accounts:home'  # ログアウト後はログイン画面へ
+LOGIN_URL = 'accounts:login'  # ログインページのURL

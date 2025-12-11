@@ -1,0 +1,46 @@
+{% extends 'base.html' %}
+
+{% block content %}
+<style>
+    .button-container {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 30px;
+        margin-top: 80px;
+    }
+    
+    .rpg-button {
+        width: 400px;
+        padding: 20px 40px;
+        font-size: 32px;
+        font-weight: bold;
+        color: white;
+        background-color: rgba(101, 67, 33, 0.9);
+        border: none;
+        border-radius: 8px;
+        cursor: pointer;
+        text-decoration: none;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        box-shadow: 0 4px 6px rgba(0, 0, 0, 0.3);
+        transition: background-color 0.3s, transform 0.1s;
+    }
+    
+    .rpg-button:hover {
+        background-color: rgba(121, 87, 53, 0.9);
+        transform: translateY(-2px);
+    }
+    
+    .rpg-button:active {
+        transform: translateY(0);
+    }
+</style>
+
+<div class="button-container">
+    <a href="{% url 'accounts:signup' %}" class="rpg-button">新規アカウント作成</a>
+    <a href="{% url 'accounts:login' %}" class="rpg-button">ログインして始める</a>
+    <a href="{% url 'game:start' %}?guest=1" class="rpg-button">ログアウトしたまま始める</a>
+</div>
+{% endblock %}

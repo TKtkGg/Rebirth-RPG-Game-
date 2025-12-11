@@ -6,7 +6,7 @@
         {% for enemy in enemies %}
             <li>
                 {{ enemy.name }} (HP:{{ enemy.max_hp }})
-                <a href="{% url 'battle' player_id enemy.id %}">戦う</a>
+                <a href="{% url 'game:battle' player_id enemy.id %}">戦う</a>
             </li>
         {% endfor %}
     </ul>

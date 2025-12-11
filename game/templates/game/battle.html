@@ -512,9 +512,9 @@
     <!-- プレイヤーのエリア -->
     <div class="player-area">
         <div class="player-status-box">
-            {% if not "を倒した" in message %}
+            {% if not "を倒した" in message and not "にげた" in message %}
                 <div style="display: flex; align-items: center; gap: 8px; width: 100%;">
-                    <div style="width: 120px;">{{ player.profile.name }}</div>
+                    <div style="width: 120px;">{{ player.name }}</div>
                     <div class="status-gauge">
                         <span>HP:</span>
                         <div class="status-gauge-bar">
@@ -570,13 +570,13 @@
             {% if escaped %}
                 <div class="reward-info">
                     <div style="font-size: 24px; font-weight: bold; color: #333; margin-top: 10px; text-align: center;">
-                        <h3>にげた！</h3>
+                        <h3 style="font-weight: bold;">にげた！</h3>
                         <p>経験値 : -{{ exp_penalty }}</p>
                         <p>ゴールド : -{{ gold_penalty }}</p>
                     </div>
                 </div>
                 <div class="button-area">
-                    <a href="{% url 'battle_start' player.id %}" style="text-decoration: none;">
+                    <a href="{% url 'game:battle_start' player.id %}" style="text-decoration: none;">
                         <button type="button" class="battle-button return-button">戻る</button>
                     </a>
                 </div>
@@ -593,7 +593,7 @@
                     </div>
                 </div>
                 <div class="button-area">
-                    <a href="{% url 'battle_start' player.id %}" style="text-decoration: none;">
+                    <a href="{% url 'game:battle_start' player.id %}" style="text-decoration: none;">
                         <button type="button" class="battle-button return-button">戻る</button>
                     </a>
                 </div>
@@ -661,7 +661,7 @@
 {% if redirect_after %}
     <script>
         setTimeout(function() {
-            window.location.href = "{% url 'battle_start' player.id %}";
+            window.location.href = "{% url 'game:battle_start' player.id %}";
         }, 1500);
     </script>
 {% endif %}

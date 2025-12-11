@@ -1,8 +1,52 @@
 import random
 from django.shortcuts import render,redirect
-from .models import Player, PlayerProfile,Enemy, Equipment, Item, Stage
+from django.contrib.auth import logout
+from django.urls import reverse
+from .models import Player, Enemy, Equipment, Item, Stage
 from .skills import ENEMY_SKILLS, PLAYER_SKILLS
 from .weapons_armors import WEAPONS, ARMORS
+
+
+def get_player_from_request(request, player_id=None):
+    """
+    リクエストからプレイヤーを取得する
+    
+    Args:
+        request: HTTPリクエスト
+        player_id: プレイヤーID（指定された場合はそのIDのプレイヤーを取得）
+    
+    Returns:
+        Player: プレイヤーオブジェクト
+    
+    処理の優先順位:
+    1. player_idが指定されている場合: そのIDのプレイヤーを取得
+    2. ログインユーザーの場合: userに紐付いたプレイヤーを取得
+    3. ゲストの場合: セッションからプレイヤーIDを取得
+    """
+    if player_id:
+        return Player.objects.get(id=player_id)
+    
+    if request.user.is_authenticated:
+        # ログインユーザーの場合
+        try:
+            return request.user.player
+        except Player.DoesNotExist:
+            # プレイヤーが存在しない場合は作成
+            return Player.objects.create(
+                user=request.user,
+                name=request.user.username,
+                is_guest=False
+            )
+    else:
+        # ゲストの場合
+        guest_player_id = request.session.get('guest_player_id')
+        if guest_player_id:
+            try:
+                return Player.objects.get(id=guest_player_id, is_guest=True)
+            except Player.DoesNotExist:
+                pass
+    
+    return None
 
 
 def home(request):
@@ -21,16 +65,27 @@ def stage_select(request, player_id):
 
 
 def start_game(request):
-    """新規プレイヤー作成（職業選択あり）"""
+    """職業選択画面（ログインユーザー/ゲスト両対応）"""
+    force_guest = request.GET.get('guest') == '1'
+
+    # ゲストで始める指定がある場合はログアウトしておく
+    if force_guest and request.user.is_authenticated:
+        logout(request)
+
+    # 既にPlayerが存在する場合はゲーム画面へリダイレクト（ゲスト強制時はスキップ）
+    if request.user.is_authenticated and not force_guest:
+        try:
+            player = request.user.player
+            return redirect('game:battle_start', player_id=player.id)
+        except Player.DoesNotExist:
+            pass  # Playerが存在しない場合は職業選択へ進む
+    
     if request.method == 'POST':
         name = request.POST.get('name')
         job = request.POST.get('job', '戦士')  # デフォルトは戦士
 
         request.session['session_purchased_items'] = []
         request.session['reset_shop'] = True
-
-        # プロフィール作成
-        profile = PlayerProfile.objects.create(name=name)
         
         # ジョブに応じたステータス設定
         if job == "戦士":
@@ -54,32 +109,63 @@ def start_game(request):
         wooden_sword = Equipment.objects.get(name="木の剣")
         leather_armor = Equipment.objects.get(name="皮の服")
         
-        # プレイヤー作成
-        player = Player.objects.create(
-            profile=profile,
-            level=1,
-            exp=0,
-            next_exp=500,
-            max_hp=base_hp + job_bonus_hp,
-            hp=base_hp + job_bonus_hp,
-            atk=base_atk + job_bonus_atk,
-            defense=base_def + job_bonus_def,
-            spd=base_spd + job_bonus_spd,
-            max_mp=50,
-            mp=50,
-            stat_points=stat_points,
-            job=job,
-            weapon=wooden_sword,
-            armor=leather_armor,
-            gold=100,
-        )
+        # ログインユーザーかゲストかで分岐
+        if request.user.is_authenticated:
+            # ログインユーザー: userに紐付けてPlayerを作成
+            player = Player.objects.create(
+                user=request.user,
+                name=name if name else request.user.username,
+                is_guest=False,
+                level=1,
+                exp=0,
+                next_exp=500,
+                max_hp=base_hp + job_bonus_hp,
+                hp=base_hp + job_bonus_hp,
+                atk=base_atk + job_bonus_atk,
+                defense=base_def + job_bonus_def,
+                spd=base_spd + job_bonus_spd,
+                max_mp=50,
+                mp=50,
+                stat_points=stat_points,
+                job=job,
+                weapon=wooden_sword,
+                armor=leather_armor,
+                gold=100,
+            )
+        else:
+            # ゲストプレイヤー: user=Noneで作成
+            player = Player.objects.create(
+                name=name,
+                is_guest=True,
+                level=1,
+                exp=0,
+                next_exp=500,
+                max_hp=base_hp + job_bonus_hp,
+                hp=base_hp + job_bonus_hp,
+                atk=base_atk + job_bonus_atk,
+                defense=base_def + job_bonus_def,
+                spd=base_spd + job_bonus_spd,
+                max_mp=50,
+                mp=50,
+                stat_points=stat_points,
+                job=job,
+                weapon=wooden_sword,
+                armor=leather_armor,
+                gold=100,
+            )
+            # ゲストプレイヤーの場合、セッションにIDを保存
+            request.session['guest_player_id'] = player.id
         
         # 初期装備を所持装備に追加
         player.owned_equipment.add(wooden_sword, leather_armor)
         
-        return redirect('battle_start', player_id=player.id)
+        return redirect('game:battle_start', player_id=player.id)
     
-    return render(request, 'game/start.html')
+    # GETリクエスト: 職業選択画面を表示
+    # ログインユーザーの場合はデフォルト名をユーザー名にする（ゲスト強制時は空にする）
+    default_name = request.user.username if request.user.is_authenticated and not force_guest else ""
+    
+    return render(request, 'game/start.html', {'default_name': default_name})
 
 
 def battle_start(request, player_id, enemy_id=None):
@@ -129,7 +215,7 @@ def battle_start(request, player_id, enemy_id=None):
             player.hp = player.max_hp  # 素のHPを最大値に戻す
             player.mp = player.max_mp  # SPも最大値に戻す
             player.save()
-            return redirect('battle_start', player_id=player.id)
+            return redirect('game:battle_start', player_id=player.id)
 
         # ステータスポイント配分の処理
         stat = request.POST.get('stat')
@@ -148,7 +234,7 @@ def battle_start(request, player_id, enemy_id=None):
                 player.mp += 5  # 【現在SP】も増やす
             player.stat_points -= 1
             player.save()
-            return redirect('battle_start', player_id=player.id)
+            return redirect('game:battle_start', player_id=player.id)
 
     return render(request, 'game/battle_start.html', {"player": player, "exp_percent": exp_percent, "continue_count": continue_count,})
 
@@ -1332,9 +1418,9 @@ def buy_item(request, player_id):
                     request.session['session_purchased_items'] = session_purchased
         
         # ショップに戻る
-        return redirect('shop', player_id=player.id)
+        return redirect('game:shop', player_id=player.id)
     
-    return redirect('shop', player_id=player_id)
+    return redirect('game:shop', player_id=player_id)
 
 
 def equipment_change(request, player_id):
@@ -1373,14 +1459,14 @@ def equip_item(request, player_id, equipment_id):
         if equipment.equipment_type == 'weapon':
             player.change_weapon(equipment)
             # 武器タブに戻る
-            return redirect(f'/equipment/{player.id}/?tab=weapons')
+            return redirect(f'{reverse("game:equipment_change", kwargs={"player_id": player.id})}?tab=weapons')
         elif equipment.equipment_type == 'armor':
             player.change_armor(equipment)
             # 防具タブに戻る
-            return redirect(f'/equipment/{player.id}/?tab=armors')
+            return redirect(f'{reverse("game:equipment_change", kwargs={"player_id": player.id})}?tab=armors')
     
     # 装備変更画面に戻る（デフォルト）
-    return redirect('equipment_change', player_id=player.id)
+    return redirect('game:equipment_change', player_id=player.id)
 
 
 def inventory(request, player_id):

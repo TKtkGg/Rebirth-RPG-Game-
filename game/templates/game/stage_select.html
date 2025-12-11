@@ -142,7 +142,7 @@
         <div class="stages-grid">
             {% for stage in stages %}
             <div class="stage-card {% if stage.unlock_level > player.level %}locked{% endif %}" 
-                 {% if stage.unlock_level <= player.level %}onclick="location.href='{% url 'battle_start_redirect' player.id %}?stage_id={{ stage.id }}'"{% endif %}>
+                 {% if stage.unlock_level <= player.level %}onclick="location.href='{% url 'game:battle_start_redirect' player.id %}?stage_id={{ stage.id }}'"{% endif %}>
                 <img src="{% static 'game/img/' %}{{ stage.background_image }}" alt="{{ stage.name }}" class="stage-image">
                 
                 {% if stage.unlock_level > player.level %}
@@ -158,7 +158,7 @@
         </div>
         
         <div class="back-link">
-            <a href="{% url 'battle_start' player.id %}" class="back-button">戻る</a>
+            <a href="{% url 'game:battle_start' player.id %}" class="back-button">戻る</a>
         </div>
     </div>
 </div>
