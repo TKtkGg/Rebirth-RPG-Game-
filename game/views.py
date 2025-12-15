@@ -48,10 +48,8 @@ def get_player_from_request(request, player_id=None):
     
     return None
 
-
 def home(request):
     return render(request, 'game/home.html')
-
 
 def stage_select(request, player_id):
     """ステージ選択画面"""
@@ -62,7 +60,6 @@ def stage_select(request, player_id):
         'player': player,
         'stages': stages,
     })
-
 
 def start_game(request):
     """職業選択画面（ログインユーザー/ゲスト両対応）"""
@@ -90,15 +87,15 @@ def start_game(request):
         # ジョブに応じたステータス設定
         if job == "戦士":
             base_hp, base_atk, base_def, base_spd = 100, 5, 5, 5
-            job_bonus_hp, job_bonus_atk, job_bonus_def, job_bonus_spd = 10, 3, 3, 0
+            job_bonus_hp, job_bonus_atk, job_bonus_def, job_bonus_spd = 10, 5, 5, -3
             stat_points = 0
         elif job == "魔法使い":
             base_hp, base_atk, base_def, base_spd = 100, 5, 5, 5
-            job_bonus_hp, job_bonus_atk, job_bonus_def, job_bonus_spd = -10, 7, 0, 5
+            job_bonus_hp, job_bonus_atk, job_bonus_def, job_bonus_spd = -10, 8, -2, 3
             stat_points = 0
-        elif job == "盗賊":
+        elif job == "忍者":
             base_hp, base_atk, base_def, base_spd = 100, 5, 5, 5
-            job_bonus_hp, job_bonus_atk, job_bonus_def, job_bonus_spd = -5, 3, 0, 7
+            job_bonus_hp, job_bonus_atk, job_bonus_def, job_bonus_spd = -5, 5, 0, 7
             stat_points = 0
         else:
             base_hp, base_atk, base_def, base_spd = 100, 5, 5, 5
@@ -166,7 +163,6 @@ def start_game(request):
     default_name = request.user.username if request.user.is_authenticated and not force_guest else ""
     
     return render(request, 'game/start.html', {'default_name': default_name})
-
 
 def battle_start(request, player_id, enemy_id=None):
     player = Player.objects.get(id=player_id)
@@ -318,20 +314,22 @@ def battle(request, player_id, enemy_id=None):
             potential_level = random.randint(enemy_min_level, enemy_max_level)
             level_diff = abs(player.level - potential_level)
             
-            # レベル差が小さいほど重みを大きく
+            # レベル差が小さいほど重みを大きく + 出現率補正
             if level_diff == 0:
-                weight = 20  # 同レベルは最も出やすい
+                base_weight = 20  # 同レベルは最も出やすい
             elif level_diff == 1:
-                weight = 15
+                base_weight = 15
             elif level_diff == 2:
-                weight = 10
+                base_weight = 10
             elif level_diff == 3:
-                weight = 6
+                base_weight = 6
             elif level_diff == 4:
-                weight = 3
+                base_weight = 3
             else:
-                weight = 1
-            
+                base_weight = 1
+
+            # appearance_rateで重みを調整（例: 1.5なら1.5倍、0.5なら半分）
+            weight = max(1, int(base_weight * max(enemy.appearance_rate, 0)))
             weighted_enemies.extend([(enemy, potential_level)] * weight)
         
         # ランダムに敵を選択
@@ -614,20 +612,94 @@ def battle(request, player_id, enemy_id=None):
                 
         return message,True
     
-    def choose_enemyAction(enemy,player):
+    def choose_enemyAction(enemy, player, buffs, debuffs):
         skills = ENEMY_SKILLS.get(enemy.name, [])
         if not skills:
             return None  # スキルが存在しない場合はNoneを返す
         
-        total_priority = sum(skill["priority"] for skill in skills)
+        # HP比率を計算
+        player_hp_ratio = player.total_hp_battle / player.total_max_hp_battle if player.total_max_hp_battle > 0 else 1.0
+        enemy_hp_ratio = enemy.hp / enemy.max_hp if enemy.max_hp > 0 else 1.0
+        
+        # 各スキルの優先度を動的に調整
+        adjusted_skills = []
+        for skill in skills:
+            # 元のスキルをコピー（ENEMY_SKILLSを破壊しないため）
+            skill_copy = {**skill}
+            priority = skill_copy["priority"]  # 元の優先度
+            
+            # スキルの効果を解析
+            has_debuff_effect = any(effect.get("type") == "debuf" and effect.get("target") == "player" for effect in skill_copy.get("effects", []))
+            has_buff_effect = any(effect.get("type") == "buf" and effect.get("target") == "enemy" for effect in skill_copy.get("effects", []))
+            has_attack_effect = any(effect.get("type") == "attack" for effect in skill_copy.get("effects", []))
+            has_defense_effect = any(effect.get("type") == "defense" for effect in skill_copy.get("effects", []))
+            
+            # max_usesがある攻撃/防御スキルを特別扱い
+            has_max_uses = "max_uses" in skill_copy
+            is_special_attack = has_attack_effect and has_max_uses
+            is_special_defense = has_defense_effect and has_max_uses
+            
+            # 使用回数が0のスキルは優先度を0にする（選ばれなくなる）
+            if has_max_uses and skill_copy.get("max_uses", 0) <= 0:
+                priority = 0
+            else:
+                # 1. 敵（player）にデバフがかかっていない場合、自身の技にデバフがあれば
+                if not debuffs.get("player") and has_debuff_effect:
+                    priority *= 2
+                
+                # 2. 自身（enemy）にバフがかかっていない場合、自身の技にバフがあれば
+                if not buffs.get("enemy") and has_buff_effect:
+                    priority *= 2
+                
+                # 3. 敵（player）のHPが20%以下の場合
+                if player_hp_ratio <= 0.2 and has_attack_effect:
+                    if is_special_attack:
+                        priority *= 5  # 特殊攻撃スキルならさらに優先度を上げる
+                    else:
+                        priority *= 3  # 優先度を大幅に上げる
+                # 敵（player）のHPが50%以下の場合
+                elif player_hp_ratio <= 0.5 and has_attack_effect:
+                    if is_special_attack:
+                        priority *= 3  # 特殊攻撃スキルなら優先度を上げる
+                    else:
+                        priority *= 2  # 優先度を上げる
+                # 敵（player）のHPが100%以下の場合
+                elif player_hp_ratio <= 1.0 and has_attack_effect:
+                    if is_special_attack:
+                        priority *= 2  # 特殊攻撃スキルなら少し優先度を上げる
+                    else:
+                        priority *= 1.5  # 優先度を少し上げる
+                
+                # 4. 自身（enemy）のHPが50%以下の場合
+                if enemy_hp_ratio <= 0.5 and has_defense_effect:
+                    priority *= 2
+            
+            skill_copy["priority"] = priority
+            adjusted_skills.append(skill_copy)
+        
+        # 調整後の優先度に基づいて選択
+        total_priority = sum(s["priority"] for s in adjusted_skills)
+        if total_priority <= 0:
+            # 全スキルの優先度が0の場合、通常攻撃を返す
+            return {"name": "攻撃", "effects": [{"type": "attack", "target": "player", "multiplier": 1.0}], "priority": 1}
+        
         rand_val = random.uniform(0, total_priority)
         cumulative = 0
-        for skill in skills:
+        
+        for skill in adjusted_skills:
             cumulative += skill["priority"]
             if rand_val <= cumulative:
+                # 選ばれたスキルのmax_usesを減らす（元データを更新）
+                if "max_uses" in skill and skill["max_uses"] > 0:
+                    # ENEMY_SKILLSの元データを検索して更新
+                    for original_skill in ENEMY_SKILLS[enemy.name]:
+                        if original_skill["name"] == skill["name"]:
+                            original_skill["max_uses"] -= 1
+                            break
+                
                 return skill
-            
-        return random.choice(skills)  # フォールバックとしてランダムに選択
+        
+        return adjusted_skills[0] if adjusted_skills else None  # フォールバックとして最初のスキルを選択
 
     def enemyAction(message,enemy,player,buffs,debuffs,actionp,actione):     
         message = f"{enemy.name}の{actione['name']}！　"
@@ -776,7 +848,7 @@ def battle(request, player_id, enemy_id=None):
                 player.save()
                 
                 # アイテム使用後は敵のターン（必ず先手だがターン経過）
-                actione = choose_enemyAction(enemy,player)
+                actione = choose_enemyAction(enemy, player, buffs, debuffs)
                 ex_message,buffs,debuffs = enemyAction(message,enemy,player,buffs,debuffs,'item',actione)
                 request.session["buffs"] = buffs
                 request.session["debuffs"] = debuffs
@@ -885,7 +957,7 @@ def battle(request, player_id, enemy_id=None):
                 })
             else:
                 # 逃走失敗 - 敵のターンへ
-                actione = choose_enemyAction(enemy,player)
+                actione = choose_enemyAction(enemy, player, buffs, debuffs)
                 ex_message,buffs,debuffs = enemyAction(message,enemy,player,buffs,debuffs,actionp,actione)
                 request.session["buffs"] = buffs
                 request.session["debuffs"] = debuffs
@@ -955,7 +1027,7 @@ def battle(request, player_id, enemy_id=None):
                     "enemy_hp_percent": enemy_hp_percent,
                 })
         
-        actione = choose_enemyAction(enemy,player)
+        actione = choose_enemyAction(enemy, player, buffs, debuffs)
 
         spdcheck = spdcheck(actionp,actione)
         if spdcheck:

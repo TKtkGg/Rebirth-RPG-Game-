@@ -233,6 +233,7 @@ class Enemy(models.Model):
     exp = models.IntegerField(default=120)
     is_defeated = models.BooleanField(default=False)
     level = models.IntegerField(default=1)
+    appearance_rate = models.FloatField(default=1.0)  # 出現率（1.0で等倍）
     max_hp_default = models.IntegerField(default=50)
     atk_default = models.IntegerField(default=8)
     defense_default = models.IntegerField(default=3)
@@ -252,6 +253,6 @@ class Enemy(models.Model):
     stages = models.ManyToManyField(Stage, blank=True, related_name='enemies')
     
     def __str__(self):
-        return f"{self.name} (Lv.{self.level}) (ステージ: {', '.join([stage.name for stage in self.stages.all()])})"
+        return f"{self.name} (Lv.{self.level_default}) (ステージ: {', '.join([stage.name for stage in self.stages.all()])})"
 
     
