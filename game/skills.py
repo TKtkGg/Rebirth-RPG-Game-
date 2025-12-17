@@ -152,9 +152,66 @@ PLAYER_SKILLS = {
     ],
     "魔法使い": [
         {
-            "name": "ファイアボール",
+            "name": "インパクトメテオ",
+            "cost": 30,
+            "description": "一撃必殺の超火力で焼き払う",
+            "effects": [
+                {
+                    "type": "attack",
+                    "target": "enemy",
+                    "multiplier": 3.0
+                }
+            ]
+        },
+        {
+            "name": "魔力強化",
             "cost": 20,
-            "description": "炎の魔法で敵を攻撃する",
+            "description": "魔力を高めて攻撃力を上げる",
+            "effects": [
+                {
+                    "type": "buf",
+                    "target": "player",
+                    "stat": "atk",
+                    "multiplier": 2.0,
+                    "turn": 3
+                }
+            ]
+        },
+        {
+            "name": "マジックシールド",
+            "cost": 20,
+            "description": "魔法の盾で敵の攻撃を防ぐ",
+            "effects": [
+                {
+                    "type": "buf",
+                    "target": "player",
+                    "stat": "def",
+                    "multiplier": 3.0,
+                    "turn": 2
+                }
+            ]
+
+        }
+    ],
+    "忍者": [
+        {
+            "name": "影分身の術",
+            "cost": 15,
+            "description": "分身を作り出し、敵の攻撃を回避しやすくする",
+            "effects": [
+                {
+                    "type": "buf",
+                    "target": "player",
+                    "stat": "spd",
+                    "multiplier": 1.5,
+                    "turn": 4
+                }
+            ]
+        },
+        {
+            "name": "急所突き",
+            "cost": 20,
+            "description": "敵の急所を狙い、通常よりも大きなダメージを与える攻撃",
             "effects": [
                 {
                     "type": "attack",
@@ -164,16 +221,21 @@ PLAYER_SKILLS = {
             ]
         },
         {
-            "name": "魔力強化",
+            "name": "毒刃",
             "cost": 15,
-            "description": "魔力を高めて攻撃力を上げる",
+            "description": "攻撃に毒の効果を付与し、敵に継続ダメージを与える",
             "effects": [
                 {
-                    "type": "buf",
-                    "target": "player",
-                    "stat": "atk",
-                    "multiplier": 1.5,
-                    "turn": 3
+                    "type": "attack",
+                    "target": "enemy",
+                    "multiplier": 1.0
+                },
+                {
+                    "type": "debuf",
+                    "target": "enemy",
+                    "stat": "hp",
+                    "multiplier": 0.9,
+                    "turn": 5
                 }
             ]
         }

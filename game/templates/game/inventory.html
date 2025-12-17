@@ -36,6 +36,122 @@
         align-self: flex-start;
     }
     
+    .search-icon-container {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        padding: 0;
+    }
+    
+    .search-icon {
+        width: 48px;
+        height: 48px;
+        cursor: pointer;
+        transition: all 0.3s;
+    }
+    
+    .search-icon:hover {
+        opacity: 0.7;
+        transform: scale(1.05);
+    }
+    
+    .clear-search-btn {
+        width: 32px;
+        height: 32px;
+        cursor: pointer;
+        transition: all 0.3s;
+        text-decoration: none;
+    }
+    
+    .clear-search-btn:hover {
+        opacity: 0.7;
+        transform: scale(1.1);
+    }
+    
+    .search-overlay {
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100vw;
+        height: 100vh;
+        background: rgba(0, 0, 0, 0.5);
+        display: none;
+        justify-content: center;
+        align-items: flex-start;
+        padding-top: 100px;
+        z-index: 1000;
+    }
+    
+    .search-overlay.active {
+        display: flex;
+    }
+    
+    .search-box {
+        background: #F5E6B3;
+        border: 4px solid #8B6914;
+        border-radius: 20px;
+        padding: 30px;
+        width: 600px;
+        box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
+    }
+    
+    .search-title {
+        font-size: 32px;
+        font-weight: bold;
+        color: #000;
+        text-align: center;
+        margin-bottom: 20px;
+    }
+    
+    .search-input-container {
+        display: flex;
+        gap: 10px;
+        margin-bottom: 20px;
+    }
+    
+    .search-input {
+        flex: 1;
+        font-size: 24px;
+        padding: 15px 20px;
+        border: 3px solid #8B6914;
+        border-radius: 10px;
+        background: rgba(255, 255, 255, 0.9);
+        outline: none;
+    }
+    
+    .search-button {
+        padding: 15px 30px;
+        font-size: 24px;
+        font-weight: bold;
+        background: rgba(139, 105, 20, 0.8);
+        border: 3px solid #8B6914;
+        border-radius: 10px;
+        color: white;
+        cursor: pointer;
+        transition: all 0.3s;
+    }
+    
+    .search-button:hover {
+        background: rgba(139, 105, 20, 1);
+    }
+    
+    .search-close {
+        padding: 12px 25px;
+        font-size: 20px;
+        font-weight: bold;
+        background: rgba(150, 150, 150, 0.8);
+        border: 3px solid #666;
+        border-radius: 10px;
+        color: white;
+        cursor: pointer;
+        transition: all 0.3s;
+        width: 100%;
+    }
+    
+    .search-close:hover {
+        background: rgba(150, 150, 150, 1);
+    }
+    
     .sidebar-item {
         font-size: 32px;
         font-weight: bold;
@@ -209,10 +325,32 @@
     }
 </style>
 
+<div class="search-overlay" id="searchOverlay">
+    <div class="search-box">
+        <div class="search-title">アイテム検索</div>
+        <form method="GET" action="{% url 'game:inventory' player.id %}">
+            <div class="search-input-container">
+                <input type="text" name="search" class="search-input" placeholder="アイテム名を入力..." value="{{ search_query }}" autofocus>
+                <input type="hidden" name="category" value="{{ category }}">
+                <button type="submit" class="search-button">検索</button>
+            </div>
+        </form>
+        <button class="search-close" onclick="closeSearchOverlay()">閉じる</button>
+    </div>
+</div>
+
 <div class="inventory-container">
     <div class="sidebar">
-        <a href="{% url 'game:inventory' player.id %}?category=全て" class="sidebar-item {% if category == '全て' %}active{% endif %}">全て</a>
-        <a href="{% url 'game:inventory' player.id %}?category=回復" class="sidebar-item {% if category == '回復' %}active{% endif %}">回復</a>
+        <div class="search-icon-container">
+            <img src="{% static 'game/img/検索_アイコン.png' %}" alt="検索" class="search-icon" onclick="openSearchOverlay()">
+            {% if search_query %}
+            <a href="{% url 'game:inventory' player.id %}?category={{ category }}">
+                <img src="{% static 'game/img/バツ_アイコン.png' %}" alt="クリア" class="clear-search-btn" style="width: 50px; height: 50px;">
+            </a>
+            {% endif %}
+        </div>
+        <a href="{% url 'game:inventory' player.id %}?category=全て{% if search_query %}&search={{ search_query }}{% endif %}" class="sidebar-item {% if category == '全て' %}active{% endif %}">全て</a>
+        <a href="{% url 'game:inventory' player.id %}?category=回復{% if search_query %}&search={{ search_query }}{% endif %}" class="sidebar-item {% if category == '回復' %}active{% endif %}">回復</a>
         <a href="{% url 'game:inventory' player.id %}?category=未定" class="sidebar-item">未定</a>
         <a href="{% url 'game:inventory' player.id %}?category=未定" class="sidebar-item">未定</a>
         <a href="{% url 'game:inventory' player.id %}?category=未定" class="sidebar-item">未定</a>
@@ -222,7 +360,7 @@
         <div class="items-content">
             {% if inventory_items %}
                 {% for inv_item in inventory_items %}
-                <a href="{% url 'game:inventory' player.id %}?category={{ category }}&selected_item={{ inv_item.id }}" style="text-decoration: none;">
+                <a href="{% url 'game:inventory' player.id %}?category={{ category }}{% if search_query %}&search={{ search_query }}{% endif %}&selected_item={{ inv_item.id }}" style="text-decoration: none;">
                     <div class="item-card {% if selected_item and selected_item.id == inv_item.id %}selected{% endif %}">
                         <img src="{% static 'game/img/回復_アイコン.png' %}" alt="{{ inv_item.item.name }}" class="item-icon">
                         <div class="item-name">{{ inv_item.item.name }}</div>
@@ -252,5 +390,29 @@
     
     <a href="{% url 'game:battle_start' player.id %}" class="back-button">戻る</a>
 </div>
+
+<script>
+    function openSearchOverlay() {
+        document.getElementById('searchOverlay').classList.add('active');
+    }
+    
+    function closeSearchOverlay() {
+        document.getElementById('searchOverlay').classList.remove('active');
+    }
+    
+    // オーバーレイの背景をクリックしたら閉じる
+    document.getElementById('searchOverlay').addEventListener('click', function(e) {
+        if (e.target === this) {
+            closeSearchOverlay();
+        }
+    });
+    
+    // Escキーで閉じる
+    document.addEventListener('keydown', function(e) {
+        if (e.key === 'Escape') {
+            closeSearchOverlay();
+        }
+    });
+</script>
 
 {% endblock %}

@@ -646,10 +646,14 @@ def battle(request, player_id, enemy_id=None):
                 # 1. 敵（player）にデバフがかかっていない場合、自身の技にデバフがあれば
                 if not debuffs.get("player") and has_debuff_effect:
                     priority *= 2
+                elif debuffs.get("player") and has_debuff_effect:
+                    priority *= 0.2
                 
                 # 2. 自身（enemy）にバフがかかっていない場合、自身の技にバフがあれば
                 if not buffs.get("enemy") and has_buff_effect:
                     priority *= 2
+                elif buffs.get("enemy") and has_buff_effect:
+                    priority *= 0.2
                 
                 # 3. 敵（player）のHPが20%以下の場合
                 if player_hp_ratio <= 0.2 and has_attack_effect:
@@ -1550,6 +1554,9 @@ def inventory(request, player_id):
     # カテゴリーフィルター（デフォルトは'全て'）
     category = request.GET.get('category', '全て')
     
+    # 検索クエリ
+    search_query = request.GET.get('search', '').strip()
+    
     # プレイヤーのインベントリを取得
     inventory_items = PlayerInventory.objects.filter(player=player, quantity__gt=0).select_related('item')
     
@@ -1558,6 +1565,10 @@ def inventory(request, player_id):
         inventory_items = inventory_items.filter(item__target='hp')
     elif category == '魔法':
         inventory_items = inventory_items.filter(item__target='mp')
+    
+    # 検索クエリでフィルタリング
+    if search_query:
+        inventory_items = inventory_items.filter(item__name__icontains=search_query)
     
     # 最初に選択されているアイテム（最初のアイテム）
     selected_item = None
@@ -1576,5 +1587,6 @@ def inventory(request, player_id):
         'inventory_items': inventory_items,
         'selected_item': selected_item,
         'category': category,
+        'search_query': search_query,
     })
 
