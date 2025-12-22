@@ -130,6 +130,9 @@ MEDIA_ROOT = BASE_DIR / 'media'
 
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
+# CustomUser設定
+AUTH_USER_MODEL = 'accounts.CustomUser'
+
 # 認証関連の設定
 LOGIN_REDIRECT_URL = 'game:start'  # ログイン後はゲーム開始画面へ
 LOGOUT_REDIRECT_URL = 'accounts:home'  # ログアウト後はログイン画面へ

@@ -1,5 +1,5 @@
 from django.db import models
-from django.contrib.auth.models import User
+from django.conf import settings
 
 
 class Stage(models.Model):
@@ -71,7 +71,7 @@ class PlayerInventory(models.Model):
 
 class Player(models.Model):
     # 認証システムとの連携（null=Trueでゲストプレイ対応）
-    user = models.OneToOneField(User, on_delete=models.CASCADE, null=True, blank=True, related_name='player')
+    user = models.OneToOneField(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, null=True, blank=True, related_name='player')
     
     # プレイヤー情報
     name = models.CharField(max_length=20, default="ゲスト")

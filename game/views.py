@@ -7,6 +7,25 @@ from .skills import ENEMY_SKILLS, PLAYER_SKILLS
 from .weapons_armors import WEAPONS, ARMORS
 
 
+def calculate_score(player):
+    """
+    ゲームスコアを計算
+    
+    スコア計算式:
+    - 基本スコア = レベル × 1000
+    - 撃破数ボーナス = 撃破数 × 100
+    - ゴールドボーナス = ゴールド × 10
+    - 装備ボーナス = 所持装備数 × 500
+    """
+    base_score = player.level * 1000
+    defeat_bonus = player.defeats * 100
+    gold_bonus = player.gold * 10
+    equipment_bonus = player.owned_equipment.count() * 500
+    
+    total_score = base_score + defeat_bonus + gold_bonus + equipment_bonus
+    return total_score
+
+
 def get_player_from_request(request, player_id=None):
     """
     リクエストからプレイヤーを取得する
@@ -104,7 +123,7 @@ def start_game(request):
         
         # 初期装備をデータベースから取得
         wooden_sword = Equipment.objects.get(name="木の剣")
-        leather_armor = Equipment.objects.get(name="皮の服")
+        leather_armor = Equipment.objects.get(name="革の服")
         
         # ログインユーザーかゲストかで分岐
         if request.user.is_authenticated:
@@ -409,7 +428,49 @@ def battle(request, player_id, enemy_id=None):
     enemy_spd_debuff = debuffs.get("enemy", {}).get("spd", {}).get("multiplier", 1.0)
     showenemy_spd = int(enemy.spd * enemy_spd_buff * enemy_spd_debuff)
 
+    # センチネル値（引数が渡されたかどうかを判定するため）
+    _ENEMY_DEFAULT = object()
+    
+    def render_battle_screen(message, enemy_override=_ENEMY_DEFAULT, **kwargs):
+        """戦闘画面のコンテキストを生成する共通関数"""
+        # enemy_overrideが渡されていない場合はデフォルトのenemyを使用
+        # 渡されている場合（Noneを含む）はその値を使用
+        current_enemy = enemy if enemy_override is _ENEMY_DEFAULT else enemy_override
+        
+        # HP・SPのゲージ用パーセンテージを計算
+        player_hp_percent = int((player.total_hp_battle / player.total_max_hp_battle) * 100) if player.total_max_hp_battle > 0 else 0
+        player_sp_percent = int((player.mp / player.max_mp) * 100) if player.max_mp > 0 else 0
+        enemy_hp_percent = int((current_enemy.hp / current_enemy.max_hp) * 100) if current_enemy and current_enemy.max_hp > 0 else 0
+        
+        context = {
+            "player": player,
+            "enemy": current_enemy,
+            "message": message,
+            "message_history": message_history,
+            "showplayer_atk": showplayer_atk,
+            "showplayer_def": showplayer_def,
+            "showplayer_spd": showplayer_spd,
+            "buffs": buffs,
+            "showenemy_atk": showenemy_atk,
+            "showenemy_def": showenemy_def,
+            "showenemy_spd": showenemy_spd,
+            "debuffs": debuffs,
+            "player_skills": player_skills,
+            "player_items": player_items,
+            "stage": stage,
+            "player_hp_percent": player_hp_percent,
+            "player_sp_percent": player_sp_percent,
+            "enemy_hp_percent": enemy_hp_percent,
+        }
+        context.update(kwargs)
+        return context
+
     def game_over(message):
+        # ゲームオーバー時にスコアを計算してユーザーに記録
+        if player.user and not player.is_guest:
+            score = calculate_score(player)
+            player.user.update_score(score)
+        
         message += f"{player.name} は力尽きた… ゲームオーバー！\n"
         player.defeats = 0
         player.level = 1
@@ -870,61 +931,10 @@ def battle(request, player_id, enemy_id=None):
                         return render(request, "game/gameover.html", {"player": player, "message": message})
                     else:
                         message = tohome(message)
-                        player_hp_percent = int((player.total_hp_battle / player.total_max_hp_battle) * 100) if player.total_max_hp > 0 else 0
-                        player_sp_percent = int((player.mp / player.max_mp) * 100) if player.max_mp > 0 else 0
-                        enemy_hp_percent = int((enemy.hp / enemy.max_hp) * 100) if enemy.max_hp > 0 else 0
-                        
-                        return render(request, "game/battle.html", {
-                            "player": player,
-                            "enemy": enemy,
-                            "message": message,
-                            "message_history": message_history,
-                            "showplayer_atk": showplayer_atk,
-                            "showplayer_def": showplayer_def,
-                            "showplayer_spd": showplayer_spd,
-                            "buffs": buffs,
-                            "showenemy_atk": showenemy_atk,
-                            "showenemy_def": showenemy_def,
-                            "showenemy_spd": showenemy_spd,
-                            "debuffs": debuffs,
-                            "player_skills": player_skills,
-            "player_items": player_items,
-            "stage": stage,
-                            "player_items": player_items,
-            "stage": stage,
-                            "player_hp_percent": player_hp_percent,
-                            "player_sp_percent": player_sp_percent,
-                            "enemy_hp_percent": enemy_hp_percent,
-                            "redirect_after": True,
-                        })
+                        return render_battle_screen(message, redirect_after=True)
                 
                 # 通常の戦闘画面に戻る
-                player_hp_percent = int((player.total_hp_battle / player.total_max_hp_battle) * 100) if player.total_max_hp > 0 else 0
-                player_sp_percent = int((player.mp / player.max_mp) * 100) if player.max_mp > 0 else 0
-                enemy_hp_percent = int((enemy.hp / enemy.max_hp) * 100) if enemy.max_hp > 0 else 0
-                
-                return render(request, "game/battle.html", {
-                    "player": player,
-                    "enemy": enemy,
-                    "message": message,
-                    "message_history": message_history,
-                    "showplayer_atk": showplayer_atk,
-                    "showplayer_def": showplayer_def,
-                    "showplayer_spd": showplayer_spd,
-                    "buffs": buffs,
-                    "showenemy_atk": showenemy_atk,
-                    "showenemy_def": showenemy_def,
-                    "showenemy_spd": showenemy_spd,
-                    "debuffs": debuffs,
-                    "player_skills": player_skills,
-            "player_items": player_items,
-            "stage": stage,
-                    "player_items": player_items,
-            "stage": stage,
-                    "player_hp_percent": player_hp_percent,
-                    "player_sp_percent": player_sp_percent,
-                    "enemy_hp_percent": enemy_hp_percent,
-                })
+                return render_battle_screen(message)
             except (PlayerInventory.DoesNotExist, ValueError):
                 pass  # アイテムが存在しない場合は無視
         
@@ -933,32 +943,7 @@ def battle(request, player_id, enemy_id=None):
             message, escaped, exp_penalty, gold_penalty = escape(message)
             if escaped:
                 # 逃走成功
-                player_hp_percent = int((player.total_hp_battle / player.total_max_hp_battle) * 100) if player.total_max_hp > 0 else 0
-                player_sp_percent = int((player.mp / player.max_mp) * 100) if player.max_mp > 0 else 0
-                
-                return render(request, "game/battle.html", {
-                    "player": player,
-                    "enemy": None,
-                    "message": message,
-                    "message_history": message_history,
-                    "showplayer_atk": showplayer_atk,
-                    "showplayer_def": showplayer_def,
-                    "showplayer_spd": showplayer_spd,
-                    "buffs": buffs,
-                    "showenemy_atk": showenemy_atk,
-                    "showenemy_def": showenemy_def,
-                    "showenemy_spd": showenemy_spd,
-                    "debuffs": debuffs,
-                    "player_skills": player_skills,
-            "player_items": player_items,
-            "stage": stage,
-                    "player_hp_percent": player_hp_percent,
-                    "player_sp_percent": player_sp_percent,
-                    "enemy_hp_percent": 0,
-                    "escaped": True,
-                    "exp_penalty": exp_penalty,
-                    "gold_penalty": gold_penalty,
-                })
+                return render(request, "game/battle.html", render_battle_screen(message, enemy_override=None, escaped=True, exp_penalty=exp_penalty, gold_penalty=gold_penalty))
             else:
                 # 逃走失敗 - 敵のターンへ
                 actione = choose_enemyAction(enemy, player, buffs, debuffs)
@@ -979,57 +964,10 @@ def battle(request, player_id, enemy_id=None):
                         return render(request, "game/gameover.html", {"player": player, "message": message})
                     else:
                         message = tohome(message)
-                        player_hp_percent = int((player.total_hp_battle / player.total_max_hp_battle) * 100) if player.total_max_hp > 0 else 0
-                        player_sp_percent = int((player.mp / player.max_mp) * 100) if player.max_mp > 0 else 0
-                        enemy_hp_percent = int((enemy.hp / enemy.max_hp) * 100) if enemy.max_hp > 0 else 0
-                        
-                        return render(request, "game/battle.html", {
-                            "player": player,
-                            "enemy": enemy,
-                            "message": message,
-                            "message_history": message_history,
-                            "showplayer_atk": showplayer_atk,
-                            "showplayer_def": showplayer_def,
-                            "showplayer_spd": showplayer_spd,
-                            "buffs": buffs,
-                            "showenemy_atk": showenemy_atk,
-                            "showenemy_def": showenemy_def,
-                            "showenemy_spd": showenemy_spd,
-                            "debuffs": debuffs,
-                            "player_skills": player_skills,
-            "player_items": player_items,
-            "stage": stage,
-                            "player_hp_percent": player_hp_percent,
-                            "player_sp_percent": player_sp_percent,
-                            "enemy_hp_percent": enemy_hp_percent,
-                            "redirect_after": True,
-                        })
+                        return render(request, "game/battle.html", render_battle_screen(message, redirect_after=True))
                 
                 # 通常の戦闘画面に戻る
-                player_hp_percent = int((player.total_hp_battle / player.total_max_hp_battle) * 100) if player.total_max_hp > 0 else 0
-                player_sp_percent = int((player.mp / player.max_mp) * 100) if player.max_mp > 0 else 0
-                enemy_hp_percent = int((enemy.hp / enemy.max_hp) * 100) if enemy.max_hp > 0 else 0
-                
-                return render(request, "game/battle.html", {
-                    "player": player,
-                    "enemy": enemy,
-                    "message": message,
-                    "message_history": message_history,
-                    "showplayer_atk": showplayer_atk,
-                    "showplayer_def": showplayer_def,
-                    "showplayer_spd": showplayer_spd,
-                    "buffs": buffs,
-                    "showenemy_atk": showenemy_atk,
-                    "showenemy_def": showenemy_def,
-                    "showenemy_spd": showenemy_spd,
-                    "debuffs": debuffs,
-                    "player_skills": player_skills,
-            "player_items": player_items,
-            "stage": stage,
-                    "player_hp_percent": player_hp_percent,
-                    "player_sp_percent": player_sp_percent,
-                    "enemy_hp_percent": enemy_hp_percent,
-                })
+                return render(request, "game/battle.html", render_battle_screen(message))
         
         actione = choose_enemyAction(enemy, player, buffs, debuffs)
 
@@ -1037,61 +975,10 @@ def battle(request, player_id, enemy_id=None):
         if spdcheck:
             message,success = playerAction(message,actionp,special,actione)
             if not success:
-                # HP・SPのゲージ用パーセンテージを計算
-                player_hp_percent = int((player.total_hp_battle / player.total_max_hp_battle) * 100) if player.total_max_hp > 0 else 0
-                player_sp_percent = int((player.mp / player.max_mp) * 100) if player.max_mp > 0 else 0
-                enemy_hp_percent = int((enemy.hp / enemy.max_hp) * 100) if enemy.max_hp > 0 else 0
-                
-                return render(request, "game/battle.html", {
-                    "player": player,
-                    "enemy": enemy,
-                    "message": message,
-                    "message_history": message_history,
-                    "showplayer_atk": showplayer_atk,
-                    "showplayer_def": showplayer_def,
-                    "showplayer_spd": showplayer_spd,
-                    "buffs": buffs,
-                    "showenemy_atk": showenemy_atk,
-                    "showenemy_def": showenemy_def,
-                    "showenemy_spd": showenemy_spd,
-                    "debuffs": debuffs,
-                    "player_skills": player_skills,
-            "player_items": player_items,
-            "stage": stage,
-                    "player_hp_percent": player_hp_percent,
-                    "player_sp_percent": player_sp_percent,
-                    "enemy_hp_percent": enemy_hp_percent,
-                })
+                return render(request, "game/battle.html", render_battle_screen(message))
             if enemy.hp <= 0:
                 message, gained_exp, gained_gold, existLevel = win(message)
-                # HP・SPのゲージ用パーセンテージを計算
-                player_hp_percent = int((player.total_hp_battle / player.total_max_hp_battle) * 100) if player.total_max_hp > 0 else 0
-                player_sp_percent = int((player.mp / player.max_mp) * 100) if player.max_mp > 0 else 0
-                enemy_hp_percent = 0  # 敵は倒された
-                
-                return render(request, "game/battle.html", {
-                    "player": player,
-                    "enemy": None,
-                    "message": message,
-                    "message_history": message_history,
-                    "showplayer_atk": showplayer_atk,
-                    "showplayer_def": showplayer_def,
-                    "showplayer_spd": showplayer_spd,
-                    "buffs": buffs,
-                    "showenemy_atk": showenemy_atk,
-                    "showenemy_def": showenemy_def,
-                    "showenemy_spd": showenemy_spd,
-                    "debuffs": debuffs,
-                    "player_skills": player_skills,
-            "player_items": player_items,
-            "stage": stage,
-                    "player_hp_percent": player_hp_percent,
-                    "player_sp_percent": player_sp_percent,
-                    "enemy_hp_percent": enemy_hp_percent,
-                    "gained_exp": gained_exp,
-                    "existLevel": existLevel,
-                    "gained_gold": gained_gold,
-                })
+                return render(request, "game/battle.html", render_battle_screen(message, enemy_override=None, gained_exp=gained_exp, existLevel=existLevel, gained_gold=gained_gold))
             ex_message,buffs,debuffs = enemyAction(message,enemy,player,buffs,debuffs,actionp,actione)
             # セッションに保存
             request.session["buffs"] = buffs
@@ -1106,34 +993,7 @@ def battle(request, player_id, enemy_id=None):
                     return render(request, "game/gameover.html", {"player": player, "message": message})
                 else:
                     message = tohome(message)
-                    # HP・SPのゲージ用パーセンテージを計算
-                    player_hp_percent = int((player.total_hp_battle / player.total_max_hp_battle) * 100) if player.total_max_hp > 0 else 0
-                    player_sp_percent = int((player.mp / player.max_mp) * 100) if player.max_mp > 0 else 0
-                    enemy_hp_percent = int((enemy.hp / enemy.max_hp) * 100) if enemy.max_hp > 0 else 0
-                    
-                    return render(request, "game/battle.html", {
-                        "player": player,
-                        "enemy": enemy,
-                        "message": message,
-                        "message_history": message_history,
-                        "showplayer_atk": showplayer_atk,
-                        "showplayer_def": showplayer_def,
-                        "showplayer_spd": showplayer_spd,
-                        "buffs": buffs,
-                        "showenemy_atk": showenemy_atk,
-                        "showenemy_def": showenemy_def,
-                        "showenemy_spd": showenemy_spd,
-                        "debuffs": debuffs,
-                        "redirect_after": True,
-                        "redirect_url": "battle_start",
-                        "recovering": True,
-                        "player_skills": player_skills,
-            "player_items": player_items,
-            "stage": stage,
-                        "player_hp_percent": player_hp_percent,
-                        "player_sp_percent": player_sp_percent,
-                        "enemy_hp_percent": enemy_hp_percent,
-                    })          
+                    return render(request, "game/battle.html", render_battle_screen(message, redirect_after=True, redirect_url="battle_start", recovering=True))          
         else:
             message,buffs,debuffs = enemyAction(message,enemy,player,buffs,debuffs,actionp,actione)
             # セッションに保存
@@ -1148,93 +1008,15 @@ def battle(request, player_id, enemy_id=None):
                     return render(request, "game/gameover.html", {"player": player, "message": message})
                 else:
                     message = tohome(message)
-                    # HP・SPのゲージ用パーセンテージを計算
-                    player_hp_percent = int((player.total_hp_battle / player.total_max_hp_battle) * 100) if player.total_max_hp > 0 else 0
-                    player_sp_percent = int((player.mp / player.max_mp) * 100) if player.max_mp > 0 else 0
-                    enemy_hp_percent = int((enemy.hp / enemy.max_hp) * 100) if enemy.max_hp > 0 else 0
-                    
-                    return render(request, "game/battle.html", {
-                        "player": player,
-                        "enemy": enemy,
-                        "message": message,
-                        "message_history": message_history,
-                        "showplayer_atk": showplayer_atk,
-                        "showplayer_def": showplayer_def,
-                        "showplayer_spd": showplayer_spd,
-                        "buffs": buffs,
-                        "showenemy_atk": showenemy_atk,
-                        "showenemy_def": showenemy_def,
-                        "showenemy_spd": showenemy_spd,
-                        "debuffs": debuffs,
-                        "redirect_after": True,
-                        "redirect_url": "battle_start",
-                        "recovering": True,
-                        "player_skills": player_skills,
-            "player_items": player_items,
-            "stage": stage,
-                        "player_hp_percent": player_hp_percent,
-                        "player_sp_percent": player_sp_percent,
-                        "enemy_hp_percent": enemy_hp_percent,
-                    })
+                    return render(request, "game/battle.html", render_battle_screen(message, redirect_after=True, redirect_url="battle_start", recovering=True))
             
             ex_message,success = playerAction(message,actionp,special,actione)
             message += ex_message
             if not success:
-                # HP・SPのゲージ用パーセンテージを計算
-                player_hp_percent = int((player.total_hp_battle / player.total_max_hp_battle) * 100) if player.total_max_hp > 0 else 0
-                player_sp_percent = int((player.mp / player.max_mp) * 100) if player.max_mp > 0 else 0
-                enemy_hp_percent = int((enemy.hp / enemy.max_hp) * 100) if enemy.max_hp > 0 else 0
-                
-                return render(request, "game/battle.html", {
-                    "player": player,
-                    "enemy": enemy,
-                    "message": message,
-                    "message_history": message_history,
-                    "showplayer_atk": showplayer_atk,
-                    "showplayer_def": showplayer_def,
-                    "showplayer_spd": showplayer_spd,
-                    "buffs": buffs,
-                    "showenemy_atk": showenemy_atk,
-                    "showenemy_def": showenemy_def,
-                    "showenemy_spd": showenemy_spd,
-                    "debuffs": debuffs,
-                    "player_skills": player_skills,
-            "player_items": player_items,
-            "stage": stage,
-                    "player_hp_percent": player_hp_percent,
-                    "player_sp_percent": player_sp_percent,
-                    "enemy_hp_percent": enemy_hp_percent,
-                })
+                return render(request, "game/battle.html", render_battle_screen(message))
             if enemy.hp <= 0:
                 message,gained_exp,gained_gold,existLevel = win(message)
-                # HP・SPのゲージ用パーセンテージを計算
-                player_hp_percent = int((player.total_hp_battle / player.total_max_hp_battle) * 100) if player.total_max_hp > 0 else 0
-                player_sp_percent = int((player.mp / player.max_mp) * 100) if player.max_mp > 0 else 0
-                enemy_hp_percent = 0  # 敵は倒された
-                
-                return render(request, "game/battle.html", {
-                    "player": player,
-                    "enemy": None,
-                    "message": message,
-                    "message_history": message_history,
-                    "showplayer_atk": showplayer_atk,
-                    "showplayer_def": showplayer_def,
-                    "showplayer_spd": showplayer_spd,
-                    "buffs": buffs,
-                    "showenemy_atk": showenemy_atk,
-                    "showenemy_def": showenemy_def,
-                    "showenemy_spd": showenemy_spd,
-                    "debuffs": debuffs,
-                    "player_skills": player_skills,
-            "player_items": player_items,
-            "stage": stage,
-                    "player_hp_percent": player_hp_percent,
-                    "player_sp_percent": player_sp_percent,
-                    "enemy_hp_percent": enemy_hp_percent,
-                    "gained_exp": gained_exp,
-                    "existLevel": existLevel,
-                    "gained_gold": gained_gold,
-                })
+                return render(request, "game/battle.html", render_battle_screen(message, enemy_override=None, gained_exp=gained_exp, existLevel=existLevel, gained_gold=gained_gold))
           
 
         # ターン経過でバフを減少
@@ -1295,62 +1077,10 @@ def battle(request, player_id, enemy_id=None):
 
         player.save()
         
-        # HP・SPのゲージ用パーセンテージを計算
-        player_hp_percent = int((player.total_hp_battle / player.total_max_hp_battle) * 100) if player.total_max_hp > 0 else 0
-        player_sp_percent = int((player.mp / player.max_mp) * 100) if player.max_mp > 0 else 0
-        enemy_hp_percent = int((enemy.hp / enemy.max_hp) * 100) if enemy.max_hp > 0 else 0
-        
-        return render(request, "game/battle.html", {
-            "player": player,
-            "enemy": enemy,
-            "message": message,
-            "message_history": message_history,
-            "showplayer_atk": showplayer_atk,
-            "showplayer_def": showplayer_def,
-            "showplayer_spd": showplayer_spd,
-            "buffs": buffs,
-            "showenemy_atk": showenemy_atk,
-            "showenemy_def": showenemy_def,
-            "showenemy_spd": showenemy_spd,
-            "debuffs": debuffs,
-            "player_skills": player_skills,
-            "player_items": player_items,
-            "stage": stage,
-            "player_items": player_items,
-            "stage": stage,
-            "player_hp_percent": player_hp_percent,
-            "player_sp_percent": player_sp_percent,
-            "enemy_hp_percent": enemy_hp_percent,
-        })
+        return render(request, "game/battle.html", render_battle_screen(message))
     
     
-    # HP・SPのゲージ用パーセンテージを計算
-    player_hp_percent = int((player.total_hp_battle / player.total_max_hp_battle) * 100) if player.total_max_hp > 0 else 0
-    player_sp_percent = int((player.mp / player.max_mp) * 100) if player.max_mp > 0 else 0
-    enemy_hp_percent = int((enemy.hp / enemy.max_hp) * 100) if enemy.max_hp > 0 else 0
-    
-    return render(request, "game/battle.html", {
-        "player": player,
-        "enemy": enemy,
-        "message": message,
-        "message_history": message_history,
-        "showplayer_atk": showplayer_atk,
-        "showplayer_def": showplayer_def,
-        "showplayer_spd": showplayer_spd,
-        "buffs": buffs,
-        "showenemy_atk": showenemy_atk,
-        "showenemy_def": showenemy_def,
-        "showenemy_spd": showenemy_spd,
-        "debuffs": debuffs,
-        "player_skills": player_skills,
-            "player_items": player_items,
-            "stage": stage,
-        "player_items": player_items,
-            "stage": stage,
-        "player_hp_percent": player_hp_percent,
-        "player_sp_percent": player_sp_percent,
-        "enemy_hp_percent": enemy_hp_percent,
-    })
+    return render(request, "game/battle.html", render_battle_screen(message))
 
 
 def shop(request, player_id):
