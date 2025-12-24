@@ -16,4 +16,5 @@ urlpatterns = [
     path('equipment/<int:player_id>/', views.equipment_change, name='equipment_change'),  # 装備変更
     path('equip/<int:player_id>/<int:equipment_id>/', views.equip_item, name='equip_item'),  # 装備実行
     path('inventory/<int:player_id>/', views.inventory, name='inventory'),  # 持ち物画面
+    path('gameover/', views.gameover, name='gameover'),  # ゲームオーバー画面
 ]

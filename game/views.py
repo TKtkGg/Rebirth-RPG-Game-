@@ -1320,3 +1320,12 @@ def inventory(request, player_id):
         'search_query': search_query,
     })
 
+def gameover(request):
+    # 仮の値（後で連携可能）
+    score = 100000
+    initial_point = 10
+    return render(request, 'game/gameover.html', {
+        'score': score,
+        'initial_point': initial_point,
+    })
+

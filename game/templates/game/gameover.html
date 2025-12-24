@@ -1,37 +1,135 @@
-{% extends 'game/base.html' %}
-{% block title %}ゲームオーバー{% endblock %}
-{% block content %}
-    <div class="flex flex-col items-center justify-center text-center p-6">
-        <h1 id="gameover" class="text-5xl font-bold text-red-600 animate-pulse mb-6">
-            GAME OVER
-        </h1>
-
-        <p class="text-lg text-gray-700 mb-4">
-            {{ message }}
-        </p>
-
-        <form action="{% url 'game:home' %}" method="get">
-            <button type="submit" 
-                    class="btn btn-primary text-xl px-6 py-3 rounded-2xl shadow-lg hover:scale-105 transition">
-                最初からやり直す
-            </button>
-        </form>
-    </div>
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ゲームオーバー</title>
     <style>
-        /* 背景にフェードする演出 */
+        html, body {
+            margin: 0;
+            padding: 0;
+            width: 100vw;
+            height: 100vh;
+        }
         body {
-            background: radial-gradient(circle, #000000 0%, #1a1a1a 100%);
-            color: white;
+            background: url('/static/game/img/ゲームオーバー.jpg') no-repeat center center fixed;
+            background-size: cover;
+            box-sizing: border-box;
         }
-
-        /* 赤い点滅を追加 */
-        @keyframes flicker {
-            0% { opacity: 1; color: red; }
-            50% { opacity: 0.2; color: rgb(125, 0, 0);}
-            100% { opacity: 1; color: red;}
+        .gameover-container {
+            width: 100vw;
+            height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: flex-start;
         }
-        #gameover {
-            animation: flicker 1.5s infinite;
+        .gameover-title {
+            margin-top: 40px;
+            font-size: 5rem;
+            font-weight: bold;
+            color: #e53935;
+            text-shadow: 2px 2px 8px #000;
+            letter-spacing: 0.1em;
+        }
+        .score-info {
+            position: absolute;
+            top: 160px;
+            right: 60px;
+            display: flex;
+            flex-direction: column;
+            align-items: flex-end;
+            background: rgba(0,0,0,0.35);
+            border-radius: 20px;
+            padding: 20px 28px;
+            color: #fff;
+            font-size: 3.2rem;
+            font-weight: bold;
+            text-align: right;
+            z-index: 10;
+            width: 360px;
+            box-shadow: 0 4px 24px rgba(0,0,0,0.25);
+        }
+        .score-label {
+            font-size: 2.2rem;
+            font-weight: bold;
+            color: #eee;
         }
     </style>
-{% endblock %}
+</head>
+<body>
+    <div class="gameover-container">
+        <h1 class="gameover-title">GAME OVER</h1>
+        <div class="score-info">
+            <div><span class="score-label">Score：</span><span id="score-value">{{ score }}</span></div>
+            <div style="margin-top: 24px;"><span class="score-label">初期ポイント：</span><span id="init-point-value">0</span></div>
+        </div>
+    </div>
+    <div class="gameover-buttons">
+        <button class="gameover-btn" id="breakdown-btn" type="button">内訳を確認する</button>
+        <form action="/" method="get" style="margin:0;">
+            <button class="gameover-btn" type="submit">タイトルに戻る</button>
+        </form>
+    </div>
+        <style>
+            .gameover-buttons {
+                position: fixed;
+                right: 60px;
+                bottom: 60px;
+                display: flex;
+                flex-direction: column;
+                gap: 32px;
+                z-index: 20;
+                align-items: flex-end;
+            }
+            .gameover-btn {
+                font-size: 2.2rem;
+                font-weight: bold;
+                padding: 18px 48px;
+                border-radius: 16px;
+                border: 3px solid #222;
+                background: rgba(255,255,255,0.92);
+                color: #222;
+                box-shadow: 0 2px 12px rgba(0,0,0,0.18);
+                cursor: pointer;
+                transition: background 0.2s, color 0.2s, transform 0.1s;
+            }
+            .gameover-btn:hover {
+                background: #222;
+                color: #fff;
+                transform: scale(1.04);
+            }
+        </style>
+    <script>
+        // アニメーション用パラメータ
+        const startScore = {{ score }};
+        const targetInitPoint = {{ initial_point }};
+        const scoreElem = document.getElementById('score-value');
+        const pointElem = document.getElementById('init-point-value');
+        // 1秒あたり2.5万ずつ減らす
+        const scoreStep = 31111 / 60; // 60fps相当
+        const totalFrames = Math.ceil(startScore / scoreStep);
+        let currentScore = startScore;
+        let currentPoint = 0;
+        let frame = 0;
+        function animate() {
+            if (currentScore > 0) {
+                currentScore = Math.max(0, currentScore - scoreStep);
+                scoreElem.textContent = Math.floor(currentScore);
+            }
+            // 初期ポイントはスコアが0になるまで均等に増やす
+            if (frame < totalFrames) {
+                currentPoint = Math.floor(targetInitPoint * (frame / totalFrames));
+                pointElem.textContent = currentPoint;
+            } else {
+                pointElem.textContent = targetInitPoint;
+            }
+            frame++;
+            if (currentScore > 0 || currentPoint < targetInitPoint) {
+                requestAnimationFrame(animate);
+            }
+        }
+        animate();
+    </script>
+</body>
+</html>
