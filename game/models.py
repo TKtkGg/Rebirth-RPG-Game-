@@ -225,34 +225,41 @@ class Player(models.Model):
 
 class Enemy(models.Model):
     name = models.CharField(max_length=30)
+    
+    # 戦闘中の現在のステータス
     max_hp = models.IntegerField(default=50)
     hp = models.IntegerField(default=50)
     atk = models.IntegerField(default=8)
     defense = models.IntegerField(default=3)
     spd = models.IntegerField(default=5)
     exp = models.IntegerField(default=120)
+    drop_gold = models.IntegerField(default=20)  # ドロップされるゴールド量（レベル変動）
+    
+    # 戦闘管理
     is_defeated = models.BooleanField(default=False)
     level = models.IntegerField(default=1)
     appearance_rate = models.FloatField(default=1.0)  # 出現率（1.0で等倍）
-    max_hp_default = models.IntegerField(default=50)
-    atk_default = models.IntegerField(default=8)
-    defense_default = models.IntegerField(default=3)
-    spd_default = models.IntegerField(default=5)
-    exp_default = models.IntegerField(default=120)
-    level_default = models.IntegerField(default=1)
+    
+    # このモンスターが出現する最小プレイヤーレベル
+    appear_level = models.IntegerField(default=1)
+    # レベル1時点での基本ステータス（このモンスターの強さの基準）
+    base_max_hp = models.IntegerField(default=50)
+    base_atk = models.IntegerField(default=8)
+    base_def = models.IntegerField(default=3)
+    base_spd = models.IntegerField(default=5)
+    base_exp = models.IntegerField(default=120)
+    drop_gold_base = models.IntegerField(default=20)  # レベル1時点でのドロップゴールド量
+
+    # ドロップ可能な装備
+    drop_equipment = models.ManyToManyField(Equipment, blank=True, related_name='dropped_by')
     
     # 強敵フラグ
     is_strong = models.BooleanField(default=False)
-    
-    # ドロップ可能な装備
-    drop_equipment = models.ManyToManyField(Equipment, blank=True, related_name='dropped_by')
-    drop_gold = models.IntegerField(default=20)  # ドロップされるゴールド量（レベル変動）
-    drop_gold_default = models.IntegerField(default=20)  # デフォルトのドロップゴールド量
     
     # 出現するステージ
     stages = models.ManyToManyField(Stage, blank=True, related_name='enemies')
     
     def __str__(self):
-        return f"{self.name} (Lv.{self.level_default}) (ステージ: {', '.join([stage.name for stage in self.stages.all()])})"
+        return f"{self.name} (出現条件: Lv.{self.appear_level}以上) (ステージ: {', '.join([stage.name for stage in self.stages.all()])})"
 
     

@@ -729,6 +729,32 @@
             messageArea.scrollTop = messageArea.scrollHeight;
         }
     });
+    
+    // デバッグ用：kキーでゲームオーバー
+    document.addEventListener('keydown', function(event) {
+        if (event.key === 'k' || event.key === 'K') {
+            if (confirm('デバッグ：即座にゲームオーバーにしますか？')) {
+                const form = document.createElement('form');
+                form.method = 'POST';
+                form.action = '';
+                
+                const csrfInput = document.createElement('input');
+                csrfInput.type = 'hidden';
+                csrfInput.name = 'csrfmiddlewaretoken';
+                csrfInput.value = '{{ csrf_token }}';
+                form.appendChild(csrfInput);
+                
+                const actionInput = document.createElement('input');
+                actionInput.type = 'hidden';
+                actionInput.name = 'action';
+                actionInput.value = 'debug_gameover';
+                form.appendChild(actionInput);
+                
+                document.body.appendChild(form);
+                form.submit();
+            }
+        }
+    });
 </script>
 
 {% endblock %}

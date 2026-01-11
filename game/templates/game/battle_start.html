@@ -446,7 +446,10 @@
     
     <div class="button-panel">
         <a href="{% url 'game:stage_select' player.id %}" style="text-decoration: none;">
-            <button class="rpg-button adventure-button">冒険</button>
+            <button class="rpg-button adventure-button" style="position: relative;">
+                冒険
+                <div style="position: absolute; left: 0; right: 0; bottom: 8px; font-size: 14px; text-align: center;">残り復活回数 : {{ continue_count }}回</div>
+            </button>
         </a>
         
         <a href="{% url 'game:shop' player.id %}" style="text-decoration: none;">

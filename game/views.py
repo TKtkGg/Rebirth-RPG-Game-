@@ -107,15 +107,15 @@ def start_game(request):
         if job == "戦士":
             base_hp, base_atk, base_def, base_spd = 100, 5, 5, 5
             job_bonus_hp, job_bonus_atk, job_bonus_def, job_bonus_spd = 10, 5, 5, -3
-            stat_points = 0
+            stat_points = request.user.initial_points if request.user.is_authenticated else 0
         elif job == "魔法使い":
             base_hp, base_atk, base_def, base_spd = 100, 5, 5, 5
             job_bonus_hp, job_bonus_atk, job_bonus_def, job_bonus_spd = -10, 8, -2, 3
-            stat_points = 0
+            stat_points = request.user.initial_points if request.user.is_authenticated else 0
         elif job == "忍者":
             base_hp, base_atk, base_def, base_spd = 100, 5, 5, 5
             job_bonus_hp, job_bonus_atk, job_bonus_def, job_bonus_spd = -5, 5, 0, 7
-            stat_points = 0
+            stat_points = request.user.initial_points if request.user.is_authenticated else 0
         else:
             base_hp, base_atk, base_def, base_spd = 100, 5, 5, 5
             job_bonus_hp, job_bonus_atk, job_bonus_def, job_bonus_spd = 0, 0, 0, 0
@@ -292,8 +292,7 @@ def battle(request, player_id, enemy_id=None):
         if not stage_enemies:
             # ステージに敵が登録されていない場合、レベル範囲で絞り込み
             stage_enemies = list(Enemy.objects.filter(
-                level_default__gte=min_enemy_level, 
-                level_default__lte=max_enemy_level
+                appear_level__lte=max_enemy_level
             ))
         
         if not stage_enemies:
@@ -319,12 +318,12 @@ def battle(request, player_id, enemy_id=None):
         weighted_enemies = []
         for enemy in stage_enemies:
             # 敵のレベルを決定（プレイヤーレベル基準の範囲内でランダム）
-            # デフォルトレベルが範囲外の敵はスキップ
-            if enemy.level_default > max_enemy_level:
+            # 出現レベル条件を満たさない敵はスキップ
+            if enemy.appear_level > player.level:
                 continue
             
             # 敵のレベルは min_enemy_level から max_enemy_level の範囲内
-            enemy_min_level = max(min_enemy_level, enemy.level_default)
+            enemy_min_level = min_enemy_level
             enemy_max_level = max_enemy_level
             
             if enemy_min_level > enemy_max_level:
@@ -361,14 +360,14 @@ def battle(request, player_id, enemy_id=None):
             is_strong = True
             enemy.level += random.randint(8, 15)
         
-        # レベルに応じてステータスを変更
-        enemy.max_hp = enemy.max_hp_default + (enemy.level - enemy.level_default) * enemy.max_hp_default // 10
+        # レベルに応じてステータスを変更（レベル1基準）
+        enemy.max_hp = enemy.base_max_hp + (enemy.level - 1) * enemy.base_max_hp // 10
         enemy.hp = enemy.max_hp
-        enemy.atk = enemy.atk_default + (enemy.level - enemy.level_default) * enemy.atk_default // 5
-        enemy.defense = enemy.defense_default + (enemy.level - enemy.level_default) * enemy.defense_default // 5
-        enemy.spd = enemy.spd_default + (enemy.level - enemy.level_default) * enemy.spd_default // 5
-        enemy.exp = enemy.exp_default + (enemy.level - enemy.level_default) * enemy.exp_default // 10
-        enemy.drop_gold = enemy.drop_gold_default + (enemy.level - enemy.level_default) * enemy.drop_gold_default // 10
+        enemy.atk = enemy.base_atk + (enemy.level - 1) * enemy.base_atk // 5
+        enemy.defense = enemy.base_def + (enemy.level - 1) * enemy.base_def // 5
+        enemy.spd = enemy.base_spd + (enemy.level - 1) * enemy.base_spd // 5
+        enemy.exp = enemy.base_exp + (enemy.level - 1) * enemy.base_exp // 10
+        enemy.drop_gold = enemy.drop_gold_base + (enemy.level - 1) * enemy.drop_gold_base // 10
         enemy.is_defeated = False
         enemy.is_strong = is_strong
         enemy.save()
@@ -497,13 +496,15 @@ def battle(request, player_id, enemy_id=None):
         
         player.save()
 
-        # 敵のステータスをデフォルトに戻す
+        # 敵のステータスをリセット
         enemies = Enemy.objects.all()
         for enemy in enemies:
-            enemy.hp = enemy.max_hp
-            enemy.level = enemy.level_default
-            enemy.atk = enemy.atk_default  # デフォルト値に戻す
-            enemy.defense = enemy.defense_default  # デフォルト値に戻す
+            enemy.level = 1
+            enemy.hp = enemy.base_max_hp
+            enemy.max_hp = enemy.base_max_hp
+            enemy.atk = enemy.base_atk
+            enemy.defense = enemy.base_def
+            enemy.spd = enemy.base_spd
             enemy.is_defeated = False
             enemy.save()
 
@@ -883,6 +884,15 @@ def battle(request, player_id, enemy_id=None):
         special = request.POST.get('special')
         use_item_id = request.POST.get('use_item')
         
+        # デバッグ用：kキーでゲームオーバー
+        if actionp == 'debug_gameover':
+            player.defeats = 3  # 完全敗北状態にする
+            player.save()
+            message = "【デバッグ】即座にゲームオーバー！\n"
+            message = game_over(message)
+            request.session['gameover_player_id'] = player.id
+            return redirect('game:gameover')
+        
         # アイテム使用処理
         if use_item_id:
             try:
@@ -928,7 +938,8 @@ def battle(request, player_id, enemy_id=None):
                     player.defeats += 1
                     if player.defeats >= 3:
                         message = game_over(message)
-                        return render(request, "game/gameover.html", {"player": player, "message": message})
+                        request.session['gameover_player_id'] = player.id
+                        return redirect('game:gameover')
                     else:
                         message = tohome(message)
                         return render_battle_screen(message, redirect_after=True)
@@ -961,7 +972,7 @@ def battle(request, player_id, enemy_id=None):
                     player.defeats += 1
                     if player.defeats >= 3:
                         message = game_over(message)
-                        return render(request, "game/gameover.html", {"player": player, "message": message})
+                        return redirect('game:gameover')
                     else:
                         message = tohome(message)
                         return render(request, "game/battle.html", render_battle_screen(message, redirect_after=True))
@@ -990,7 +1001,8 @@ def battle(request, player_id, enemy_id=None):
                 player.defeats += 1
                 if player.defeats >= 3:
                     message = game_over(message)
-                    return render(request, "game/gameover.html", {"player": player, "message": message})
+                    request.session['gameover_player_id'] = player.id
+                    return redirect('game:gameover')
                 else:
                     message = tohome(message)
                     return render(request, "game/battle.html", render_battle_screen(message, redirect_after=True, redirect_url="battle_start", recovering=True))          
@@ -1005,7 +1017,8 @@ def battle(request, player_id, enemy_id=None):
                 player.defeats += 1
                 if player.defeats >= 3:
                     message = game_over(message)
-                    return render(request, "game/gameover.html", {"player": player, "message": message})
+                    request.session['gameover_player_id'] = player.id
+                    return redirect('game:gameover')
                 else:
                     message = tohome(message)
                     return render(request, "game/battle.html", render_battle_screen(message, redirect_after=True, redirect_url="battle_start", recovering=True))
@@ -1321,9 +1334,33 @@ def inventory(request, player_id):
     })
 
 def gameover(request):
-    # 仮の値（後で連携可能）
+    # スコア計算（現在は固定値）
     score = 100000
-    initial_point = 10
+    initial_point = score // 10000  # 例: スコアの1/10を初期ポイントとする
+    
+    # セッションからplayer_idを取得してPlayerを削除
+    player_id = request.session.get('gameover_player_id')
+    if player_id:
+        try:
+            player = Player.objects.get(id=player_id)
+            player.delete()
+            del request.session['gameover_player_id']
+        except Player.DoesNotExist:
+            pass
+    
+    # ログインユーザーの場合、アカウントにスコアとポイントを保存
+    if request.user.is_authenticated:
+        user = request.user
+        
+        # 最高スコアの場合のみ更新
+        if score > user.best_score:
+            user.best_score = score
+        
+        # 初期ポイントは毎回更新
+        user.initial_points = initial_point
+        user.total_plays += 1
+        user.save()
+    
     return render(request, 'game/gameover.html', {
         'score': score,
         'initial_point': initial_point,
