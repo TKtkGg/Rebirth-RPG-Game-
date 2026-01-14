@@ -329,6 +329,66 @@
     .shop-item.sold .shop-item-price {
         color: #ff6b6b;
     }
+    
+    /* ツールチップスタイル */
+    .item-tooltip {
+        position: fixed;
+        background: rgba(0, 0, 0, 0.9);
+        border: 2px solid rgba(255, 255, 255, 0.6);
+        border-radius: 10px;
+        padding: 15px 20px;
+        color: white;
+        font-size: 18px;
+        pointer-events: none;
+        z-index: 9999;
+        display: none;
+        min-width: 250px;
+        max-width: 350px;
+        box-shadow: 0 4px 20px rgba(0, 0, 0, 0.8);
+    }
+    
+    .item-tooltip.active {
+        display: block;
+    }
+    
+    .tooltip-name {
+        font-size: 22px;
+        font-weight: bold;
+        color: #e0e0e0;
+        margin-bottom: 10px;
+        border-bottom: 1px solid rgba(255, 255, 255, 0.3);
+        padding-bottom: 5px;
+    }
+    
+    .tooltip-description {
+        font-size: 16px;
+        color: #e0e0e0;
+        margin-bottom: 10px;
+        line-height: 1.4;
+    }
+    
+    .tooltip-stats {
+        font-size: 16px;
+        color: #90ee90;
+        line-height: 1.6;
+    }
+    
+    .tooltip-stats .stat-line {
+        display: flex;
+        gap: 10px;
+    }
+    
+    .tooltip-stats .stat-positive {
+        color: #90ee90;
+    }
+    
+    .tooltip-stats .stat-negative {
+        color: #ff6b6b;
+    }
+    
+    .tooltip-stats .stat-zero {
+        color: #808080;
+    }
 </style>
 
 <div class="shop-container" id="shopContainer">
@@ -343,7 +403,15 @@
         <div class="shop-grid">
             <!-- 武器 -->
             {% for weapon in weapons %}
-            <div class="shop-item" data-item-name="{{ weapon.name }}" data-item-price="{{ weapon.price }}" data-item-type="weapon">
+            <div class="shop-item" 
+                 data-item-name="{{ weapon.name }}" 
+                 data-item-price="{{ weapon.price }}" 
+                 data-item-type="weapon"
+                 data-description="{{ weapon.description }}"
+                 data-atk-bonus="{{ weapon.atk_bonus }}"
+                 data-def-bonus="{{ weapon.def_bonus }}"
+                 data-hp-bonus="{{ weapon.hp_bonus }}"
+                 data-spd-bonus="{{ weapon.spd_bonus }}">
                 <img src="{% static 'game/img/武器_アイコン.png' %}" alt="武器" class="shop-item-icon">
                 <div class="shop-item-name">{{ weapon.name }}</div>
                 <div class="shop-item-price">¥{{ weapon.price }}</div>
@@ -352,7 +420,15 @@
             
             <!-- 防具 -->
             {% for armor in armors %}
-            <div class="shop-item" data-item-name="{{ armor.name }}" data-item-price="{{ armor.price }}" data-item-type="armor">
+            <div class="shop-item" 
+                 data-item-name="{{ armor.name }}" 
+                 data-item-price="{{ armor.price }}" 
+                 data-item-type="armor"
+                 data-description="{{ armor.description }}"
+                 data-atk-bonus="{{ armor.atk_bonus }}"
+                 data-def-bonus="{{ armor.def_bonus }}"
+                 data-hp-bonus="{{ armor.hp_bonus }}"
+                 data-spd-bonus="{{ armor.spd_bonus }}">
                 <img src="{% static 'game/img/防具_アイコン.png' %}" alt="防具" class="shop-item-icon">
                 <div class="shop-item-name">{{ armor.name }}</div>
                 <div class="shop-item-price">¥{{ armor.price }}</div>
@@ -361,7 +437,15 @@
             
             <!-- アイテム -->
             {% for item in items %}
-            <div class="shop-item" data-item-name="{{ item.name }}" data-item-price="{{ item.price }}" data-item-type="item" data-current-stock="{{ item.current_stock }}" data-max-stock="{{ item.max_stock }}">
+            <div class="shop-item" 
+                 data-item-name="{{ item.name }}" 
+                 data-item-price="{{ item.price }}" 
+                 data-item-type="item" 
+                 data-current-stock="{{ item.current_stock }}" 
+                 data-max-stock="{{ item.max_stock }}"
+                 data-description="{{ item.description }}"
+                 data-effect-amount="{{ item.effect_amount }}"
+                 data-target="{{ item.target }}">
                 <img src="{% static 'game/img/回復_アイコン.png' %}" alt="アイテム" class="shop-item-icon">
                 <div class="shop-item-name">{{ item.name }}</div>
                 <div class="shop-item-price">¥{{ item.price }}</div>
@@ -393,6 +477,11 @@
     </div>
 </div>
 
+<!-- ツールチップ -->
+<div class="item-tooltip" id="itemTooltip">
+    <div id="tooltipContent"></div>
+</div>
+
 <script>
     // DjangoテンプレートからJavaScriptに値を渡す
     const playerGold = {{ player.gold }};
@@ -411,6 +500,9 @@
     const quantityDisplay = document.getElementById('quantityDisplay');
     const decreaseButton = document.getElementById('decreaseButton');
     const increaseButton = document.getElementById('increaseButton');
+    
+    const tooltip = document.getElementById('itemTooltip');
+    const tooltipContent = document.getElementById('tooltipContent');
     
     let currentItem = null;
     let currentQuantity = 1;
@@ -457,6 +549,68 @@
             // 背景を暗くしてモーダルを表示
             shopContainer.classList.add('dimmed');
             modalOverlay.classList.add('active');
+        });
+        
+        // マウスオーバー時にツールチップを表示
+        item.addEventListener('mouseenter', function() {
+            const itemName = this.dataset.itemName;
+            const itemType = this.dataset.itemType;
+            const description = this.dataset.description || '説明なし';
+            
+            // ツールチップの内容を生成
+            let tooltipHTML = `<div class="tooltip-name">${itemName}</div>`;
+            tooltipHTML += `<div class="tooltip-description">${description}</div>`;
+            tooltipHTML += `<div class="tooltip-stats">`;
+            
+            if (itemType === 'weapon' || itemType === 'armor') {
+                // 装備の場合：能力値ボーナスを表示
+                const hpBonus = parseInt(this.dataset.hpBonus);
+                const atkBonus = parseInt(this.dataset.atkBonus);
+                const defBonus = parseInt(this.dataset.defBonus);
+                const spdBonus = parseInt(this.dataset.spdBonus);
+                
+                if (hpBonus !== 0) {
+                    const className = hpBonus > 0 ? 'stat-positive' : 'stat-negative';
+                    const sign = hpBonus > 0 ? '+' : '';
+                    tooltipHTML += `<div class="stat-line"><span class="${className}">HP : ${sign}${hpBonus}</span></div>`;
+                }
+                if (atkBonus !== 0) {
+                    const className = atkBonus > 0 ? 'stat-positive' : 'stat-negative';
+                    const sign = atkBonus > 0 ? '+' : '';
+                    tooltipHTML += `<div class="stat-line"><span class="${className}">ATK : ${sign}${atkBonus}</span></div>`;
+                }
+                if (defBonus !== 0) {
+                    const className = defBonus > 0 ? 'stat-positive' : 'stat-negative';
+                    const sign = defBonus > 0 ? '+' : '';
+                    tooltipHTML += `<div class="stat-line"><span class="${className}">DEF : ${sign}${defBonus}</span></div>`;
+                }
+                if (spdBonus !== 0) {
+                    const className = spdBonus > 0 ? 'stat-positive' : 'stat-negative';
+                    const sign = spdBonus > 0 ? '+' : '';
+                    tooltipHTML += `<div class="stat-line"><span class="${className}">SPD : ${sign}${spdBonus}</span></div>`;
+                }
+            } else if (itemType === 'item') {
+                // アイテムの場合：回復量を表示
+                const effectAmount = parseInt(this.dataset.effectAmount);
+                const target = this.dataset.target;
+                const targetName = target === 'hp' ? 'HP' : 'SP';
+                tooltipHTML += `<div class="stat-line"><span class="stat-positive">${targetName} : +${effectAmount}</span></div>`;
+            }
+            
+            tooltipHTML += `</div>`;
+            tooltipContent.innerHTML = tooltipHTML;
+            
+            tooltip.classList.add('active');
+        });
+        
+        // マウス移動時にツールチップを追従
+        item.addEventListener('mousemove', function(e) {
+            positionTooltip(e);
+        });
+        
+        // マウスが離れたらツールチップを非表示
+        item.addEventListener('mouseleave', function() {
+            tooltip.classList.remove('active');
         });
     });
     
@@ -564,6 +718,43 @@
             closeModal();
         }
     });
+    
+    // ツールチップの位置を調整する関数
+    function positionTooltip(e) {
+        const mouseX = e.clientX;
+        const mouseY = e.clientY;
+        const tooltipWidth = tooltip.offsetWidth;
+        const tooltipHeight = tooltip.offsetHeight;
+        const windowWidth = window.innerWidth;
+        const windowHeight = window.innerHeight;
+        
+        const offset = 15; // カーソルからの距離
+        let x = mouseX + offset;
+        let y = mouseY - tooltipHeight - offset;
+        
+        // 右側にはみ出る場合は左側に表示
+        if (x + tooltipWidth > windowWidth) {
+            x = mouseX - tooltipWidth - offset;
+        }
+        
+        // 上側にはみ出る場合は下側に表示
+        if (y < 0) {
+            y = mouseY + offset;
+        }
+        
+        // 下側にはみ出る場合は上側に調整
+        if (y + tooltipHeight > windowHeight) {
+            y = windowHeight - tooltipHeight - offset;
+        }
+        
+        // 左側にはみ出る場合は右側に調整
+        if (x < 0) {
+            x = mouseX + offset;
+        }
+        
+        tooltip.style.left = x + 'px';
+        tooltip.style.top = y + 'px';
+    }
 </script>
 
 {% endblock %}

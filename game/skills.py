@@ -90,6 +90,17 @@ ENEMY_SKILLS = {
             {"type": "debuf", "target": "player", "stat": "spd", "multiplier": 0.6, "turn": 3}
         ], "priority": 3, "max_uses": 5},
     ],
+    "フェーザン": [
+        {"name": "足蹴り", "effects": [
+            {"type": "attack", "target": "player", "multiplier": 1.0}
+        ], "priority": 5},
+        {"name": "足受け", "effects": [
+            {"type": "defense", "target": "enemy", "multiplier": 1.0}
+        ], "priority": 2},
+        {"name": "俊敏", "effects": [
+            {"type": "buf", "target": "enemy", "stat":"spd","multiplier": 1.7, "turn": 3}
+        ], "priority": 3, "max_uses": 4},
+    ],
 }
 
 # プレイヤースキル定義

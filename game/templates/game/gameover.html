@@ -67,9 +67,14 @@
     </div>
     <div class="gameover-buttons">
         <button class="gameover-btn" id="breakdown-btn" type="button">内訳を確認する</button>
-        <form action="/" method="get" style="margin:0;">
-            <button class="gameover-btn" type="submit">タイトルに戻る</button>
-        </form>
+        <div style="display: flex; gap: 24px;">
+            <form action="/" method="get" style="margin:0;">
+                <button class="gameover-btn" type="submit">タイトルに戻る</button>
+            </form>
+            <form action="{% url 'game:start' %}" method="get" style="margin:0;">
+                <button class="gameover-btn" type="submit">続けてプレイ　</button>
+            </form>
+        </div>
     </div>
         <style>
             .gameover-buttons {

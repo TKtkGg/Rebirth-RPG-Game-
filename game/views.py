@@ -106,15 +106,15 @@ def start_game(request):
         # ジョブに応じたステータス設定
         if job == "戦士":
             base_hp, base_atk, base_def, base_spd = 100, 5, 5, 5
-            job_bonus_hp, job_bonus_atk, job_bonus_def, job_bonus_spd = 10, 5, 5, -3
+            job_bonus_hp, job_bonus_atk, job_bonus_def, job_bonus_spd = 10, 3, 3, -3
             stat_points = request.user.initial_points if request.user.is_authenticated else 0
         elif job == "魔法使い":
             base_hp, base_atk, base_def, base_spd = 100, 5, 5, 5
-            job_bonus_hp, job_bonus_atk, job_bonus_def, job_bonus_spd = -10, 8, -2, 3
+            job_bonus_hp, job_bonus_atk, job_bonus_def, job_bonus_spd = -10, 5, -2, 1
             stat_points = request.user.initial_points if request.user.is_authenticated else 0
         elif job == "忍者":
             base_hp, base_atk, base_def, base_spd = 100, 5, 5, 5
-            job_bonus_hp, job_bonus_atk, job_bonus_def, job_bonus_spd = -5, 5, 0, 7
+            job_bonus_hp, job_bonus_atk, job_bonus_def, job_bonus_spd = -5, 3, 0, 3
             stat_points = request.user.initial_points if request.user.is_authenticated else 0
         else:
             base_hp, base_atk, base_def, base_spd = 100, 5, 5, 5
@@ -134,7 +134,7 @@ def start_game(request):
                 is_guest=False,
                 level=1,
                 exp=0,
-                next_exp=500,
+                next_exp=300,
                 max_hp=base_hp + job_bonus_hp,
                 hp=base_hp + job_bonus_hp,
                 atk=base_atk + job_bonus_atk,
@@ -155,7 +155,7 @@ def start_game(request):
                 is_guest=True,
                 level=1,
                 exp=0,
-                next_exp=500,
+                next_exp=300,
                 max_hp=base_hp + job_bonus_hp,
                 hp=base_hp + job_bonus_hp,
                 atk=base_atk + job_bonus_atk,
@@ -273,16 +273,24 @@ def battle(request, player_id, enemy_id=None):
     # 新しい戦闘開始時のみ敵を選択（stage_idがGETパラメータにある場合、またはenemy_idが存在しない場合）
     if (request.GET.get('stage_id') or not enemy_id) and not enemy_id:
         # プレイヤーレベルに応じた敵のレベル範囲を決定
-        if player.level <= 3:
-            # レベル3以下：自分のレベル+1が上限
+        if player.level <= 5:
+            # レベル5以下：自分のレベル+1が上限
             min_enemy_level = stage.min_enemy_level
             max_enemy_level = min(player.level + 1, stage.max_enemy_level)
-        elif player.level <= 7:
-            # レベル7以下：自分のレベル+3が上限
+        elif player.level <= 8:
+            # レベル8以下：自分のレベル+2が上限
+            min_enemy_level = stage.min_enemy_level
+            max_enemy_level = min(player.level + 2, stage.max_enemy_level)
+        elif player.level <= 10:
+            # レベル10以下：自分のレベル+3が上限
             min_enemy_level = stage.min_enemy_level
             max_enemy_level = min(player.level + 3, stage.max_enemy_level)
+        elif player.level <= 15:
+            # レベル15以下：自分のレベル+4が上限
+            min_enemy_level = stage.min_enemy_level
+            max_enemy_level = min(player.level + 4, stage.max_enemy_level)
         else:
-            # レベル10以上：自分のレベル+5が上限
+            # レベル16以上：自分のレベル+5が上限
             min_enemy_level = stage.min_enemy_level
             max_enemy_level = min(player.level + 5, stage.max_enemy_level)
         
@@ -348,17 +356,32 @@ def battle(request, player_id, enemy_id=None):
 
             # appearance_rateで重みを調整（例: 1.5なら1.5倍、0.5なら半分）
             weight = max(1, int(base_weight * max(enemy.appearance_rate, 0)))
+            
+            # プレイヤーレベルに基づく出現率補正
+            if potential_level > player.level:
+                if player.level <= 5:
+                    weight = int(weight * 0.75)
+                elif player.level <= 8:
+                    weight = int(weight * 0.4)
+                elif player.level <= 10:
+                    weight = int(weight * 0.5)
+                elif player.level <= 15:
+                    weight = int(weight * 0.4)
+                else:
+                    weight = int(weight * 0.5)
+            
+            weight = max(1, weight)  # 最低でも1
             weighted_enemies.extend([(enemy, potential_level)] * weight)
         
         # ランダムに敵を選択
         enemy, selected_level = random.choice(weighted_enemies)
         enemy.level = selected_level
         
-        # 強敵判定（プレイヤーレベル10以上で10%の確率）
+        # 強敵判定（プレイヤーレベル10以上で5%の確率）
         is_strong = False
-        if player.level >= 10 and random.random() < 0.1:
+        if player.level >= 10 and random.random() < 0.05:
             is_strong = True
-            enemy.level += random.randint(8, 15)
+            enemy.level += random.randint(10, 15)
         
         # レベルに応じてステータスを変更（レベル1基準）
         enemy.max_hp = enemy.base_max_hp + (enemy.level - 1) * enemy.base_max_hp // 10
@@ -366,8 +389,16 @@ def battle(request, player_id, enemy_id=None):
         enemy.atk = enemy.base_atk + (enemy.level - 1) * enemy.base_atk // 5
         enemy.defense = enemy.base_def + (enemy.level - 1) * enemy.base_def // 5
         enemy.spd = enemy.base_spd + (enemy.level - 1) * enemy.base_spd // 5
-        enemy.exp = enemy.base_exp + (enemy.level - 1) * enemy.base_exp // 10
-        enemy.drop_gold = enemy.drop_gold_base + (enemy.level - 1) * enemy.drop_gold_base // 10
+        
+        # expとゴールドの計算（敵のレベルがプレイヤーより高い場合は報酬増加）
+        base_high_exp = enemy.base_exp + (enemy.level - 1) * enemy.base_exp // 3
+        if enemy.level > player.level:
+            enemy.exp = int(base_high_exp * random.uniform(1.3, 1.4))
+            enemy.drop_gold = enemy.drop_gold_base + (enemy.level - 1) * enemy.drop_gold_base // 3
+        else:
+            enemy.exp = int(base_high_exp * random.uniform(0.6, 0.7))
+            enemy.drop_gold = enemy.drop_gold_base + (enemy.level - 1) * enemy.drop_gold_base // 10
+        
         enemy.is_defeated = False
         enemy.is_strong = is_strong
         enemy.save()
@@ -528,6 +559,11 @@ def battle(request, player_id, enemy_id=None):
         
         # 戦闘用HPを素のHPに反映
         player.sync_hp_from_battle()
+        
+        # SPを全回復
+        player.mp = player.max_mp
+        player.save()
+        
         return message
     
     def win(message):
@@ -552,7 +588,7 @@ def battle(request, player_id, enemy_id=None):
             player.level += 1
             player.stat_points += 3
             player.exp -= player.next_exp
-            player.next_exp = int(500 + player.level * 20 * player.level)
+            player.next_exp = int(300 + player.level * 40 * player.level)
             
             # レベルアップ時にHPとSPを最大まで回復
             player.hp = player.max_hp
@@ -826,7 +862,7 @@ def battle(request, player_id, enemy_id=None):
         return any(effect.get("type") == "defense" for effect in actione.get("effects", []))
 
     def spdcheck(actionp,actione):
-        if actionp == 'defend':
+        if actionp == 'defend' or actionp == 'item':
             return True
         elif is_defense_action(actione):
             return False
@@ -942,10 +978,10 @@ def battle(request, player_id, enemy_id=None):
                         return redirect('game:gameover')
                     else:
                         message = tohome(message)
-                        return render_battle_screen(message, redirect_after=True)
+                        return render(request, "game/battle.html", render_battle_screen(message, redirect_after=True))
                 
                 # 通常の戦闘画面に戻る
-                return render_battle_screen(message)
+                return render(request, "game/battle.html", render_battle_screen(message))
             except (PlayerInventory.DoesNotExist, ValueError):
                 pass  # アイテムが存在しない場合は無視
         
@@ -1110,10 +1146,19 @@ def shop(request, player_id):
         # プレイヤーが所持している装備を取得
         owned_equipment_ids = player.owned_equipment.values_list('id', flat=True)
         
-        # データベースから未所持の装備を取得（is_purchasedは使わない）
-        available_weapons = list(Equipment.objects.filter(equipment_type='weapon').exclude(id__in=owned_equipment_ids))
-        available_armors = list(Equipment.objects.filter(equipment_type='armor').exclude(id__in=owned_equipment_ids))
-        available_items = list(Item.objects.filter(is_purchased=False))
+        # データベースから未所持の装備を取得（is_purchasedは使わない、appear_levelでフィルタ）
+        available_weapons = list(Equipment.objects.filter(
+            equipment_type='weapon',
+            appear_level__lte=player.level
+        ).exclude(id__in=owned_equipment_ids))
+        available_armors = list(Equipment.objects.filter(
+            equipment_type='armor',
+            appear_level__lte=player.level
+        ).exclude(id__in=owned_equipment_ids))
+        available_items = list(Item.objects.filter(
+            is_purchased=False,
+            appear_level__lte=player.level
+        ))
         
         # 全てのアイテムを結合
         all_items = available_weapons + available_armors + available_items

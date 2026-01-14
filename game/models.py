@@ -34,6 +34,7 @@ class Equipment(models.Model):
     drop_rate = models.FloatField(default=0.0)  # ドロップ率（0.0〜1.0）
     description = models.TextField(default="")
     is_purchased = models.BooleanField(default=False)  # 購入済みフラグ（ショップ用）
+    appear_level = models.IntegerField(default=1)  # ショップに出現する最小プレイヤーレベル
     
     def __str__(self):
         return f"{self.name} ({self.get_equipment_type_display()})"
@@ -51,6 +52,7 @@ class Item(models.Model):
     description = models.TextField(default="")
     is_purchased = models.BooleanField(default=False)  # 購入済みフラグ(ショップ用)
     max_stock = models.IntegerField(default=10)  # 最大在庫数
+    appear_level = models.IntegerField(default=1)  # ショップに出現する最小プレイヤーレベル
     
     def __str__(self):
         return f"{self.name} ({self.get_target_display()})"
@@ -80,7 +82,7 @@ class Player(models.Model):
     # ゲームステータス
     level = models.IntegerField(default=1)
     exp = models.IntegerField(default=0)
-    next_exp = models.IntegerField(default=500)
+    next_exp = models.IntegerField(default=300)
     max_hp = models.IntegerField(default=100)
     hp = models.IntegerField(default=100)
     atk = models.IntegerField(default=10)
