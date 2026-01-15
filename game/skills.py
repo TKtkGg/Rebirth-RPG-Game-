@@ -94,12 +94,45 @@ ENEMY_SKILLS = {
         {"name": "足蹴り", "effects": [
             {"type": "attack", "target": "player", "multiplier": 1.0}
         ], "priority": 5},
-        {"name": "足受け", "effects": [
+        {"name": "翼受け", "effects": [
             {"type": "defense", "target": "enemy", "multiplier": 1.0}
         ], "priority": 2},
         {"name": "俊敏", "effects": [
             {"type": "buf", "target": "enemy", "stat":"spd","multiplier": 1.7, "turn": 3}
         ], "priority": 3, "max_uses": 4},
+    ],
+    "ウッドボー":[
+        {"name": "枝打ち", "effects": [
+            {"type": "attack", "target": "player", "multiplier": 1.0}
+        ], "priority": 5},
+        {"name": "樹皮ガード", "effects": [
+            {"type": "defense", "target": "enemy", "multiplier": 1.0}
+        ], "priority": 2},
+        {"name": "根固め", "effects": [
+            {"type": "buf", "target": "enemy", "stat":"def","multiplier": 1.5, "turn": 3}
+        ], "priority": 3, "max_uses": 4},
+    ],
+    "ゴーレム": [
+        {"name": "大拳", "effects": [
+            {"type": "attack", "target": "player", "multiplier": 1.0}
+        ], "priority": 5},
+        {"name": "ガード", "effects": [
+            {"type": "defense", "target": "enemy", "multiplier": 1.0}
+        ], "priority": 2},
+        {"name": "防御体制", "effects": [
+            {"type": "buf", "target": "enemy", "stat":"def", "multiplier": 2.0, "turn": 3}
+        ], "priority": 3, "max_uses": 3},
+    ],
+    "コカトリス": [
+        {"name": "くちばし突き", "effects": [
+            {"type": "attack", "target": "player", "multiplier": 1.0}
+        ], "priority": 5},
+        {"name": "硬い鱗", "effects": [
+            {"type": "defense", "target": "enemy", "multiplier": 1.0}
+        ], "priority": 2},
+        {"name": "強眼", "effects": [
+            {"type": "attack", "target": "player", "multiplier": 2.0}
+        ], "priority": 3, "max_uses": 5},
     ],
 }
 

@@ -105,20 +105,20 @@ def start_game(request):
         
         # ジョブに応じたステータス設定
         if job == "戦士":
-            base_hp, base_atk, base_def, base_spd = 100, 5, 5, 5
-            job_bonus_hp, job_bonus_atk, job_bonus_def, job_bonus_spd = 10, 3, 3, -3
+            base_hp, base_atk, base_def, base_spd, base_mp = 100, 5, 5, 5, 50
+            job_bonus_hp, job_bonus_atk, job_bonus_def, job_bonus_spd, job_bonus_mp = 10, 3, 3, -3, -5
             stat_points = request.user.initial_points if request.user.is_authenticated else 0
         elif job == "魔法使い":
-            base_hp, base_atk, base_def, base_spd = 100, 5, 5, 5
-            job_bonus_hp, job_bonus_atk, job_bonus_def, job_bonus_spd = -5, 7, -2, 0
+            base_hp, base_atk, base_def, base_spd, base_mp = 100, 5, 5, 5, 50
+            job_bonus_hp, job_bonus_atk, job_bonus_def, job_bonus_spd, job_bonus_mp = -5, 7, -2, 0, +10
             stat_points = request.user.initial_points if request.user.is_authenticated else 0
         elif job == "忍者":
-            base_hp, base_atk, base_def, base_spd = 100, 5, 5, 5
-            job_bonus_hp, job_bonus_atk, job_bonus_def, job_bonus_spd = -5, 3, 0, 5
+            base_hp, base_atk, base_def, base_spd, base_mp = 100, 5, 5, 5, 50
+            job_bonus_hp, job_bonus_atk, job_bonus_def, job_bonus_spd, job_bonus_mp = -5, 3, 0, 5, 0
             stat_points = request.user.initial_points if request.user.is_authenticated else 0
         else:
-            base_hp, base_atk, base_def, base_spd = 100, 5, 5, 5
-            job_bonus_hp, job_bonus_atk, job_bonus_def, job_bonus_spd = 0, 0, 0, 0
+            base_hp, base_atk, base_def, base_spd, base_mp = 100, 5, 5, 5, 50
+            job_bonus_hp, job_bonus_atk, job_bonus_def, job_bonus_spd, job_bonus_mp = 0, 0, 0, 0, 0
             stat_points = 0
         
         # 初期装備をデータベースから取得
@@ -140,8 +140,8 @@ def start_game(request):
                 atk=base_atk + job_bonus_atk,
                 defense=base_def + job_bonus_def,
                 spd=base_spd + job_bonus_spd,
-                max_mp=50,
-                mp=50,
+                max_mp=base_mp + job_bonus_mp,
+                mp=base_mp + job_bonus_mp,
                 stat_points=stat_points,
                 job=job,
                 weapon=wooden_sword,
@@ -161,8 +161,8 @@ def start_game(request):
                 atk=base_atk + job_bonus_atk,
                 defense=base_def + job_bonus_def,
                 spd=base_spd + job_bonus_spd,
-                max_mp=50,
-                mp=50,
+                max_mp=base_mp + job_bonus_mp,
+                mp=base_mp + job_bonus_mp,
                 stat_points=stat_points,
                 job=job,
                 weapon=wooden_sword,
@@ -386,9 +386,21 @@ def battle(request, player_id, enemy_id=None):
         # レベルに応じてステータスを変更（レベル1基準）
         enemy.max_hp = enemy.base_max_hp + (enemy.level - 1) * enemy.base_max_hp // 10
         enemy.hp = enemy.max_hp
-        enemy.atk = enemy.base_atk + (enemy.level - 1) * enemy.base_atk // 5
-        enemy.defense = enemy.base_def + (enemy.level - 1) * enemy.base_def // 5
-        enemy.spd = enemy.base_spd + (enemy.level - 1) * enemy.base_spd // 5
+        # レベル20までは敵のステータス上昇を抑え、21以降は急上昇
+        if enemy.level <= 20:
+            enemy.atk = enemy.base_atk + (enemy.level - 1) * enemy.base_atk // 8
+            enemy.defense = enemy.base_def + (enemy.level - 1) * enemy.base_def // 8
+            enemy.spd = enemy.base_spd + (enemy.level - 1) * enemy.base_spd // 8
+        else:
+            # レベル21以降は急激に強くなる
+            level_20_atk = enemy.base_atk + 19 * enemy.base_atk // 10
+            level_20_def = enemy.base_def + 19 * enemy.base_def // 10
+            level_20_spd = enemy.base_spd + 19 * enemy.base_spd // 10
+            
+            additional_levels = enemy.level - 20
+            enemy.atk = level_20_atk + additional_levels * enemy.base_atk // 3
+            enemy.defense = level_20_def + additional_levels * enemy.base_def // 3
+            enemy.spd = level_20_spd + additional_levels * enemy.base_spd // 3
         
         # expとゴールドの計算（敵のレベルがプレイヤーより高い場合は報酬増加）
         base_high_exp = enemy.base_exp + (enemy.level - 1) * enemy.base_exp // 3
@@ -592,7 +604,7 @@ def battle(request, player_id, enemy_id=None):
             player.level += 1
             player.stat_points += 3
             player.exp -= player.next_exp
-            player.next_exp = int(300 + player.level * 40 * player.level)
+            player.next_exp = int(300 + player.level * 30 * player.level)
             
             # レベルアップ時にHPとSPを最大まで回復
             player.hp = player.max_hp
@@ -691,10 +703,15 @@ def battle(request, player_id, enemy_id=None):
                     enemy.hp -= damage
                     enemy.save()
                     message = f"{player.name}の攻撃！ {enemy.name}に{damage}ダメージ！\n"
+            player.save()  # プレイヤーの状態を保存
         
         elif action == 'defend':
-            message = f"{player.name} は防御した！\n"+ (f"防御によってSPが少し回復した！\n" if action == "defend" and player.mp < player.max_mp else "")
-            player.mp += random.randint(player.max_mp // 20 , player.max_mp // 10) if player.mp < player.max_mp else 0
+            message = f"{player.name} は防御した！\n"
+            if player.mp < player.max_mp:
+                sp_recovery = random.randint(player.max_mp // 20, player.max_mp // 10)
+                player.mp = min(player.mp + sp_recovery, player.max_mp)
+                message += f"防御によってSPが少し回復した！\n"
+            player.save()  # プレイヤーの状態を保存
 
         elif special:
             # skills.pyからプレイヤーのスキルを取得
@@ -919,6 +936,10 @@ def battle(request, player_id, enemy_id=None):
                     # プレイヤーが対象の場合、total_hp_battleを直接減らす
                     if target == "player":
                         target_obj.total_hp_battle = max(0, target_obj.total_hp_battle - damage)
+                        # 素のHPも同期（装備ボーナスを引いた値）
+                        armor_bonus = target_obj.armor.hp_bonus if target_obj.armor else 0
+                        target_obj.hp = max(0, target_obj.total_hp_battle - armor_bonus)
+                        target_obj.save()  # プレイヤーのHP変更を保存
                     else:
                         # 敵の場合は通常通り
                         target_obj.hp = max(0, target_obj.hp - damage)
@@ -1442,6 +1463,9 @@ def inventory(request, player_id):
     # 検索クエリ
     search_query = request.GET.get('search', '').strip()
     
+    # 使用メッセージを取得（あれば）
+    use_message = request.session.pop('use_item_message', None)
+    
     # プレイヤーのインベントリを取得
     inventory_items = PlayerInventory.objects.filter(player=player, quantity__gt=0).select_related('item')
     
@@ -1473,7 +1497,55 @@ def inventory(request, player_id):
         'selected_item': selected_item,
         'category': category,
         'search_query': search_query,
+        'use_message': use_message,
     })
+
+def use_inventory_item(request, player_id, inventory_item_id):
+    """インベントリーからアイテムを使用する"""
+    from .models import PlayerInventory
+    
+    if request.method == 'POST':
+        player = Player.objects.get(id=player_id)
+        
+        try:
+            inventory_item = PlayerInventory.objects.get(id=inventory_item_id, player=player, quantity__gt=0)
+            item = inventory_item.item
+            
+            # HP回復アイテムの場合
+            if item.target == 'hp':
+                old_hp = player.hp
+                player.hp = min(player.hp + item.effect_amount, player.max_hp)
+                actual_recovery = player.hp - old_hp
+                
+                # アイテムを1つ消費
+                inventory_item.quantity -= 1
+                inventory_item.save()
+                player.save()
+                
+                # 成功メッセージをセッションに保存
+                request.session['use_item_message'] = f"HPが{actual_recovery}回復した！"
+            
+            # SP回復アイテムの場合
+            elif item.target == 'mp':
+                old_mp = player.mp
+                player.mp = min(player.mp + item.effect_amount, player.max_mp)
+                actual_recovery = player.mp - old_mp
+                
+                # アイテムを1つ消費
+                inventory_item.quantity -= 1
+                inventory_item.save()
+                player.save()
+                
+                # 成功メッセージをセッションに保存
+                request.session['use_item_message'] = f"SPが{actual_recovery}回復した！"
+            
+        except PlayerInventory.DoesNotExist:
+            request.session['use_item_message'] = "アイテムが見つかりません"
+    
+    # インベントリー画面に戻る
+    category = request.GET.get('category', '全て')
+    search_query = request.GET.get('search', '')
+    return redirect(f"{reverse('game:inventory', kwargs={'player_id': player.id})}?category={category}&search={search_query}")
 
 def gameover(request):
     # スコア計算（現在は固定値）

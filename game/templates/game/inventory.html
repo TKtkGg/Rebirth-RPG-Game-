@@ -199,13 +199,14 @@
         background: rgba(255, 255, 255, 0.6);
         border: 3px solid #8B6914;
         border-radius: 15px;
-        padding: 20px;
+        padding-top: 20px;
+        padding-bottom: -10px;
         display: flex;
         flex-direction: column;
         align-items: center;
         cursor: pointer;
         transition: all 0.3s;
-        height: 280px;
+        height: 320px;
     }
     
     .item-card:hover {
@@ -238,6 +239,37 @@
         font-size: 20px;
         color: #000;
         font-weight: bold;
+        margin-bottom: 10px;
+    }
+    
+    .use-button {
+        padding: 8px 20px;
+        font-size: 18px;
+        font-weight: bold;
+        background: rgba(50, 150, 50, 0.8);
+        border: 2px solid #2d7a2d;
+        border-radius: 8px;
+        color: white;
+        cursor: pointer;
+        transition: all 0.3s;
+        margin-top: auto;
+    }
+    
+    .use-button:hover {
+        background: rgba(50, 150, 50, 1);
+        transform: scale(1.05);
+    }
+    
+    .use-button:disabled {
+        background: rgba(150, 150, 150, 0.5);
+        border-color: #888;
+        cursor: not-allowed;
+        opacity: 0.6;
+    }
+    
+    .use-button:disabled:hover {
+        background: rgba(150, 150, 150, 0.5);
+        transform: none;
     }
     
     .detail-panel {
@@ -315,6 +347,30 @@
         box-shadow: 0 6px 20px rgba(0, 0, 0, 0.4);
     }
     
+    .use-message {
+        position: fixed;
+        top: 30px;
+        left: 50%;
+        transform: translateX(-50%);
+        background: rgba(50, 150, 50, 0.95);
+        border: 3px solid #2d7a2d;
+        border-radius: 15px;
+        padding: 20px 40px;
+        font-size: 24px;
+        font-weight: bold;
+        color: white;
+        box-shadow: 0 4px 15px rgba(0, 0, 0, 0.3);
+        z-index: 1000;
+        animation: fadeInOut 3s ease-in-out;
+    }
+    
+    @keyframes fadeInOut {
+        0% { opacity: 0; transform: translateX(-50%) translateY(-20px); }
+        10% { opacity: 1; transform: translateX(-50%) translateY(0); }
+        90% { opacity: 1; transform: translateX(-50%) translateY(0); }
+        100% { opacity: 0; transform: translateX(-50%) translateY(-20px); }
+    }
+    
     .empty-message {
         grid-column: 1 / -1;
         font-size: 32px;
@@ -324,6 +380,10 @@
         padding: 100px 20px;
     }
 </style>
+
+{% if use_message %}
+<div class="use-message">{{ use_message }}</div>
+{% endif %}
 
 <div class="search-overlay" id="searchOverlay">
     <div class="search-box">
@@ -360,13 +420,25 @@
         <div class="items-content">
             {% if inventory_items %}
                 {% for inv_item in inventory_items %}
-                <a href="{% url 'game:inventory' player.id %}?category={{ category }}{% if search_query %}&search={{ search_query }}{% endif %}&selected_item={{ inv_item.id }}" style="text-decoration: none;">
-                    <div class="item-card {% if selected_item and selected_item.id == inv_item.id %}selected{% endif %}">
-                        <img src="{% static 'game/img/回復_アイコン.png' %}" alt="{{ inv_item.item.name }}" class="item-icon">
-                        <div class="item-name">{{ inv_item.item.name }}</div>
-                        <div class="item-quantity">({{ inv_item.quantity }})</div>
-                    </div>
-                </a>
+                <div>
+                    <a href="{% url 'game:inventory' player.id %}?category={{ category }}{% if search_query %}&search={{ search_query }}{% endif %}&selected_item={{ inv_item.id }}" style="text-decoration: none;">
+                        <div class="item-card {% if selected_item and selected_item.id == inv_item.id %}selected{% endif %}">
+                            <img src="{% static 'game/img/回復_アイコン.png' %}" alt="{{ inv_item.item.name }}" class="item-icon">
+                            <div class="item-name">{{ inv_item.item.name }}</div>
+                            <div class="item-quantity">({{ inv_item.quantity }})</div>
+                            <form method="POST" action="{% url 'game:use_inventory_item' player.id inv_item.id %}" style="margin: 0;" onclick="event.stopPropagation();">
+                                {% csrf_token %}
+                                {% if inv_item.item.target == 'hp' and player.hp >= player.max_hp %}
+                                    <button type="submit" class="use-button" disabled>使用</button>
+                                {% elif inv_item.item.target == 'mp' and player.mp >= player.max_mp %}
+                                    <button type="submit" class="use-button" disabled>使用</button>
+                                {% else %}
+                                    <button type="submit" class="use-button">使用</button>
+                                {% endif %}
+                            </form>
+                        </div>
+                    </a>
+                </div>
                 {% endfor %}
             {% else %}
                 <div class="empty-message">アイテムがありません</div>
