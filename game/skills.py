@@ -206,47 +206,41 @@ PLAYER_SKILLS = {
     ],
     "忍者": [
         {
-            "name": "影分身の術",
-            "cost": 15,
-            "description": "分身を作り出し、敵の攻撃を回避しやすくする",
+            "name": "急所突き",
+            "cost": 10,
+            "description": "敵の急所をついて、大ダメージを与える。",
             "effects": [
                 {
+                    "type": "attack",
+                    "target": "enemy",
+                    "multiplier": 2.0
+                }
+            ]
+        },
+        {
+            "name": "影分身",
+            "cost": 15,
+            "description": "分身を作るほど早く動き、素早さを上げる",
+            "effects": [
+                {
+                    
                     "type": "buf",
                     "target": "player",
                     "stat": "spd",
-                    "multiplier": 1.5,
+                    "multiplier": 1.8,
                     "turn": 4
                 }
             ]
         },
         {
-            "name": "急所突き",
+            "name": "隠れ身",
             "cost": 20,
-            "description": "敵の急所を狙い、通常よりも大きなダメージを与える攻撃",
+            "description": "2ターン姿をくらまし、攻撃を避ける。",
             "effects": [
                 {
-                    "type": "attack",
-                    "target": "enemy",
-                    "multiplier": 2.5
-                }
-            ]
-        },
-        {
-            "name": "毒刃",
-            "cost": 15,
-            "description": "攻撃に毒の効果を付与し、敵に継続ダメージを与える",
-            "effects": [
-                {
-                    "type": "attack",
-                    "target": "enemy",
-                    "multiplier": 1.0
-                },
-                {
-                    "type": "debuf",
-                    "target": "enemy",
-                    "stat": "hp",
-                    "multiplier": 0.9,
-                    "turn": 5
+                    "type": "guaranteed_evasion",
+                    "target": "player",
+                    "turn": 2
                 }
             ]
         }

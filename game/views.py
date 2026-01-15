@@ -110,11 +110,11 @@ def start_game(request):
             stat_points = request.user.initial_points if request.user.is_authenticated else 0
         elif job == "魔法使い":
             base_hp, base_atk, base_def, base_spd = 100, 5, 5, 5
-            job_bonus_hp, job_bonus_atk, job_bonus_def, job_bonus_spd = -10, 5, -2, 1
+            job_bonus_hp, job_bonus_atk, job_bonus_def, job_bonus_spd = -5, 7, -2, 0
             stat_points = request.user.initial_points if request.user.is_authenticated else 0
         elif job == "忍者":
             base_hp, base_atk, base_def, base_spd = 100, 5, 5, 5
-            job_bonus_hp, job_bonus_atk, job_bonus_def, job_bonus_spd = -5, 3, 0, 3
+            job_bonus_hp, job_bonus_atk, job_bonus_def, job_bonus_spd = -5, 3, 0, 5
             stat_points = request.user.initial_points if request.user.is_authenticated else 0
         else:
             base_hp, base_atk, base_def, base_spd = 100, 5, 5, 5
@@ -414,6 +414,7 @@ def battle(request, player_id, enemy_id=None):
         request.session["message_history"] = []
         request.session["buffs"] = {}
         request.session["debuffs"] = {}
+        request.session["special_states"] = {}
     else:
         enemy = Enemy.objects.get(id=enemy_id)
     
@@ -424,6 +425,7 @@ def battle(request, player_id, enemy_id=None):
 
     buffs = request.session.get("buffs", {})
     debuffs = request.session.get("debuffs", {})
+    special_states = request.session.get("special_states", {})  # 特殊状態（確定回避など）
     
     # プレイヤーのスキルを取得
     player_skills = PLAYER_SKILLS.get(player.job, [])
@@ -518,6 +520,7 @@ def battle(request, player_id, enemy_id=None):
         player.item = "なし"
         request.session["buffs"] = {}
         request.session["debuffs"] = {}
+        request.session["special_states"] = {}
         request.session["battle_count"] = 0  # 戦闘回数をリセット
         request.session['session_purchased_items'] = []  # ショップセッション購入履歴をクリア
         request.session['reset_shop'] = True  # ショップ在庫をリセット
@@ -556,6 +559,7 @@ def battle(request, player_id, enemy_id=None):
         message += f"ゴールドを{actual_gold_penalty}失った…\n"
         request.session["buffs"] = {}
         request.session["debuffs"] = {}
+        request.session["special_states"] = {}
         
         # 戦闘用HPを素のHPに反映
         player.sync_hp_from_battle()
@@ -640,12 +644,53 @@ def battle(request, player_id, enemy_id=None):
         
         return damage
     
+    def calculate_evasion_rate(spd):
+        """回避率を計算する関数
+        
+        Args:
+            spd: 素早さの値（バフ・デバフ適用済み）
+        
+        Returns:
+            evasion_rate: 回避率（0.0〜0.4）
+        """
+        if spd <= 0:
+            return 0.0
+        
+        # 最低3%、最高40%
+        # spd=1で3%、spd=100で40%
+        min_rate = 0.03
+        max_rate = 0.40
+        min_spd = 1
+        max_spd = 100
+        
+        if spd <= min_spd:
+            return min_rate
+        elif spd >= max_spd:
+            return max_rate
+        else:
+            # 線形補間
+            return min_rate + (spd - min_spd) * (max_rate - min_rate) / (max_spd - min_spd)
+    
     def playerAction(message,action,special,actione):
         if action == 'attack':
-            damage = calculate_player_attack()
-            enemy.hp -= damage
-            enemy.save()
-            message = f"{player.name}の攻撃！ {enemy.name}に{damage}ダメージ！\n"
+            # 敵の回避判定（確定回避 or spd基づく確率）
+            has_guaranteed_evasion = special_states.get("enemy", {}).get("guaranteed_evasion", {}).get("turn", 0) > 0
+            
+            if has_guaranteed_evasion:
+                message = f"{player.name}の攻撃！ {enemy.name}は回避した！\n"
+            else:
+                enemy_spd_buff = buffs.get("enemy", {}).get("spd", {}).get("multiplier", 1.0)
+                enemy_spd_debuff = debuffs.get("enemy", {}).get("spd", {}).get("multiplier", 1.0)
+                enemy_effective_spd = enemy.spd * enemy_spd_buff * enemy_spd_debuff
+                evasion_rate = calculate_evasion_rate(enemy_effective_spd)
+                
+                if random.random() < evasion_rate:
+                    message = f"{player.name}の攻撃！ {enemy.name}は回避した！\n"
+                else:
+                    damage = calculate_player_attack()
+                    enemy.hp -= damage
+                    enemy.save()
+                    message = f"{player.name}の攻撃！ {enemy.name}に{damage}ダメージ！\n"
         
         elif action == 'defend':
             message = f"{player.name} は防御した！\n"+ (f"防御によってSPが少し回復した！\n" if action == "defend" and player.mp < player.max_mp else "")
@@ -685,13 +730,28 @@ def battle(request, player_id, enemy_id=None):
                 
                 if etype == "attack":
                     # 攻撃処理（共通関数を使用、スキル攻撃は防御アクション無視）
-                    damage = calculate_player_attack(
-                        multiplier=multiplier,
-                        damage_variance=(0, 3),
-                    )
-                    enemy.hp -= damage
-                    message += f"{enemy.name}に{damage}の大ダメージ！\n"
-                    enemy.save()
+                    
+                    # 敵の回避判定（確定回避 or spd基づく確率）
+                    has_guaranteed_evasion = special_states.get("enemy", {}).get("guaranteed_evasion", {}).get("turn", 0) > 0
+                    
+                    if has_guaranteed_evasion:
+                        message += f"{enemy.name}は回避した！\n"
+                    else:
+                        enemy_spd_buff = buffs.get("enemy", {}).get("spd", {}).get("multiplier", 1.0)
+                        enemy_spd_debuff = debuffs.get("enemy", {}).get("spd", {}).get("multiplier", 1.0)
+                        enemy_effective_spd = enemy.spd * enemy_spd_buff * enemy_spd_debuff
+                        evasion_rate = calculate_evasion_rate(enemy_effective_spd)
+                        
+                        if random.random() < evasion_rate:
+                            message += f"{enemy.name}は回避した！\n"
+                        else:
+                            damage = calculate_player_attack(
+                                multiplier=multiplier,
+                                damage_variance=(0, 3),
+                            )
+                            enemy.hp -= damage
+                            message += f"{enemy.name}に{damage}の大ダメージ！\n"
+                            enemy.save()
                 
                 elif etype == "buf" or etype == "debuf":
                     # バフ・デバフ処理
@@ -704,6 +764,13 @@ def battle(request, player_id, enemy_id=None):
                     request.session["buffs"] = buffs
                     request.session["debuffs"] = debuffs
                     message += f"{target_obj.name}の{stat}が" + ("上昇した！\n" if etype == "buf" else "低下した！\n")
+                
+                elif etype == "guaranteed_evasion":
+                    # 確定回避処理
+                    special_states.setdefault(target, {})
+                    special_states[target]["guaranteed_evasion"] = {"turn": turn}
+                    request.session["special_states"] = special_states
+                    message += f"{target_obj.name}は姿をくらました！\n"
             
             message += f"SPが{skill_cost}減った！\n"
             player.save()
@@ -817,28 +884,46 @@ def battle(request, player_id, enemy_id=None):
             me_obj = enemy if target == "player" else player
 
             if etype == "attack":
-                # 敵の攻撃力にバフとデバフの両方を適用
-                enemy_atk_buff = buffs.get("enemy", {}).get("atk", {}).get("multiplier", 1.0)
-                enemy_atk_debuff = debuffs.get("enemy", {}).get("atk", {}).get("multiplier", 1.0)
-                atk = int(me_obj.atk * multiplier * enemy_atk_buff * enemy_atk_debuff)
-                
-                # プレイヤーの防御力にバフとデバフを適用【戦闘用ステータス】
-                player_def_buff = buffs.get("player", {}).get("def", {}).get("multiplier", 1.0)
-                player_def_debuff = debuffs.get("player", {}).get("def", {}).get("multiplier", 1.0)
-                player_def = int(target_obj.total_def_battle * player_def_buff * player_def_debuff)
-                
-                # 防御アクションを考慮してダメージ計算
-                damage_base = int(atk - (player_def if actionp == "defend" else player_def // 3))                
-                damage = max(random.randint(damage_base - 2, damage_base + 1), 1)
-                
-                # プレイヤーが対象の場合、total_hp_battleを直接減らす
+                # プレイヤーの回避判定（確定回避 or spdに基づく確率）
+                should_evade = False
                 if target == "player":
-                    target_obj.total_hp_battle = max(0, target_obj.total_hp_battle - damage)
-                else:
-                    # 敵の場合は通常通り
-                    target_obj.hp = max(0, target_obj.hp - damage)
+                    # 確定回避チェック
+                    has_guaranteed_evasion = special_states.get("player", {}).get("guaranteed_evasion", {}).get("turn", 0) > 0
+                    
+                    if has_guaranteed_evasion:
+                        should_evade = True
+                    else:
+                        player_spd_buff = buffs.get("player", {}).get("spd", {}).get("multiplier", 1.0)
+                        player_spd_debuff = debuffs.get("player", {}).get("spd", {}).get("multiplier", 1.0)
+                        player_effective_spd = player.total_spd_battle * player_spd_buff * player_spd_debuff
+                        evasion_rate = calculate_evasion_rate(player_effective_spd)
+                        should_evade = random.random() < evasion_rate
                 
-                message += f"{target_obj.name}に{damage}のダメージ！\n"
+                if should_evade:
+                    message += f"{target_obj.name}は回避した！\n"
+                else:
+                    # 敵の攻撃力にバフとデバフの両方を適用
+                    enemy_atk_buff = buffs.get("enemy", {}).get("atk", {}).get("multiplier", 1.0)
+                    enemy_atk_debuff = debuffs.get("enemy", {}).get("atk", {}).get("multiplier", 1.0)
+                    atk = int(me_obj.atk * multiplier * enemy_atk_buff * enemy_atk_debuff)
+                    
+                    # プレイヤーの防御力にバフとデバフを適用【戦闘用ステータス】
+                    player_def_buff = buffs.get("player", {}).get("def", {}).get("multiplier", 1.0)
+                    player_def_debuff = debuffs.get("player", {}).get("def", {}).get("multiplier", 1.0)
+                    player_def = int(target_obj.total_def_battle * player_def_buff * player_def_debuff)
+                    
+                    # 防御アクションを考慮してダメージ計算
+                    damage_base = int(atk - (player_def if actionp == "defend" else player_def // 3))                
+                    damage = max(random.randint(damage_base - 2, damage_base + 1), 1)
+                    
+                    # プレイヤーが対象の場合、total_hp_battleを直接減らす
+                    if target == "player":
+                        target_obj.total_hp_battle = max(0, target_obj.total_hp_battle - damage)
+                    else:
+                        # 敵の場合は通常通り
+                        target_obj.hp = max(0, target_obj.hp - damage)
+                    
+                    message += f"{target_obj.name}に{damage}のダメージ！\n"
 
             elif etype == "defense":
                 message += f"{target_obj.name}は防御した！\n"
@@ -1091,6 +1176,18 @@ def battle(request, player_id, enemy_id=None):
                 del debuffs[target]
 
         request.session["debuffs"] = debuffs
+        
+        # ターン経過で特殊状態を減少
+        for target in list(special_states.keys()):
+            for state in list(special_states[target].keys()):
+                special_states[target][state]["turn"] -= 1
+                if special_states[target][state]["turn"] <= 0:
+                    del special_states[target][state]
+            # 空になったターゲットを削除
+            if not special_states[target]:
+                del special_states[target]
+        
+        request.session["special_states"] = special_states
         
         # 表示用ステータスを再計算【装備ボーナス込み + バフ×デバフ適用】
         # プレイヤーのステータス（total_atk, total_def, total_spdは装備込み）

@@ -210,8 +210,15 @@
         font-size: 36px;
         font-weight: bold;
         color: #ffffff;
-        margin-bottom: 100px;
+        margin-bottom: 30px;
         line-height: 1.5;
+    }
+    
+    .modal-gold {
+        font-size: 28px;
+        font-weight: bold;
+        color: #e0e0e0;
+        margin-bottom: 40px;
     }
     
     .quantity-selector {
@@ -414,7 +421,7 @@
                  data-spd-bonus="{{ weapon.spd_bonus }}">
                 <img src="{% static 'game/img/武器_アイコン.png' %}" alt="武器" class="shop-item-icon">
                 <div class="shop-item-name">{{ weapon.name }}</div>
-                <div class="shop-item-price">¥{{ weapon.price }}</div>
+                <div class="shop-item-price">{{ weapon.price }}G</div>
             </div>
             {% endfor %}
             
@@ -431,7 +438,7 @@
                  data-spd-bonus="{{ armor.spd_bonus }}">
                 <img src="{% static 'game/img/防具_アイコン.png' %}" alt="防具" class="shop-item-icon">
                 <div class="shop-item-name">{{ armor.name }}</div>
-                <div class="shop-item-price">¥{{ armor.price }}</div>
+                <div class="shop-item-price">{{ armor.price }}G</div>
             </div>
             {% endfor %}
             
@@ -448,7 +455,7 @@
                  data-target="{{ item.target }}">
                 <img src="{% static 'game/img/回復_アイコン.png' %}" alt="アイテム" class="shop-item-icon">
                 <div class="shop-item-name">{{ item.name }}</div>
-                <div class="shop-item-price">¥{{ item.price }}</div>
+                <div class="shop-item-price">{{ item.price }}G</div>
                 <div class="shop-item-stock">{{ item.current_stock }}/{{ item.max_stock }}</div>
             </div>
             {% endfor %}
@@ -464,14 +471,15 @@
 <div class="modal-overlay" id="modalOverlay">
     <div class="modal-content" id="modalContent">
         <div class="modal-text" id="modalText"></div>
+        <div class="modal-gold" id="modalGold">所持金 : {{ player.gold }}G</div>
         <div class="quantity-selector" id="quantitySelector">
             <button class="quantity-button" id="decreaseButton">&lt;</button>
             <div class="quantity-display" id="quantityDisplay">1</div>
             <button class="quantity-button" id="increaseButton">&gt;</button>
         </div>
         <div class="modal-buttons">
-            <button class="modal-button yes" id="yesButton">Yes</button>
             <button class="modal-button no" id="noButton">No</button>
+            <button class="modal-button yes" id="yesButton">Yes</button>
             <button class="modal-button return" id="returnButton">戻る</button>
         </div>
     </div>
