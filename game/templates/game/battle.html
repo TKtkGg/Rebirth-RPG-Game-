@@ -500,7 +500,7 @@
                     {% endif %}
                 </div>
             </div>
-            <img src="{% static 'game/img/スライム.png' %}" alt="{{ enemy.name }}" class="enemy-image">
+            <img src="{% static enemy.image_url %}" alt="{{ enemy.name }}" class="enemy-image">
             
             <div class="enemy-hp-bar-container">
                 <div class="enemy-hp-bar-fill" style="width: {{ enemy_hp_percent }}%;"></div>
@@ -597,7 +597,7 @@
                         <button type="button" class="battle-button return-button">戻る</button>
                     </a>
                 </div>
-            {% elif player.hp > 0 and enemy and not recovering %}
+            {% elif player.total_hp_battle > 0 and enemy and not recovering %}
                 <div class="button-area" id="action-buttons">
                     <form method="POST" style="display: contents;">
                         {% csrf_token %}

@@ -117,15 +117,17 @@ class Player(models.Model):
     
     @property
     def total_atk(self):
-        """武器のボーナスを含めた総ATK"""
-        bonus = self.weapon.atk_bonus if self.weapon else 0
-        return self.atk + bonus
+        """装備のボーナスを含めた総ATK"""
+        weapon_bonus = self.weapon.atk_bonus if self.weapon else 0
+        armor_bonus = self.armor.atk_bonus if self.armor else 0
+        return self.atk + weapon_bonus + armor_bonus
     
     @property
     def total_def(self):
-        """防具のボーナスを含めた総DEF"""
-        bonus = self.armor.def_bonus if self.armor else 0
-        return self.defense + bonus
+        """装備のボーナスを含めた総DEF"""
+        weapon_bonus = self.weapon.def_bonus if self.weapon else 0
+        armor_bonus = self.armor.def_bonus if self.armor else 0
+        return self.defense + weapon_bonus + armor_bonus
     
     @property
     def total_spd(self):
@@ -136,42 +138,68 @@ class Player(models.Model):
     
     @property
     def total_max_hp(self):
-        """防具のボーナスを含めた総最大HP"""
-        bonus = self.armor.hp_bonus if self.armor else 0
-        return self.max_hp + bonus
+        """装備のボーナスを含めた総最大HP"""
+        weapon_bonus = self.weapon.hp_bonus if self.weapon else 0
+        armor_bonus = self.armor.hp_bonus if self.armor else 0
+        return self.max_hp + weapon_bonus + armor_bonus
     
     @property
     def total_hp(self):
-        """防具のボーナスを含めた現在のHP"""
-        bonus = self.armor.hp_bonus if self.armor else 0
-        return min(self.hp + bonus, self.total_max_hp)
+        """装備のボーナスを含めた現在のHP"""
+        weapon_bonus = self.weapon.hp_bonus if self.weapon else 0
+        armor_bonus = self.armor.hp_bonus if self.armor else 0
+        return min(self.hp + weapon_bonus + armor_bonus, self.total_max_hp)
     
     def update_battle_stats(self):
         """戦闘用ステータスを装備ボーナス込みで更新"""
         # 武器ボーナス
         weapon_atk = self.weapon.atk_bonus if self.weapon else 0
+        weapon_def = self.weapon.def_bonus if self.weapon else 0
+        weapon_hp = self.weapon.hp_bonus if self.weapon else 0
         weapon_spd = self.weapon.spd_bonus if self.weapon else 0
         
         # 防具ボーナス
+        armor_atk = self.armor.atk_bonus if self.armor else 0
         armor_def = self.armor.def_bonus if self.armor else 0
         armor_hp = self.armor.hp_bonus if self.armor else 0
         armor_spd = self.armor.spd_bonus if self.armor else 0
         
         # 戦闘用ステータスを更新
-        self.total_atk_battle = self.atk + weapon_atk
-        self.total_def_battle = self.defense + armor_def
+        self.total_atk_battle = self.atk + weapon_atk + armor_atk
+        self.total_def_battle = self.defense + weapon_def + armor_def
         self.total_spd_battle = self.spd + weapon_spd + armor_spd
-        self.total_max_hp_battle = self.max_hp + armor_hp
+        self.total_max_hp_battle = self.max_hp + weapon_hp + armor_hp
         
         # 現在のHPも調整（最大HPを超えないように）
-        self.total_hp_battle = min(self.hp + armor_hp, self.total_max_hp_battle)
+        self.total_hp_battle = min(self.hp + weapon_hp + armor_hp, self.total_max_hp_battle)
     
     def change_weapon(self, new_weapon):
-        """武器を変更する（戦闘外専用）        
-        Args:new_weapon: 新しい装備するEquipmentオブジェクト
-        Returns:bool: 変更成功ならTrue"""
-
+        """武器を変更する（戦闘外専用、HPを調整）        
+        Args:new_weapon: 新しい装備するEquipmentオブジェクト（Noneで装備解除）
+        Returns:bool: 変更成功ならTrue
+        Note:
+            - 現在の総HPから古い装備ボーナスを引き、新しい装備ボーナスを足す
+            - HPが0以下になる場合は最低1HPを保証
+            - 新しい最大HPを超える場合は最大HPに制限"""
+            
+        # 現在の総HPを取得
+        current_total_hp = self.total_hp
+        
+        # 古い装備のボーナスを取得
+        old_bonus = self.weapon.hp_bonus if self.weapon else 0
+        
+        # 新しい装備のボーナスを取得
+        new_bonus = new_weapon.hp_bonus if new_weapon else 0
+        
+        # 装備を変更
         self.weapon = new_weapon
+        
+        # 素のHPを調整（現在の総HP - 古いボーナス + 新しいボーナス）
+        adjusted_hp = current_total_hp - old_bonus
+        
+        # 最低1HP、最大は素の最大HPまで
+        self.hp = max(1, min(adjusted_hp, self.max_hp))
+        
         self.update_battle_stats()
         self.save()
         return True
@@ -220,13 +248,15 @@ class Player(models.Model):
     
     def sync_hp_from_battle(self):
         """戦闘用HPを素のHPに反映（戦闘終了時に使用）"""
+        weapon_bonus = self.weapon.hp_bonus if self.weapon else 0
         armor_bonus = self.armor.hp_bonus if self.armor else 0
-        self.hp = max(0, self.total_hp_battle - armor_bonus)
+        self.hp = max(0, self.total_hp_battle - weapon_bonus - armor_bonus)
         self.save()
 
 
 class Enemy(models.Model):
     name = models.CharField(max_length=30)
+    image_url = models.CharField(max_length=200, default="game/img/スライム.png")  # 敵の画像URL
     
     # 戦闘中の現在のステータス
     max_hp = models.IntegerField(default=50)

@@ -134,6 +134,53 @@ ENEMY_SKILLS = {
             {"type": "attack", "target": "player", "multiplier": 2.0}
         ], "priority": 3, "max_uses": 5},
     ],
+    "スケルフィッシュ": [
+        {"name": "噛みつき", "effects": [
+            {"type": "attack", "target": "player", "multiplier": 1.0}
+        ], "priority": 5},
+        {"name": "硬い鱗", "effects": [
+            {"type": "defense", "target": "enemy", "multiplier": 1.0}
+        ], "priority": 2},
+        {"name": "凶暴化", "effects": [
+            {"type": "buf", "target": "enemy", "stat": "atk", "multiplier": 1.7, "turn": 3},
+            {"type": "buf", "target": "enemy", "stat": "spd", "multiplier": 1.7, "turn": 3},
+        ], "priority": 3, "max_uses": 4},
+    ],
+    "セイレーン": [
+        {"name": "水切り", "effects": [
+            {"type": "attack", "target": "player", "multiplier": 1.0}
+        ], "priority": 5},
+        {"name": "水の盾", "effects": [
+            {"type": "defense", "target": "enemy", "multiplier": 1.0}
+        ], "priority": 2},
+        {"name": "魅惑の歌", "effects": [
+            {"type": "debuf", "target": "player", "stat": "atk", "multiplier": 0.7, "turn": 3},
+            {"type": "debuf", "target": "player", "stat": "def", "multiplier": 0.7, "turn": 3},
+            {"type": "debuf", "target": "player", "stat": "spd", "multiplier": 0.7, "turn": 3},
+        ], "priority": 3, "max_uses": 4},
+    ],
+    "カニガニ": [
+        {"name": "ハサミ断ち", "effects": [
+            {"type": "attack", "target": "player", "multiplier": 1.0}
+        ], "priority": 5},
+        {"name": "硬い甲羅", "effects": [
+            {"type": "defense", "target": "enemy", "multiplier": 1.0}
+        ], "priority": 2},
+        {"name": "急所断ち", "effects": [
+            {"type": "attack", "target": "player", "multiplier": 2.5}
+        ], "priority": 3, "max_uses": 5},
+    ],
+    "クラーケン": [
+        {"name": "触手打ち", "effects": [
+            {"type": "attack", "target": "player", "multiplier": 1.0}
+        ], "priority": 5},
+        {"name": "硬い皮膚", "effects": [
+            {"type": "defense", "target": "enemy", "multiplier": 1.0}
+        ], "priority": 2},
+        {"name": "海の怒り", "effects": [
+            {"type": "attack", "target": "player", "multiplier": 2.0}
+        ], "priority": 3, "max_uses": 4},
+    ],
 }
 
 # プレイヤースキル定義
@@ -160,14 +207,14 @@ PLAYER_SKILLS = {
                     "type": "buf",
                     "target": "player",
                     "stat": "atk",
-                    "multiplier": 1.3,
+                    "multiplier": 1.5,
                     "turn": 4
                 },
                 {
                     "type": "buf",
                     "target": "player",
                     "stat": "def",
-                    "multiplier": 1.3,
+                    "multiplier": 1.5,
                     "turn": 4
                 }
             ]

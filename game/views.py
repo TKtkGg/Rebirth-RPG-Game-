@@ -362,13 +362,13 @@ def battle(request, player_id, enemy_id=None):
                 if player.level <= 5:
                     weight = int(weight * 0.75)
                 elif player.level <= 8:
-                    weight = int(weight * 0.4)
+                    weight = int(weight * 0.5)
                 elif player.level <= 10:
-                    weight = int(weight * 0.5)
+                    weight = int(weight * 0.6)
                 elif player.level <= 15:
-                    weight = int(weight * 0.4)
+                    weight = int(weight * 0.7)
                 else:
-                    weight = int(weight * 0.5)
+                    weight = int(weight * 0.8)
             
             weight = max(1, weight)  # 最低でも1
             weighted_enemies.extend([(enemy, potential_level)] * weight)
@@ -386,29 +386,29 @@ def battle(request, player_id, enemy_id=None):
         # レベルに応じてステータスを変更（レベル1基準）
         enemy.max_hp = enemy.base_max_hp + (enemy.level - 1) * enemy.base_max_hp // 10
         enemy.hp = enemy.max_hp
-        # レベル20までは敵のステータス上昇を抑え、21以降は急上昇
-        if enemy.level <= 20:
-            enemy.atk = enemy.base_atk + (enemy.level - 1) * enemy.base_atk // 8
-            enemy.defense = enemy.base_def + (enemy.level - 1) * enemy.base_def // 8
-            enemy.spd = enemy.base_spd + (enemy.level - 1) * enemy.base_spd // 8
+        # レベル14までは敵のステータス上昇を抑え、21以降は急上昇
+        if enemy.level <= 14:
+            enemy.atk = enemy.base_atk + (enemy.level - 1) * enemy.base_atk // 6
+            enemy.defense = enemy.base_def + (enemy.level - 1) * enemy.base_def // 6
+            enemy.spd = enemy.base_spd + (enemy.level - 1) * enemy.base_spd // 6
         else:
-            # レベル21以降は急激に強くなる
-            level_20_atk = enemy.base_atk + 19 * enemy.base_atk // 10
-            level_20_def = enemy.base_def + 19 * enemy.base_def // 10
-            level_20_spd = enemy.base_spd + 19 * enemy.base_spd // 10
+            # レベル15以降は急激に強くなる
+            level_20_atk = enemy.base_atk + 14 * enemy.base_atk // 10
+            level_20_def = enemy.base_def + 14 * enemy.base_def // 10
+            level_20_spd = enemy.base_spd + 14 * enemy.base_spd // 10
             
-            additional_levels = enemy.level - 20
-            enemy.atk = level_20_atk + additional_levels * enemy.base_atk // 3
-            enemy.defense = level_20_def + additional_levels * enemy.base_def // 3
-            enemy.spd = level_20_spd + additional_levels * enemy.base_spd // 3
+            additional_levels = enemy.level - 15
+            enemy.atk = level_20_atk + additional_levels * enemy.base_atk // 4
+            enemy.defense = level_20_def + additional_levels * enemy.base_def // 4
+            enemy.spd = level_20_spd + additional_levels * enemy.base_spd // 4
         
         # expとゴールドの計算（敵のレベルがプレイヤーより高い場合は報酬増加）
         base_high_exp = enemy.base_exp + (enemy.level - 1) * enemy.base_exp // 3
         if enemy.level > player.level:
             enemy.exp = int(base_high_exp * random.uniform(1.3, 1.4))
-            enemy.drop_gold = enemy.drop_gold_base + (enemy.level - 1) * enemy.drop_gold_base // 3
+            enemy.drop_gold = enemy.drop_gold_base + (enemy.level - 1) * enemy.drop_gold_base // 6
         else:
-            enemy.exp = int(base_high_exp * random.uniform(0.6, 0.7))
+            enemy.exp = int(base_high_exp * random.uniform(0.7, 0.8))
             enemy.drop_gold = enemy.drop_gold_base + (enemy.level - 1) * enemy.drop_gold_base // 10
         
         enemy.is_defeated = False
@@ -646,7 +646,7 @@ def battle(request, player_id, enemy_id=None):
         enemy_def = int(enemy.defense * enemy_def_buff * enemy_def_debuff)
         
         # 敵が防御アクション中か確認
-        effective_def = enemy_def if is_defense_action(actione) else enemy_def // 3
+        effective_def = enemy_def // 1.5 if is_defense_action(actione) else enemy_def // 3
         
         # 基礎ダメージ計算
         base_damage = int(atk - effective_def)
@@ -859,6 +859,8 @@ def battle(request, player_id, enemy_id=None):
                 # 4. 自身（enemy）のHPが50%以下の場合
                 if enemy_hp_ratio <= 0.5 and has_defense_effect:
                     priority *= 2
+                else:
+                    priority *= 0.5  # HPが高い場合、防御スキルの優先度を下げる
             
             skill_copy["priority"] = priority
             adjusted_skills.append(skill_copy)
@@ -930,15 +932,16 @@ def battle(request, player_id, enemy_id=None):
                     player_def = int(target_obj.total_def_battle * player_def_buff * player_def_debuff)
                     
                     # 防御アクションを考慮してダメージ計算
-                    damage_base = int(atk - (player_def if actionp == "defend" else player_def // 3))                
+                    damage_base = int(atk - (player_def // 1.5 if actionp == "defend" else player_def // 3))                
                     damage = max(random.randint(damage_base - 2, damage_base + 1), 1)
                     
                     # プレイヤーが対象の場合、total_hp_battleを直接減らす
                     if target == "player":
                         target_obj.total_hp_battle = max(0, target_obj.total_hp_battle - damage)
                         # 素のHPも同期（装備ボーナスを引いた値）
+                        weapon_bonus = target_obj.weapon.hp_bonus if target_obj.weapon else 0
                         armor_bonus = target_obj.armor.hp_bonus if target_obj.armor else 0
-                        target_obj.hp = max(0, target_obj.total_hp_battle - armor_bonus)
+                        target_obj.hp = max(0, target_obj.total_hp_battle - weapon_bonus - armor_bonus)
                         target_obj.save()  # プレイヤーのHP変更を保存
                     else:
                         # 敵の場合は通常通り
@@ -1049,8 +1052,9 @@ def battle(request, player_id, enemy_id=None):
                     actual_recovery = player.total_hp_battle - old_hp
                     
                     # 素のHPも同時に更新
+                    weapon_bonus = player.weapon.hp_bonus if player.weapon else 0
                     armor_bonus = player.armor.hp_bonus if player.armor else 0
-                    player.hp = max(0, player.total_hp_battle - armor_bonus)
+                    player.hp = max(0, player.total_hp_battle - weapon_bonus - armor_bonus)
                     
                     message = f"{player.name}は{item.name}を使った！\nHPが{actual_recovery}回復した！\n"
                 elif item.target == 'mp':
