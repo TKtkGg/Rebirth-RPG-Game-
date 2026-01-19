@@ -437,6 +437,9 @@
                 <a href="{% url 'game:inventory' player.id %}" class="quick-action-button" aria-label="持ち物">
                     <img src="{% static 'game/img/持ち物_アイコン.png' %}" alt="持ち物">
                 </a>
+                <a href="{% url 'game:quest' player.id %}" class="quick-action-button" aria-label="クエスト">
+                    <img src="{% static 'game/img/クエスト_アイコン.png' %}" alt="クエスト">
+                </a>
                 <button type="button" class="quick-action-button" id="settingsTrigger" aria-label="設定を開く">
                     <img src="{% static 'game/img/設定_アイコン.png' %}" alt="設定">
                 </button>

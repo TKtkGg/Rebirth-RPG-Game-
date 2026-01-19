@@ -294,4 +294,74 @@ class Enemy(models.Model):
     def __str__(self):
         return f"{self.name} (出現条件: Lv.{self.appear_level}以上) (ステージ: {', '.join([stage.name for stage in self.stages.all()])})"
 
+
+class QuestTemplate(models.Model):
+    """クエストテンプレート - 全プレイヤー共通のクエスト定義"""
+    QUEST_TYPES = [
+        ('life', 'ライフ'),
+        ('account', 'アカウント'),
+    ]
     
+    QUEST_CONDITIONS = [
+        ('defeat_enemy', '敵を倒す'),
+        ('spend_gold', 'ゴールドを使う'),
+    ]
+    
+    JOB_CHOICES = [
+        ('all', '全職業'),
+        ('戦士', '戦士'),
+        ('魔法使い', '魔法使い'),
+        ('盗賊', '盗賊'),
+    ]
+    
+    quest_type = models.CharField(max_length=10, choices=QUEST_TYPES)  # ライフ or アカウント
+    job = models.CharField(max_length=20, choices=JOB_CHOICES, default='all')  # 対象職業
+    title = models.CharField(max_length=50)  # クエスト名
+    description = models.TextField()  # クエスト内容
+    condition_type = models.CharField(max_length=20, choices=QUEST_CONDITIONS)  # 条件タイプ
+    condition_target = models.CharField(max_length=50, blank=True)  # 条件の対象（敵の名前など）
+    progress_max = models.IntegerField(default=1)  # 目標値
+    reward_exp = models.IntegerField(default=0)  # 報酬経験値
+    reward_gold = models.IntegerField(default=0)  # 報酬ゴールド
+    order = models.IntegerField(default=0)  # 表示順序
+    is_active = models.BooleanField(default=True)  # 有効フラグ
+    
+    class Meta:
+        ordering = ['quest_type', 'order']
+        verbose_name = 'クエストテンプレート'
+        verbose_name_plural = 'クエストテンプレート'
+    
+    def __str__(self):
+        job_display = f"[{self.get_job_display()}]" if self.job != 'all' else ""
+        return f"{job_display}{self.title} ({self.get_quest_type_display()})"
+
+
+class PlayerQuest(models.Model):
+    """プレイヤーのクエスト進捗"""
+    player = models.ForeignKey(Player, on_delete=models.CASCADE, related_name='player_quests')
+    quest_template = models.ForeignKey(QuestTemplate, on_delete=models.CASCADE, related_name='player_progresses')
+    progress_current = models.IntegerField(default=0)  # 現在の進捗
+    is_completed = models.BooleanField(default=False)  # 達成フラグ
+    is_claimed = models.BooleanField(default=False)  # 報酬受け取りフラグ
+    
+    class Meta:
+        unique_together = ('player', 'quest_template')
+        verbose_name = 'プレイヤークエスト'
+        verbose_name_plural = 'プレイヤークエスト'
+    
+    def __str__(self):
+        return f"{self.player.name} - {self.quest_template.title}"
+    
+    def check_completion(self):
+        """進捗を確認して達成判定"""
+        if not self.is_completed and self.progress_current >= self.quest_template.progress_max:
+            self.is_completed = True
+            self.save()
+        return self.is_completed
+    
+    def update_progress(self, amount=1):
+        """進捗を更新"""
+        if not self.is_completed:
+            self.progress_current = min(self.progress_current + amount, self.quest_template.progress_max)
+            self.save()
+            self.check_completion()

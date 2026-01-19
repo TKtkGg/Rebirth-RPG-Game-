@@ -1,0 +1,339 @@
+{% extends 'game/base.html' %}
+{% block title %}クエスト | RPG Game{% endblock %}
+
+{% block content %}
+{% load static %}
+<style>
+    /* base.htmlのデフォルトスタイルをリセット */
+    body {
+        margin: 0;
+        padding: 0;
+        overflow: hidden;
+    }
+    
+    .quest-container {
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100vw;
+        height: 100vh;
+        background-image: url("{% static 'game/img/ショップ_背景.png' %}");
+        background-size: cover;
+        background-position: center;
+        background-repeat: no-repeat;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: flex-start;
+        padding: 40px 60px;
+        box-sizing: border-box;
+        overflow-y: auto;
+        overflow-x: hidden;
+    }
+    
+    .quest-container::before {
+        content: '';
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100vw;
+        height: 100vh;
+        background-image: url("{% static 'game/img/ショップ_背景.png' %}");
+        background-size: cover;
+        background-position: center;
+        background-repeat: no-repeat;
+        transform: scale(1.1);
+        z-index: -1;
+    }
+    
+    .back-button-container {
+        position: fixed;
+        bottom: 40px;
+        left: 12px;
+    }
+    
+    .back-button {
+        padding: 15px 20px;
+        font-size: 28px;
+        font-weight: bold;
+        background: rgba(100, 100, 100, 0.8);
+        border: 3px solid rgba(255, 255, 255, 0.5);
+        border-radius: 15px;
+        color: white;
+        cursor: pointer;
+        transition: all 0.3s;
+        text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.9);
+        box-shadow: 0 6px 20px rgba(0, 0, 0, 0.6);
+        text-decoration: none;
+        display: inline-block;
+    }
+    
+    .back-button:hover {
+        background: rgba(80, 80, 80, 0.9);
+        transform: translateY(-3px);
+        box-shadow: 0 8px 25px rgba(0, 0, 0, 0.8);
+    }
+    
+    .quest-title {
+        font-size: 60px;
+        font-weight: bold;
+        color: white;
+        text-shadow: 4px 4px 8px rgba(0, 0, 0, 0.9);
+        margin-bottom: 40px;
+        letter-spacing: 10px;
+    }
+    
+    .quest-main-box {
+        background: rgba(0, 0, 0, 0.75);
+        border: 4px solid rgba(139, 105, 20, 0.9);
+        padding: 0;
+        color: #fff;
+        font-family: 'Arial', sans-serif;
+        width: 90%;
+        max-width: 1400px;
+        min-height: 600px;
+        box-shadow: 0 10px 40px rgba(0, 0, 0, 0.8);
+        display: flex;
+        border-radius: 10px;
+        overflow: hidden;
+    }
+    
+    .quest-sidebar {
+        background: rgba(0, 0, 0, 0.85);
+        border-right: 4px solid rgba(139, 105, 20, 0.9);
+        width: 150px;
+        display: flex;
+        flex-direction: column;
+        padding: 0;
+    }
+    
+    .quest-tab {
+        flex: 1;
+        padding: 30px 20px;
+        font-size: 24px;
+        font-weight: bold;
+        cursor: pointer;
+        border-bottom: 2px solid rgba(139, 105, 20, 0.5);
+        background: rgba(0, 0, 0, 0.5);
+        color: white;
+        text-shadow: 2px 2px 4px rgba(0, 0, 0, 1);
+        writing-mode: vertical-rl;
+        text-orientation: upright;
+        letter-spacing: 5px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+    }
+    
+    .quest-tab:hover {
+        background: rgba(100, 180, 200, 0.3);
+    }
+    
+    .quest-tab.active {
+        background: rgba(135, 206, 235, 0.6);
+    }
+    
+    .quest-content {
+        flex: 1;
+        padding: 30px;
+        overflow-y: auto;
+    }
+    
+    .quest-grid {
+        display: grid;
+        grid-template-columns: repeat(4, 1fr);
+        grid-template-rows: repeat(2, 1fr);
+        gap: 20px;
+        height: 100%;
+    }
+    
+    .quest-box {
+        background: rgba(50, 50, 50, 0.6);
+        border: 3px solid rgba(139, 105, 20, 0.7);
+        border-radius: 10px;
+        padding: 15px;
+        display: flex;
+        flex-direction: column;
+        justify-content: space-between;
+        box-shadow: 0 4px 15px rgba(0, 0, 0, 0.5);
+    }
+    
+    .quest-box.completed {
+        background: rgba(144, 238, 144, 0.4);
+        cursor: pointer;
+    }
+    
+    .quest-box.completed:hover {
+        background: rgba(144, 238, 144, 0.5);
+        transform: translateY(-2px);
+        box-shadow: 0 6px 20px rgba(0, 0, 0, 0.6);
+    }
+    
+    .quest-box.claimed {
+        background: rgba(100, 100, 100, 0.3);
+        opacity: 0.6;
+        cursor: default;
+    }
+    
+    .quest-box.empty {
+        background: rgba(30, 30, 30, 0.4);
+        border: 2px dashed rgba(100, 100, 100, 0.5);
+    }
+    
+    .quest-box-title {
+        font-size: 20px;
+        font-weight: bold;
+        color: #fff;
+        text-shadow: 2px 2px 4px rgba(0, 0, 0, 1);
+        margin-bottom: 10px;
+        text-align: center;
+    }
+    
+    .quest-box-content {
+        font-size: 16px;
+        color: #ddd;
+        margin-bottom: 8px;
+        line-height: 1.4;
+        text-align: center;
+    }
+    
+    .quest-box-progress {
+        font-size: 18px;
+        font-weight: bold;
+        color: #90EE90;
+        text-shadow: 1px 1px 3px rgba(0, 0, 0, 1);
+        margin-bottom: 8px;
+        text-align: center;
+    }
+    
+    .quest-box-reward {
+        font-size: 16px;
+        color: #FFD700;
+        text-shadow: 1px 1px 3px rgba(0, 0, 0, 1);
+        text-align: center;
+        line-height: 1.5;
+    }
+</style>
+
+<div class="quest-container">
+    <div class="quest-title">クエスト</div>
+    
+    <div class="quest-main-box">
+        <div class="quest-sidebar">
+            <div class="quest-tab active" data-tab="life">ライフ</div>
+            <div class="quest-tab" data-tab="account">アカウント</div>
+        </div>
+        
+        <div class="quest-content">
+            <div class="quest-grid" id="lifeQuestGrid">
+                {% for quest in life_quests %}
+                    {% if quest %}
+                        <div class="quest-box {% if quest.is_claimed %}claimed{% elif quest.is_completed %}completed{% endif %}" 
+                             data-quest-id="{{ quest.id }}"
+                             {% if quest.is_completed and not quest.is_claimed %}onclick="claimReward({{ quest.id }})"{% endif %}>
+                            <div class="quest-box-title">{{ quest.quest_template.title }}</div>
+                            <div class="quest-box-content">{{ quest.quest_template.description }}</div>
+                            <div class="quest-box-progress">
+                                {% if quest.is_claimed %}
+                                    報酬受取済
+                                {% else %}
+                                    {{ quest.progress_current }} / {{ quest.quest_template.progress_max }}
+                                {% endif %}
+                            </div>
+                            <div class="quest-box-reward">
+                                EXP +{{ quest.quest_template.reward_exp }}<br>
+                                ゴールド +{{ quest.quest_template.reward_gold }}
+                            </div>
+                        </div>
+                    {% else %}
+                        <div class="quest-box empty">
+                            <div class="quest-box-title">-</div>
+                            <div class="quest-box-content" style="color: #888;">空きスロット</div>
+                        </div>
+                    {% endif %}
+                {% endfor %}
+            </div>
+            
+            <div class="quest-grid" id="accountQuestGrid" style="display: none;">
+                {% for quest in account_quests %}
+                    {% if quest %}
+                        <div class="quest-box {% if quest.is_claimed %}claimed{% elif quest.is_completed %}completed{% endif %}"
+                             data-quest-id="{{ quest.id }}"
+                             {% if quest.is_completed and not quest.is_claimed %}onclick="claimReward({{ quest.id }})"{% endif %}>
+                            <div class="quest-box-title">{{ quest.quest_template.title }}</div>
+                            <div class="quest-box-content">{{ quest.quest_template.description }}</div>
+                            <div class="quest-box-progress">
+                                {% if quest.is_claimed %}
+                                    報酬受取済
+                                {% else %}
+                                    {{ quest.progress_current }} / {{ quest.quest_template.progress_max }}
+                                {% endif %}
+                            </div>
+                            <div class="quest-box-reward">
+                                EXP +{{ quest.quest_template.reward_exp }}<br>
+                                ゴールド +{{ quest.quest_template.reward_gold }}
+                            </div>
+                        </div>
+                    {% else %}
+                        <div class="quest-box empty">
+                            <div class="quest-box-title">-</div>
+                            <div class="quest-box-content" style="color: #888;">空きスロット</div>
+                        </div>
+                    {% endif %}
+                {% endfor %}
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        const tabs = document.querySelectorAll('.quest-tab');
+        const lifeQuestGrid = document.getElementById('lifeQuestGrid');
+        const accountQuestGrid = document.getElementById('accountQuestGrid');
+        
+        // URLパラメータからタブを取得
+        const urlParams = new URLSearchParams(window.location.search);
+        const activeTab = urlParams.get('tab') || 'life';
+        
+        // 初期表示を設定
+        if (activeTab === 'account') {
+            tabs.forEach(t => t.classList.remove('active'));
+            tabs[1].classList.add('active');
+            lifeQuestGrid.style.display = 'none';
+            accountQuestGrid.style.display = 'grid';
+        }
+        
+        tabs.forEach(tab => {
+            tab.addEventListener('click', function() {
+                // すべてのタブからactiveクラスを削除
+                tabs.forEach(t => t.classList.remove('active'));
+                // クリックされたタブにactiveクラスを追加
+                this.classList.add('active');
+                
+                // タブの種類を取得
+                const tabType = this.getAttribute('data-tab');
+                
+                // クエスト表示を切り替え
+                if (tabType === 'life') {
+                    lifeQuestGrid.style.display = 'grid';
+                    accountQuestGrid.style.display = 'none';
+                } else if (tabType === 'account') {
+                    lifeQuestGrid.style.display = 'none';
+                    accountQuestGrid.style.display = 'grid';
+                }
+            });
+        });
+    });
+    
+    function claimReward(questId) {
+        // 報酬受け取り処理
+        window.location.href = `/game/quest/claim/${questId}/`;
+    }
+</script>
+
+<div class="back-button-container">
+    <a href="{% url 'game:battle_start' player.id %}" class="back-button">戻る</a>
+</div>
+
+{% endblock %}

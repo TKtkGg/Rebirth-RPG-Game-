@@ -2,7 +2,8 @@ import random
 from django.shortcuts import render,redirect
 from django.contrib.auth import logout
 from django.urls import reverse
-from .models import Player, Enemy, Equipment, Item, Stage
+from django.db import models
+from .models import Player, Enemy, Equipment, Item, Stage, QuestTemplate, PlayerQuest
 from .skills import ENEMY_SKILLS, PLAYER_SKILLS
 from .weapons_armors import WEAPONS, ARMORS
 
@@ -24,6 +25,34 @@ def calculate_score(player):
     
     total_score = base_score + defeat_bonus + gold_bonus + equipment_bonus
     return total_score
+
+
+def level_up_player(player, message=""):
+    """
+    プレイヤーのレベルアップ処理を行う共通関数
+    
+    Args:
+        player: Playerオブジェクト
+        message: 既存のメッセージ文字列（追記される）
+    
+    Returns:
+        message: レベルアップメッセージを追加した文字列
+    """
+    while player.exp >= player.next_exp:
+        player.level += 1
+        player.stat_points += 3
+        player.exp -= player.next_exp
+        player.next_exp = int(300 + player.level * 30 * player.level)
+        
+        # レベルアップ時にHPとSPを最大まで回復
+        player.hp = player.max_hp
+        player.mp = player.max_mp
+        player.update_battle_stats()  # 戦闘用ステータスも更新
+        
+        message += f"レベルアップ！ レベル{player.level}になった！ ステータスポイント+3\n"
+        message += f"HPとSPが全回復した！\n"
+    
+    return message
 
 
 def get_player_from_request(request, player_id=None):
@@ -599,20 +628,19 @@ def battle(request, player_id, enemy_id=None):
         enemy.hp = 0
         enemy.is_defeated = True
         enemy.save()
+        
+        # クエスト進捗更新（敵撃破）
+        enemy_defeat_quests = PlayerQuest.objects.filter(
+            player=player,
+            quest_template__condition_type='defeat_enemy',
+            quest_template__condition_target=enemy.name,
+            is_completed=False
+        )
+        for player_quest in enemy_defeat_quests:
+            player_quest.update_progress(1)
 
-        while player.exp >= player.next_exp:
-            player.level += 1
-            player.stat_points += 3
-            player.exp -= player.next_exp
-            player.next_exp = int(300 + player.level * 30 * player.level)
-            
-            # レベルアップ時にHPとSPを最大まで回復
-            player.hp = player.max_hp
-            player.mp = player.max_mp
-            player.update_battle_stats()  # 戦闘用ステータスも更新
-            
-            message += f"レベルアップ！ レベル{player.level}になった！ ステータスポイント+3\n"
-            message += f"HPとSPが全回復した！\n"
+        # レベルアップ処理
+        message = level_up_player(player, message)
 
         # 戦闘回数をカウントアップ
         battle_count = request.session.get('battle_count', 0)
@@ -1363,6 +1391,16 @@ def buy_item(request, player_id):
         if player.gold >= total_price:
             # お金を減らす
             player.gold -= total_price
+            
+            # クエスト進捗更新（ゴールド消費）
+            gold_spend_quests = PlayerQuest.objects.filter(
+                player=player,
+                quest_template__condition_type='spend_gold',
+                is_completed=False
+            )
+            for player_quest in gold_spend_quests:
+                player_quest.update_progress(total_price)
+            
             player.save()
             
             # Equipmentの場合はプレイヤーの所持装備に追加
@@ -1584,3 +1622,86 @@ def gameover(request):
         'initial_point': initial_point,
     })
 
+
+def quest(request, player_id):
+    """クエスト画面"""
+    player = Player.objects.get(id=player_id)
+    
+    # プレイヤーに適用可能なクエストテンプレートを取得
+    life_templates = QuestTemplate.objects.filter(
+        quest_type='life',
+        is_active=True
+    ).filter(
+        models.Q(job='all') | models.Q(job=player.job)
+    ).order_by('order')[:8]
+    
+    account_templates = QuestTemplate.objects.filter(
+        quest_type='account',
+        is_active=True,
+        job='all'  # アカウントクエストは全職業共通
+    ).order_by('order')[:8]
+    
+    # PlayerQuestを自動生成（存在しない場合のみ）
+    for template in life_templates:
+        PlayerQuest.objects.get_or_create(
+            player=player,
+            quest_template=template,
+            defaults={'progress_current': 0, 'is_completed': False, 'is_claimed': False}
+        )
+    
+    for template in account_templates:
+        PlayerQuest.objects.get_or_create(
+            player=player,
+            quest_template=template,
+            defaults={'progress_current': 0, 'is_completed': False, 'is_claimed': False}
+        )
+    
+    # PlayerQuestを取得
+    life_quests = []
+    for template in life_templates:
+        pq = PlayerQuest.objects.filter(player=player, quest_template=template).first()
+        if pq:
+            life_quests.append(pq)
+    
+    account_quests = []
+    for template in account_templates:
+        pq = PlayerQuest.objects.filter(player=player, quest_template=template).first()
+        if pq:
+            account_quests.append(pq)
+    
+    # 8つに満たない場合は空で埋める
+    while len(life_quests) < 8:
+        life_quests.append(None)
+    while len(account_quests) < 8:
+        account_quests.append(None)
+    
+    return render(request, 'game/quest.html', {
+        'player': player,
+        'life_quests': life_quests[:8],
+        'account_quests': account_quests[:8],
+    })
+
+
+def claim_quest_reward(request, quest_id):
+    """クエスト報酬を受け取る"""
+    player_quest = PlayerQuest.objects.get(id=quest_id)
+    player = player_quest.player
+    quest_type = player_quest.quest_template.quest_type  # クエストタイプを保存
+    
+    # 達成済みで未受け取りの場合のみ報酬を付与
+    if player_quest.is_completed and not player_quest.is_claimed:
+        # 報酬を付与
+        player.exp += player_quest.quest_template.reward_exp
+        player.gold += player_quest.quest_template.reward_gold
+        
+        # レベルアップ処理
+        level_up_player(player)
+        
+        player.save()
+        
+        # 報酬受け取りフラグを立てる
+        player_quest.is_claimed = True
+        player_quest.save()
+    
+    # 元のタブに戻るためにクエストタイプをパラメータとして渡す
+    return redirect(f"{reverse('game:quest', kwargs={'player_id': player.id})}?tab={quest_type}")
