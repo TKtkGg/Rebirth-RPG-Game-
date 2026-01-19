@@ -559,6 +559,10 @@ def battle(request, player_id, enemy_id=None):
         player.stat_points = 0
         player.job = "戦士"
         player.item = "なし"
+        player.gold = 100  # ゴールドを初期値にリセット
+        player.weapon = None  # 武器をリセット
+        player.armor = None  # 防具をリセット
+        player.owned_equipment.clear()  # 所持装備を全削除
         request.session["buffs"] = {}
         request.session["debuffs"] = {}
         request.session["special_states"] = {}
@@ -1061,8 +1065,6 @@ def battle(request, player_id, enemy_id=None):
         if actionp == 'debug_gameover':
             player.defeats = 3  # 完全敗北状態にする
             player.save()
-            message = "【デバッグ】即座にゲームオーバー！\n"
-            message = game_over(message)
             request.session['gameover_player_id'] = player.id
             return redirect('game:gameover')
         
@@ -1111,7 +1113,6 @@ def battle(request, player_id, enemy_id=None):
                 if player.total_hp_battle <= 0:
                     player.defeats += 1
                     if player.defeats >= 3:
-                        message = game_over(message)
                         request.session['gameover_player_id'] = player.id
                         return redirect('game:gameover')
                     else:
@@ -1145,7 +1146,7 @@ def battle(request, player_id, enemy_id=None):
                 if player.total_hp_battle <= 0:
                     player.defeats += 1
                     if player.defeats >= 3:
-                        message = game_over(message)
+                        request.session['gameover_player_id'] = player.id
                         return redirect('game:gameover')
                     else:
                         message = tohome(message)
@@ -1171,10 +1172,10 @@ def battle(request, player_id, enemy_id=None):
             message += ex_message    
             
             # プレイヤーの総HPが0以下になったかチェック
+            # プレイヤーが倒れたかチェック
             if player.total_hp_battle <= 0:
                 player.defeats += 1
                 if player.defeats >= 3:
-                    message = game_over(message)
                     request.session['gameover_player_id'] = player.id
                     return redirect('game:gameover')
                 else:
@@ -1190,7 +1191,6 @@ def battle(request, player_id, enemy_id=None):
             if player.total_hp_battle <= 0:
                 player.defeats += 1
                 if player.defeats >= 3:
-                    message = game_over(message)
                     request.session['gameover_player_id'] = player.id
                     return redirect('game:gameover')
                 else:
