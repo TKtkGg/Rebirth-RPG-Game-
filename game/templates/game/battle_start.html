@@ -207,6 +207,33 @@
         box-shadow: 0 12px 35px rgba(23, 162, 184, 0.7);
     }
     
+    /* サインインボタン */
+    .signin-button {
+        position: fixed;
+        top: 20px;
+        right: 20px;
+        padding: 15px 30px;
+        font-size: 22px;
+        font-weight: bold;
+        background: linear-gradient(135deg, rgba(255, 140, 0, 0.9), rgba(255, 100, 0, 0.9));
+        border: 3px solid rgba(255, 255, 255, 0.7);
+        border-radius: 12px;
+        color: white;
+        cursor: pointer;
+        transition: all 0.3s;
+        text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.9);
+        box-shadow: 0 6px 20px rgba(255, 140, 0, 0.6);
+        text-decoration: none;
+        display: inline-block;
+        z-index: 1000;
+    }
+    
+    .signin-button:hover {
+        background: linear-gradient(135deg, rgba(255, 160, 0, 0.95), rgba(255, 120, 0, 0.95));
+        transform: translateY(-3px);
+        box-shadow: 0 8px 25px rgba(255, 140, 0, 0.8);
+    }
+    
     /* スクロールバーのスタイリング（オプション） */
     .status-panel::-webkit-scrollbar,
     .button-panel::-webkit-scrollbar {
@@ -344,6 +371,10 @@
         }
     }
 </style>
+
+{% if player.is_guest %}
+<a href="{% url 'game:convert_guest_to_user' player.id %}" class="signin-button">サインイン</a>
+{% endif %}
 
 <div class="rpg-container">
     <div class="status-panel">

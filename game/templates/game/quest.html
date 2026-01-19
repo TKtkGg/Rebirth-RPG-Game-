@@ -133,6 +133,16 @@
         background: rgba(135, 206, 235, 0.6);
     }
     
+    .quest-tab.disabled {
+        opacity: 0.3;
+        cursor: not-allowed;
+        pointer-events: none;
+    }
+    
+    .quest-tab.disabled:hover {
+        background: rgba(0, 0, 0, 0.5);
+    }
+    
     .quest-content {
         flex: 1;
         padding: 30px;
@@ -221,7 +231,7 @@
     <div class="quest-main-box">
         <div class="quest-sidebar">
             <div class="quest-tab active" data-tab="life">ライフ</div>
-            <div class="quest-tab" data-tab="account">アカウント</div>
+            <div class="quest-tab {% if is_guest %}disabled{% endif %}" data-tab="account">アカウント</div>
         </div>
         
         <div class="quest-content">
@@ -306,6 +316,11 @@
         
         tabs.forEach(tab => {
             tab.addEventListener('click', function() {
+                // disabledクラスがある場合は処理しない
+                if (this.classList.contains('disabled')) {
+                    return;
+                }
+                
                 // すべてのタブからactiveクラスを削除
                 tabs.forEach(t => t.classList.remove('active'));
                 // クリックされたタブにactiveクラスを追加

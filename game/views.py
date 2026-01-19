@@ -1679,6 +1679,7 @@ def quest(request, player_id):
         'player': player,
         'life_quests': life_quests[:8],
         'account_quests': account_quests[:8],
+        'is_guest': player.is_guest,
     })
 
 
@@ -1705,3 +1706,18 @@ def claim_quest_reward(request, quest_id):
     
     # 元のタブに戻るためにクエストタイプをパラメータとして渡す
     return redirect(f"{reverse('game:quest', kwargs={'player_id': player.id})}?tab={quest_type}")
+
+
+def convert_guest_to_user(request, player_id):
+    """ゲストプレイヤーをログインユーザーに変換"""
+    player = Player.objects.get(id=player_id)
+    
+    # ゲストプレイヤーでない場合はエラー
+    if not player.is_guest:
+        return redirect('game:battle_start', player_id=player.id)
+    
+    # セッションにゲストプレイヤーIDを保存
+    request.session['converting_guest_player_id'] = player_id
+    
+    # サインアップページにリダイレクト
+    return redirect('accounts:signup')
