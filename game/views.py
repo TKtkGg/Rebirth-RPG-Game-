@@ -145,6 +145,10 @@ def start_game(request):
             base_hp, base_atk, base_def, base_spd, base_mp = 100, 5, 5, 5, 50
             job_bonus_hp, job_bonus_atk, job_bonus_def, job_bonus_spd, job_bonus_mp = -5, 3, 0, 5, 0
             stat_points = request.user.initial_points if request.user.is_authenticated else 0
+        elif job == "格闘家":
+            base_hp, base_atk, base_def, base_spd, base_mp = 100, 5, 5, 5, 50
+            job_bonus_hp, job_bonus_atk, job_bonus_def, job_bonus_spd, job_bonus_mp = -20, 8, 3, 5, -10
+            stat_points = request.user.initial_points if request.user.is_authenticated else 0
         else:
             base_hp, base_atk, base_def, base_spd, base_mp = 100, 5, 5, 5, 50
             job_bonus_hp, job_bonus_atk, job_bonus_def, job_bonus_spd, job_bonus_mp = 0, 0, 0, 0, 0
@@ -281,6 +285,49 @@ def battle_start(request, player_id, enemy_id=None):
             return redirect('game:battle_start', player_id=player.id)
 
     return render(request, 'game/battle_start.html', {"player": player, "exp_percent": exp_percent, "continue_count": continue_count,})
+
+
+def decrease_buff_debuff_turns(buffs, debuffs, special_states):
+    """
+    ターン経過でバフ・デバフ・特殊状態を減少させる共通関数
+    
+    Args:
+        buffs: バフの辞書
+        debuffs: デバフの辞書
+        special_states: 特殊状態の辞書
+    
+    Returns:
+        tuple: (更新されたbuffs, debuffs, special_states)
+    """
+    # バフの減少
+    for target in list(buffs.keys()):
+        for stat in list(buffs[target].keys()):
+            buffs[target][stat]["turn"] -= 1
+            if buffs[target][stat]["turn"] <= 0:
+                del buffs[target][stat]
+        if not buffs[target]:
+            del buffs[target]
+    
+    # デバフの減少
+    for target in list(debuffs.keys()):
+        for stat in list(debuffs[target].keys()):
+            debuffs[target][stat]["turn"] -= 1
+            if debuffs[target][stat]["turn"] <= 0:
+                del debuffs[target][stat]
+        if not debuffs[target]:
+            del debuffs[target]
+    
+    # 特殊状態の減少
+    for target in list(special_states.keys()):
+        for state in list(special_states[target].keys()):
+            special_states[target][state]["turn"] -= 1
+            if special_states[target][state]["turn"] <= 0:
+                del special_states[target][state]
+        if not special_states[target]:
+            del special_states[target]
+    
+    return buffs, debuffs, special_states
+
 
 def battle(request, player_id, enemy_id=None):
     from .models import PlayerInventory
@@ -470,6 +517,10 @@ def battle(request, player_id, enemy_id=None):
     
     # プレイヤーのスキルを取得
     player_skills = PLAYER_SKILLS.get(player.job, [])
+    # スキルにis_actionフラグがない場合はFalseを設定
+    for skill in player_skills:
+        if 'is_action' not in skill:
+            skill['is_action'] = False
     
     # プレイヤーのアイテムを取得
     player_items = PlayerInventory.objects.filter(player=player, quantity__gt=0).select_related('item')
@@ -757,11 +808,25 @@ def battle(request, player_id, enemy_id=None):
             skill_data = player_skills[skill_index]
             skill_name = skill_data["name"]
             skill_cost = skill_data["cost"]
+            is_action_skill = skill_data.get("is_action", False)
             
             # SP不足チェック
             if player.mp < skill_cost:
                 message = f"SPが足りません！ {skill_name} を発動するには SPが{skill_cost}必要です。"
                 return message, False
+            
+            # アクション特技の場合は特別な処理
+            if is_action_skill:
+                player.mp -= skill_cost
+                player.save()
+                # アクションモードであることをセッションに保存
+                request.session['action_mode'] = {
+                    'skill_name': skill_name,
+                    'skill_data': skill_data,
+                    'multiplier': skill_data["effects"][0].get("multiplier", 1.0)
+                }
+                # アクションモード用の特別なレンダリングを返す
+                return message, True
             
             # SPを消費
             player.mp -= skill_cost
@@ -1054,6 +1119,58 @@ def battle(request, player_id, enemy_id=None):
             # 逃走失敗
             message += f"逃げようとした、しかし失敗した！\n"
             return message, False, 0, 0
+    
+    # アクション特技終了後の勝利処理
+    if request.method == 'GET' and request.session.get('after_action_skill_win'):
+        message = request.session.pop('action_skill_message', '')
+        request.session.pop('after_action_skill_win')
+        
+        # 勝利処理
+        message, gained_exp, gained_gold, existLevel = win(message)
+        return render(request, "game/battle.html", render_battle_screen(message, enemy_override=None, gained_exp=gained_exp, existLevel=existLevel, gained_gold=gained_gold))
+    
+    # アクション特技終了後の処理（敵が生きている場合）
+    if request.method == 'GET' and request.session.get('after_action_skill'):
+        message = request.session.pop('action_skill_message', '')
+        request.session.pop('after_action_skill')
+        
+        # 敵のターンを実行
+        actione = choose_enemyAction(enemy, player, buffs, debuffs)
+        ex_message, buffs, debuffs = enemyAction(message, enemy, player, buffs, debuffs, None, actione)
+        message += ex_message
+        
+        # セッションに保存
+        request.session["buffs"] = buffs
+        request.session["debuffs"] = debuffs
+        
+        # プレイヤーが倒れたかチェック
+        if player.total_hp_battle <= 0:
+            player.defeats += 1
+            if player.defeats >= 3:
+                request.session['gameover_player_id'] = player.id
+                return redirect('game:gameover')
+            else:
+                message = tohome(message)
+                return render(request, "game/battle.html", render_battle_screen(message, redirect_after=True, redirect_url="battle_start", recovering=True))
+        
+        # ターン経過でバフ・デバフを減少
+        buffs, debuffs, special_states = decrease_buff_debuff_turns(buffs, debuffs, special_states)
+        
+        request.session["buffs"] = buffs
+        request.session["debuffs"] = debuffs
+        request.session["special_states"] = special_states
+        
+        # メッセージ履歴に追加
+        message_history.append(message)
+        request.session["message_history"] = message_history
+        
+        # 敵が倒されたかチェック
+        if enemy.hp <= 0:
+            message, gained_exp, gained_gold, existLevel = win(message)
+            return render(request, "game/battle.html", render_battle_screen(message, enemy_override=None, gained_exp=gained_exp, existLevel=existLevel, gained_gold=gained_gold))
+        
+        # 戦闘を続行
+        return render(request, "game/battle.html", render_battle_screen(message))
 
     if request.method == 'POST':
         
@@ -1162,6 +1279,12 @@ def battle(request, player_id, enemy_id=None):
             message,success = playerAction(message,actionp,special,actione)
             if not success:
                 return render(request, "game/battle.html", render_battle_screen(message))
+            
+            # アクションモードチェック
+            if request.session.get('action_mode'):
+                action_data = request.session['action_mode']
+                return render(request, "game/battle.html", render_battle_screen(message, action_mode=action_data))
+            
             if enemy.hp <= 0:
                 message, gained_exp, gained_gold, existLevel = win(message)
                 return render(request, "game/battle.html", render_battle_screen(message, enemy_override=None, gained_exp=gained_exp, existLevel=existLevel, gained_gold=gained_gold))
@@ -1201,45 +1324,22 @@ def battle(request, player_id, enemy_id=None):
             message += ex_message
             if not success:
                 return render(request, "game/battle.html", render_battle_screen(message))
+            
+            # アクションモードチェック
+            if request.session.get('action_mode'):
+                action_data = request.session['action_mode']
+                return render(request, "game/battle.html", render_battle_screen(message, action_mode=action_data))
+            
             if enemy.hp <= 0:
                 message,gained_exp,gained_gold,existLevel = win(message)
                 return render(request, "game/battle.html", render_battle_screen(message, enemy_override=None, gained_exp=gained_exp, existLevel=existLevel, gained_gold=gained_gold))
           
 
         # ターン経過でバフを減少
-        for target in list(buffs.keys()):
-            for stat in list(buffs[target].keys()):
-                buffs[target][stat]["turn"] -= 1
-                if buffs[target][stat]["turn"] <= 0:
-                    del buffs[target][stat]
-            # 空になったターゲットを削除
-            if not buffs[target]:
-                del buffs[target]
+        buffs, debuffs, special_states = decrease_buff_debuff_turns(buffs, debuffs, special_states)
 
         request.session["buffs"] = buffs
-
-        # ターン経過でデバフを減少
-        for target in list(debuffs.keys()):
-            for stat in list(debuffs[target].keys()):
-                debuffs[target][stat]["turn"] -= 1
-                if debuffs[target][stat]["turn"] <= 0:
-                    del debuffs[target][stat]
-            # 空になったターゲットを削除
-            if not debuffs[target]:
-                del debuffs[target]
-
         request.session["debuffs"] = debuffs
-        
-        # ターン経過で特殊状態を減少
-        for target in list(special_states.keys()):
-            for state in list(special_states[target].keys()):
-                special_states[target][state]["turn"] -= 1
-                if special_states[target][state]["turn"] <= 0:
-                    del special_states[target][state]
-            # 空になったターゲットを削除
-            if not special_states[target]:
-                del special_states[target]
-        
         request.session["special_states"] = special_states
         
         # 表示用ステータスを再計算【装備ボーナス込み + バフ×デバフ適用】
@@ -1706,6 +1806,104 @@ def claim_quest_reward(request, quest_id):
     
     # 元のタブに戻るためにクエストタイプをパラメータとして渡す
     return redirect(f"{reverse('game:quest', kwargs={'player_id': player.id})}?tab={quest_type}")
+
+
+def action_skill_click(request, player_id, enemy_id):
+    """アクション特技のクリック時ダメージ処理"""
+    from django.http import JsonResponse
+    import random
+    
+    if request.method != 'POST':
+        return JsonResponse({'error': 'POST required'}, status=400)
+    
+    player = Player.objects.get(id=player_id)
+    enemy = Enemy.objects.get(id=enemy_id)
+    
+    # アクションモードのデータを取得
+    action_data = request.session.get('action_mode')
+    if not action_data:
+        return JsonResponse({'error': 'No action mode'}, status=400)
+    
+    # バフ・デバフを取得
+    buffs = request.session.get("buffs", {})
+    debuffs = request.session.get("debuffs", {})
+    
+    # ダメージ計算（通常攻撃と同じ計算式）
+    multiplier = action_data.get('multiplier', 1.0)
+    
+    # プレイヤーの攻撃力（バフ・デバフ適用）
+    player_atk_buff = buffs.get("player", {}).get("atk", {}).get("multiplier", 1.0)
+    player_atk_debuff = debuffs.get("player", {}).get("atk", {}).get("multiplier", 1.0)
+    effective_atk = player.total_atk_battle * player_atk_buff * player_atk_debuff
+    
+    # 敵の防御力（バフ・デバフ適用）
+    enemy_def_buff = buffs.get("enemy", {}).get("def", {}).get("multiplier", 1.0)
+    enemy_def_debuff = debuffs.get("enemy", {}).get("def", {}).get("multiplier", 1.0)
+    effective_def = enemy.defense * enemy_def_buff * enemy_def_debuff
+    
+    # ダメージ計算
+    base_damage = max(1, effective_atk - effective_def)
+    damage_variance = random.randint(0, 3)
+    damage = int(base_damage * multiplier) + damage_variance
+    
+    # 敵のHPを減らす
+    enemy.hp = max(0, enemy.hp - damage)
+    enemy.save()
+    
+    # 累積ダメージをセッションに保存
+    total_damage = request.session.get('action_total_damage', 0)
+    total_damage += damage
+    request.session['action_total_damage'] = total_damage
+    
+    # 敵のHP割合を計算
+    enemy_hp_percent = int((enemy.hp / enemy.max_hp) * 100) if enemy.max_hp > 0 else 0
+    
+    return JsonResponse({
+        'damage': damage,
+        'enemy_hp': enemy.hp,
+        'enemy_max_hp': enemy.max_hp,
+        'enemy_hp_percent': enemy_hp_percent,
+        'enemy_defeated': enemy.hp <= 0
+    })
+
+
+def action_skill_end(request, player_id, enemy_id):
+    """アクション特技終了処理"""
+    if request.method != 'POST':
+        return redirect('game:battle', player_id=player_id, enemy_id=enemy_id)
+    
+    player = Player.objects.get(id=player_id)
+    enemy = Enemy.objects.get(id=enemy_id)
+    
+    # セッションからaction_modeを削除
+    action_data = request.session.pop('action_mode', None)
+    if not action_data:
+        return redirect('game:battle', player_id=player_id, enemy_id=enemy_id)
+    
+    # click_countと累積ダメージを取得
+    click_count = int(request.POST.get('click_count', 0))
+    total_damage = request.session.pop('action_total_damage', 0)
+    
+    # メッセージを作成
+    message = f"{player.name}の{action_data['skill_name']}！\n"
+    message += f"{click_count}回の連続攻撃！ 合計{total_damage}ダメージ！\n"
+    
+    buffs = request.session.get("buffs", {})
+    debuffs = request.session.get("debuffs", {})
+    message_history = request.session.get("message_history", [])
+    
+    # 敵のHPチェック（既に倒されている場合は勝利処理へ）
+    if enemy.hp <= 0:
+        # 敵が倒された場合、勝利処理のフラグを立てる
+        request.session['after_action_skill_win'] = True
+        request.session['action_skill_message'] = message
+        return redirect('game:battle', player_id=player_id, enemy_id=enemy_id)
+    
+    # 敵が生きている場合、敵のターンを実行
+    request.session['after_action_skill'] = True
+    request.session['action_skill_message'] = message
+    
+    return redirect('game:battle', player_id=player_id, enemy_id=enemy_id)
 
 
 def convert_guest_to_user(request, player_id):

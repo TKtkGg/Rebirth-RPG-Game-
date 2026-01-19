@@ -19,6 +19,8 @@ urlpatterns = [
     path('use_inventory_item/<int:player_id>/<int:inventory_item_id>/', views.use_inventory_item, name='use_inventory_item'),  # インベントリーからアイテム使用
     path('quest/<int:player_id>/', views.quest, name='quest'),  # クエスト画面
     path('quest/claim/<int:quest_id>/', views.claim_quest_reward, name='claim_quest_reward'),  # クエスト報酬受け取り
+    path('action_click/<int:player_id>/<int:enemy_id>/', views.action_skill_click, name='action_skill_click'),  # アクション特技クリック
+    path('action_end/<int:player_id>/<int:enemy_id>/', views.action_skill_end, name='action_skill_end'),  # アクション特技終了
     path('convert_guest/<int:player_id>/', views.convert_guest_to_user, name='convert_guest_to_user'),  # ゲストからユーザーへ変換
     path('gameover/', views.gameover, name='gameover'),  # ゲームオーバー画面
 ]

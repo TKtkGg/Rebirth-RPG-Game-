@@ -340,6 +340,16 @@
         box-shadow: 0 8px 25px rgba(245, 159, 0, 0.6);
     }
     
+    .action-skill-button {
+        background: linear-gradient(135deg, #ff922b 0%, #fd7e14 100%);
+    }
+    
+    .action-skill-button:hover {
+        background: linear-gradient(135deg, #fd7e14 0%, #f76707 100%);
+        transform: translateY(-2px);
+        box-shadow: 0 8px 25px rgba(253, 126, 20, 0.6);
+    }
+    
     .back-button {
         background: linear-gradient(135deg, #868e96 0%, #495057 100%);
     }
@@ -613,9 +623,15 @@
                     <form method="POST" style="display: contents;">
                         {% csrf_token %}
                         {% for skill in player_skills %}
-                            <button type="submit" name="special" value="skill{{ forloop.counter }}" class="battle-button special-button">
-                                {{ skill.name }} (SP:{{ skill.cost }})
-                            </button>
+                            {% if skill.is_action %}
+                                <button type="submit" name="special" value="skill{{ forloop.counter }}" class="battle-button action-skill-button">
+                                    {{ skill.name }} (SP:{{ skill.cost }})
+                                </button>
+                            {% else %}
+                                <button type="submit" name="special" value="skill{{ forloop.counter }}" class="battle-button special-button">
+                                    {{ skill.name }} (SP:{{ skill.cost }})
+                                </button>
+                            {% endif %}
                         {% endfor %}
                     </form>
                     <button type="button" id="back-to-actions" class="battle-button back-button">戻る</button>
@@ -645,6 +661,12 @@
                 </div>
             {% endif %}
         </div>
+</div>
+
+<!-- アクションモード用オーバーレイ -->
+<div id="action-overlay" style="display: none; position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; background: rgba(0, 0, 0, 0.7); z-index: 9999; justify-content: flex-start; align-items: center; flex-direction: column; padding-top: 100px; user-select: none; -webkit-user-select: none; -moz-user-select: none; -ms-user-select: none;">
+    <div id="action-timer" style="font-size: 120px; font-weight: bold; color: white; text-shadow: 4px 4px 8px rgba(0, 0, 0, 1); margin-bottom: 30px;">3.00</div>
+    <div id="action-instruction" style="display: none; font-size: 80px; font-weight: bold; color: rgba(255, 255, 255, 0.3); text-shadow: 3px 3px 6px rgba(0, 0, 0, 1);">連打！！</div>
 </div>
 
 <!-- メッセージエリア（左下に固定配置） -->
@@ -755,6 +777,98 @@
             }
         }
     });
+    
+    {% if action_mode %}
+    // アクションモード用のJavaScript
+    (function() {
+        let timeRemaining = 3.00;
+        let isStarted = false;
+        let timerInterval = null;
+        let clickCount = 0;
+        const overlay = document.getElementById('action-overlay');
+        const timerDisplay = document.getElementById('action-timer');
+        const instructionText = document.getElementById('action-instruction');
+        
+        // オーバーレイを表示
+        overlay.style.display = 'flex';
+        
+        // 3秒経過後に「連打！！」を表示
+        let instructionTimeout = setTimeout(() => {
+            if (!isStarted) {
+                instructionText.style.display = 'block';
+            }
+        }, 3000);
+        
+        // クリックイベントハンドラー
+        function handleClick(e) {
+            if (!isStarted) {
+                // 最初のクリックでカウントダウン開始
+                isStarted = true;
+                instructionText.style.display = 'none';
+                clearTimeout(instructionTimeout);
+                
+                timerInterval = setInterval(() => {
+                    timeRemaining -= 0.01;
+                    if (timeRemaining <= 0) {
+                        endActionMode();
+                    } else {
+                        timerDisplay.textContent = timeRemaining.toFixed(2);
+                    }
+                }, 10);
+            }
+            
+            clickCount++;
+            
+            // ダメージ処理（Ajax）
+            fetch("{% url 'game:action_skill_click' player.id enemy.id %}", {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': '{{ csrf_token }}'
+                },
+                body: JSON.stringify({})
+            })
+            .then(response => response.json())
+            .then(data => {
+                // 敵のHP表示を更新
+                const enemyHpBar = document.querySelector('.enemy-hp-bar-fill');
+                const enemyHpValue = document.querySelector('.enemy-hp-value');
+                if (enemyHpBar && enemyHpValue) {
+                    enemyHpBar.style.width = data.enemy_hp_percent + '%';
+                    enemyHpValue.textContent = data.enemy_hp + ' / ' + data.enemy_max_hp;
+                }
+            })
+            .catch(error => console.error('Error:', error));
+        }
+        
+        function endActionMode() {
+            clearInterval(timerInterval);
+            overlay.removeEventListener('click', handleClick);
+            
+            // アクションモード終了処理をサーバーに通知
+            const form = document.createElement('form');
+            form.method = 'POST';
+            form.action = "{% url 'game:action_skill_end' player.id enemy.id %}";
+            
+            const csrfInput = document.createElement('input');
+            csrfInput.type = 'hidden';
+            csrfInput.name = 'csrfmiddlewaretoken';
+            csrfInput.value = '{{ csrf_token }}';
+            form.appendChild(csrfInput);
+            
+            const clickInput = document.createElement('input');
+            clickInput.type = 'hidden';
+            clickInput.name = 'click_count';
+            clickInput.value = clickCount;
+            form.appendChild(clickInput);
+            
+            document.body.appendChild(form);
+            form.submit();
+        }
+        
+        overlay.addEventListener('click', handleClick);
+    })();
+    {% endif %}
 </script>
 
 {% endblock %}

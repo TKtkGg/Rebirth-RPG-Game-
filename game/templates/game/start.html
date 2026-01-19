@@ -107,6 +107,7 @@
                 <option value="戦士">戦士</option>
                 <option value="魔法使い">魔法使い</option>
                 <option value="忍者">忍者</option>
+                <option value="格闘家">格闘家</option>
             </select>
             
             <div class="job-description" id="job-desc">
@@ -126,7 +127,8 @@
     const descriptions = {
         '戦士': '<strong>戦士：</strong>体力、攻撃力、防御力が高いが、スピードは遅め。<br><strong>ジョブボーナス：</strong>HP +10, ATK +3, DEF +3, SPD -3',
         '魔法使い': '<strong>魔法使い：</strong>高い攻撃力を持つが、打たれ弱い。<br><strong>ジョブボーナス：</strong>HP -5, ATK +7, DEF -2',
-        '忍者': '<strong>忍者：</strong>攻撃力、スピードのあるジョブ。他はフツー。<br><strong>ジョブボーナス：</strong>HP -5, ATK +3, SPD +5'
+        '忍者': '<strong>忍者：</strong>攻撃力、スピードのあるジョブ。他はフツー。<br><strong>ジョブボーナス：</strong>HP -5, ATK +3, SPD +5',
+        '格闘家': '<strong>格闘家：</strong>攻撃力に特に優れたジョブ。体力と気力が少し低め。<br><strong>ジョブボーナス：</strong>HP -20, ATK +8, DEF +3, SPD +5, SP -10'
     };
     
     jobSelect.addEventListener('change', function() {

@@ -1,3 +1,5 @@
+import random
+
 ENEMY_SKILLS = {
     "スライム": [
         {"name": "体当たり", "effects": [
@@ -321,6 +323,54 @@ PLAYER_SKILLS = {
                     "type": "guaranteed_evasion",
                     "target": "player",
                     "turn": 2
+                }
+            ]
+        }
+    ],
+    "格闘家": [
+        {
+            "name": "気合いパンチ",
+            "cost": 15,
+            "description": "力を貯めた最大の一撃を放つ",
+            "effects": [
+                {
+                    "type": "attack",
+                    "target": "enemy",
+                    "multiplier": 2.2
+                }
+            ]
+        },
+        {
+            "name": "シャドーイング",
+            "cost": 15,
+            "description": "見えない相手と戦い、攻撃力と速度を上げる。",
+            "effects": [
+                {
+                    "type": "buf",
+                    "target": "player",
+                    "stat": "atk",
+                    "multiplier": 1.5,
+                    "turn": 4
+                },
+                {
+                    "type": "buf",
+                    "target": "player",
+                    "stat": "spd",
+                    "multiplier": 1.5,
+                    "turn": 4
+                }
+            ]
+        },
+        {
+            "name": "連続パンチ",
+            "cost": 30,
+            "description": "怒涛のパンチを繰り出し、ダメージを与える。(ACTION)",
+            "is_action": True,
+            "effects": [
+                {
+                    "type": "action",
+                    "target": "enemy",
+                    "multiplier": random.uniform(0.08, 0.1)
                 }
             ]
         }
