@@ -38,7 +38,7 @@ def calculate_score(player):
     strong_defeat_score = player.strong_defeats * 1000
     
     # レベルスコア
-    level_score = player.level * 100
+    level_score = player.level * 500
     
     # 合計スコア
     total_score = (
@@ -312,7 +312,7 @@ def battle_start(request, player_id, enemy_id=None):
 
     exp_percent = int(player.exp / player.next_exp * 100)
 
-    continue_count = 2 - player.defeats
+    continue_count = 2 - player.death_count
 
     if request.method == 'POST':
         # 休む機能の処理
@@ -991,9 +991,9 @@ def battle(request, player_id, enemy_id=None):
                 
                 # 4. 自身（enemy）のHPが50%以下の場合
                 if enemy_hp_ratio <= 0.5 and has_defense_effect:
-                    priority *= 2
+                    priority *= 1.3
                 else:
-                    priority *= 0.5  # HPが高い場合、防御スキルの優先度を下げる
+                    priority *= 0.3  # HPが高い場合、防御スキルの優先度を下げる
             
             skill_copy["priority"] = priority
             adjusted_skills.append(skill_copy)
@@ -1738,6 +1738,40 @@ def gameover(request):
             score = calculate_score(player)
             initial_point = score // 10000  # スコアの1/10000を初期ポイントとする
             
+            # 各スコアを計算
+            hp_score = player.max_hp * 10
+            atk_score = player.atk * 100
+            def_score = player.defense * 100
+            spd_score = player.spd * 100
+            mp_score = player.max_mp * 10
+            equipment_score = sum(eq.score for eq in player.owned_equipment.all())
+            defeat_score = player.defeats * 100
+            strong_defeat_score = player.strong_defeats * 1000
+            level_score = player.level * 300
+            
+            # スコア内訳をセッションに保存
+            request.session['score_breakdown'] = {
+                'hp': player.max_hp,
+                'hp_score': hp_score,
+                'atk': player.atk,
+                'atk_score': atk_score,
+                'defense': player.defense,
+                'def_score': def_score,
+                'spd': player.spd,
+                'spd_score': spd_score,
+                'mp': player.max_mp,
+                'mp_score': mp_score,
+                'equipment_list': [eq.name for eq in player.owned_equipment.all()],
+                'equipment_score': equipment_score,
+                'defeats': player.defeats,
+                'defeat_score': defeat_score,
+                'strong_defeats': player.strong_defeats,
+                'strong_defeat_score': strong_defeat_score,
+                'level': player.level,
+                'level_score': level_score,
+                'total_score': score
+            }
+            
             # Playerを削除
             player.delete()
             del request.session['gameover_player_id']
@@ -1760,6 +1794,19 @@ def gameover(request):
     return render(request, 'game/gameover.html', {
         'score': score,
         'initial_point': initial_point,
+    })
+
+
+def score_breakdown(request):
+    """スコア内訳を表示"""
+    breakdown = request.session.get('score_breakdown', {})
+    
+    if not breakdown:
+        # 内訳データがない場合はゲームオーバー画面にリダイレクト
+        return redirect('game:gameover')
+    
+    return render(request, 'game/score_breakdown.html', {
+        'breakdown': breakdown,
     })
 
 
