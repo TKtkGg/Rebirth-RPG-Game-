@@ -35,6 +35,7 @@ class Equipment(models.Model):
     description = models.TextField(default="")
     is_purchased = models.BooleanField(default=False)  # 購入済みフラグ（ショップ用）
     appear_level = models.IntegerField(default=1)  # ショップに出現する最小プレイヤーレベル
+    score = models.IntegerField(default=0)  # この装備が持つスコア
     
     def __str__(self):
         return f"{self.name} ({self.get_equipment_type_display()})"
@@ -93,7 +94,9 @@ class Player(models.Model):
     stat_points = models.IntegerField(default=0)
     job = models.CharField(max_length=20, default="戦士")
     item = models.CharField(max_length=30, default="なし")
-    defeats = models.IntegerField(default=0)
+    defeats = models.IntegerField(default=0)  # 敵を倒した回数（スコア計算用）
+    strong_defeats = models.IntegerField(default=0)  # 強敵を倒した回数（スコア計算用）
+    death_count = models.IntegerField(default=0)  # 敗北回数（復活回数の計算用）
     
     # 装備スロット
     weapon = models.ForeignKey(Equipment, on_delete=models.SET_NULL, null=True, blank=True, related_name='equipped_as_weapon')

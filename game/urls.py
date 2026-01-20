@@ -21,6 +21,7 @@ urlpatterns = [
     path('quest/claim/<int:quest_id>/', views.claim_quest_reward, name='claim_quest_reward'),  # クエスト報酬受け取り
     path('action_click/<int:player_id>/<int:enemy_id>/', views.action_skill_click, name='action_skill_click'),  # アクション特技クリック
     path('action_end/<int:player_id>/<int:enemy_id>/', views.action_skill_end, name='action_skill_end'),  # アクション特技終了
+    path('continue_battle/<int:player_id>/', views.continue_battle, name='continue_battle'),  # 続けて戦う
     path('convert_guest/<int:player_id>/', views.convert_guest_to_user, name='convert_guest_to_user'),  # ゲストからユーザーへ変換
     path('gameover/', views.gameover, name='gameover'),  # ゲームオーバー画面
 ]

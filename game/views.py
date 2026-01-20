@@ -13,18 +13,78 @@ def calculate_score(player):
     ゲームスコアを計算
     
     スコア計算式:
-    - 基本スコア = レベル × 1000
-    - 撃破数ボーナス = 撃破数 × 100
-    - ゴールドボーナス = ゴールド × 10
-    - 装備ボーナス = 所持装備数 × 500
+    - ATK × 100
+    - DEF × 100
+    - SPD × 100
+    - HP × 10
+    - SP × 10
+    - 装備の持つスコア（各装備のscoreフィールドの合計）
+    - 倒した敵の数 × 100
+    - 倒した強敵の数 × 1000
+    - プレイヤーレベル × 100
     """
-    base_score = player.level * 1000
-    defeat_bonus = player.defeats * 100
-    gold_bonus = player.gold * 10
-    equipment_bonus = player.owned_equipment.count() * 500
+    # 基本ステータススコア
+    atk_score = player.atk * 100
+    def_score = player.defense * 100
+    spd_score = player.spd * 100
+    hp_score = player.max_hp * 10
+    sp_score = player.max_mp * 10
     
-    total_score = base_score + defeat_bonus + gold_bonus + equipment_bonus
+    # 装備スコア（所持している全装備のscoreフィールドの合計）
+    equipment_score = sum(eq.score for eq in player.owned_equipment.all())
+    
+    # 撃破スコア
+    defeat_score = player.defeats * 100
+    strong_defeat_score = player.strong_defeats * 1000
+    
+    # レベルスコア
+    level_score = player.level * 100
+    
+    # 合計スコア
+    total_score = (
+        atk_score + def_score + spd_score + hp_score + sp_score +
+        equipment_score + defeat_score + strong_defeat_score + level_score
+    )
+    
     return total_score
+
+
+def initialize_player_quests(player):
+    """
+    プレイヤーのクエストを初期化する
+    存在しないPlayerQuestを自動生成する
+    
+    Args:
+        player: Playerオブジェクト
+    """
+    # プレイヤーに適用可能なクエストテンプレートを取得
+    life_templates = QuestTemplate.objects.filter(
+        quest_type='life',
+        is_active=True
+    ).filter(
+        models.Q(job='all') | models.Q(job=player.job)
+    )
+    
+    account_templates = QuestTemplate.objects.filter(
+        quest_type='account',
+        is_active=True,
+        job='all'
+    )
+    
+    # PlayerQuestを自動生成（存在しない場合のみ）
+    for template in life_templates:
+        PlayerQuest.objects.get_or_create(
+            player=player,
+            quest_template=template,
+            defaults={'progress_current': 0, 'is_completed': False, 'is_claimed': False}
+        )
+    
+    for template in account_templates:
+        PlayerQuest.objects.get_or_create(
+            player=player,
+            quest_template=template,
+            defaults={'progress_current': 0, 'is_completed': False, 'is_claimed': False}
+        )
 
 
 def level_up_player(player, message=""):
@@ -208,6 +268,9 @@ def start_game(request):
         # 初期装備を所持装備に追加
         player.owned_equipment.add(wooden_sword, leather_armor)
         
+        # クエストを初期化
+        initialize_player_quests(player)
+        
         return redirect('game:battle_start', player_id=player.id)
     
     # GETリクエスト: 職業選択画面を表示
@@ -284,7 +347,149 @@ def battle_start(request, player_id, enemy_id=None):
             player.save()
             return redirect('game:battle_start', player_id=player.id)
 
-    return render(request, 'game/battle_start.html', {"player": player, "exp_percent": exp_percent, "continue_count": continue_count,})
+    return render(request, 'game/battle_start.html', {
+        "player": player, 
+        "exp_percent": exp_percent, 
+        "continue_count": continue_count,
+        "is_guest": player.is_guest,
+    })
+
+
+def select_new_enemy(player, stage, request):
+    """
+    新しい敵を選択する共通関数
+    
+    Args:
+        player: プレイヤーオブジェクト
+        stage: ステージオブジェクト
+        request: リクエストオブジェクト
+    
+    Returns:
+        enemy: 選択された敵オブジェクト（セッションに保存済み）
+    """
+    # プレイヤーレベルに応じた敵のレベル範囲を決定
+    if player.level <= 5:
+        min_enemy_level = stage.min_enemy_level
+        max_enemy_level = min(player.level + 1, stage.max_enemy_level)
+    elif player.level <= 8:
+        min_enemy_level = stage.min_enemy_level
+        max_enemy_level = min(player.level + 2, stage.max_enemy_level)
+    elif player.level <= 10:
+        min_enemy_level = stage.min_enemy_level
+        max_enemy_level = min(player.level + 3, stage.max_enemy_level)
+    elif player.level <= 15:
+        min_enemy_level = stage.min_enemy_level
+        max_enemy_level = min(player.level + 4, stage.max_enemy_level)
+    else:
+        min_enemy_level = stage.min_enemy_level
+        max_enemy_level = min(player.level + 5, stage.max_enemy_level)
+    
+    # ステージに登録されている敵を取得
+    stage_enemies = list(stage.enemies.all())
+    
+    if not stage_enemies:
+        stage_enemies = list(Enemy.objects.filter(appear_level__lte=max_enemy_level))
+    
+    if not stage_enemies:
+        stage_enemies = list(Enemy.objects.all())
+    
+    if not stage_enemies:
+        return None
+    
+    # レベル差に応じて出現確率を調整
+    weighted_enemies = []
+    for enemy in stage_enemies:
+        if enemy.appear_level > player.level:
+            continue
+        
+        enemy_min_level = min_enemy_level
+        enemy_max_level = max_enemy_level
+        
+        if enemy_min_level > enemy_max_level:
+            continue
+        
+        potential_level = random.randint(enemy_min_level, enemy_max_level)
+        level_diff = abs(player.level - potential_level)
+        
+        # レベル差が小さいほど重みを大きく
+        if level_diff == 0:
+            base_weight = 20
+        elif level_diff == 1:
+            base_weight = 15
+        elif level_diff == 2:
+            base_weight = 10
+        elif level_diff == 3:
+            base_weight = 6
+        elif level_diff == 4:
+            base_weight = 3
+        else:
+            base_weight = 1
+        
+        weight = max(1, int(base_weight * max(enemy.appearance_rate, 0)))
+        
+        if potential_level > player.level:
+            if player.level <= 5:
+                weight = int(weight * 0.75)
+            elif player.level <= 8:
+                weight = int(weight * 0.5)
+            elif player.level <= 10:
+                weight = int(weight * 0.6)
+            elif player.level <= 15:
+                weight = int(weight * 0.7)
+            else:
+                weight = int(weight * 0.8)
+        
+        weight = max(1, weight)
+        weighted_enemies.extend([(enemy, potential_level)] * weight)
+    
+    if not weighted_enemies:
+        return None
+    
+    # ランダムに敵を選択
+    enemy, selected_level = random.choice(weighted_enemies)
+    enemy.level = selected_level
+    
+    # 強敵判定
+    is_strong = False
+    if player.level >= 10 and random.random() < 0.05:
+        is_strong = True
+        enemy.level += random.randint(10, 15)
+    
+    # レベルに応じてステータスを変更
+    enemy.max_hp = enemy.base_max_hp + (enemy.level - 1) * enemy.base_max_hp // 10
+    enemy.hp = enemy.max_hp
+    
+    if enemy.level <= 14:
+        enemy.atk = enemy.base_atk + (enemy.level - 1) * enemy.base_atk // 6
+        enemy.defense = enemy.base_def + (enemy.level - 1) * enemy.base_def // 6
+        enemy.spd = enemy.base_spd + (enemy.level - 1) * enemy.base_spd // 6
+    else:
+        level_20_atk = enemy.base_atk + 14 * enemy.base_atk // 10
+        level_20_def = enemy.base_def + 14 * enemy.base_def // 10
+        level_20_spd = enemy.base_spd + 14 * enemy.base_spd // 10
+        
+        additional_levels = enemy.level - 15
+        enemy.atk = level_20_atk + additional_levels * enemy.base_atk // 4
+        enemy.defense = level_20_def + additional_levels * enemy.base_def // 4
+        enemy.spd = level_20_spd + additional_levels * enemy.base_spd // 4
+    
+    # expとゴールドの計算
+    base_high_exp = enemy.base_exp + (enemy.level - 1) * enemy.base_exp // 3
+    if enemy.level > player.level:
+        enemy.exp = int(base_high_exp * random.uniform(1.3, 1.4))
+        enemy.drop_gold = enemy.drop_gold_base + (enemy.level - 1) * enemy.drop_gold_base // 6
+    else:
+        enemy.exp = int(base_high_exp * random.uniform(0.7, 0.8))
+        enemy.drop_gold = enemy.drop_gold_base + (enemy.level - 1) * enemy.drop_gold_base // 10
+    
+    enemy.is_defeated = False
+    enemy.is_strong = is_strong
+    enemy.save()
+    
+    # セッションに敵のIDを保存
+    request.session["enemy_id"] = enemy.id
+    
+    return enemy
 
 
 def decrease_buff_debuff_turns(buffs, debuffs, special_states):
@@ -348,42 +553,9 @@ def battle(request, player_id, enemy_id=None):
     
     # 新しい戦闘開始時のみ敵を選択（stage_idがGETパラメータにある場合、またはenemy_idが存在しない場合）
     if (request.GET.get('stage_id') or not enemy_id) and not enemy_id:
-        # プレイヤーレベルに応じた敵のレベル範囲を決定
-        if player.level <= 5:
-            # レベル5以下：自分のレベル+1が上限
-            min_enemy_level = stage.min_enemy_level
-            max_enemy_level = min(player.level + 1, stage.max_enemy_level)
-        elif player.level <= 8:
-            # レベル8以下：自分のレベル+2が上限
-            min_enemy_level = stage.min_enemy_level
-            max_enemy_level = min(player.level + 2, stage.max_enemy_level)
-        elif player.level <= 10:
-            # レベル10以下：自分のレベル+3が上限
-            min_enemy_level = stage.min_enemy_level
-            max_enemy_level = min(player.level + 3, stage.max_enemy_level)
-        elif player.level <= 15:
-            # レベル15以下：自分のレベル+4が上限
-            min_enemy_level = stage.min_enemy_level
-            max_enemy_level = min(player.level + 4, stage.max_enemy_level)
-        else:
-            # レベル16以上：自分のレベル+5が上限
-            min_enemy_level = stage.min_enemy_level
-            max_enemy_level = min(player.level + 5, stage.max_enemy_level)
+        enemy = select_new_enemy(player, stage, request)
         
-        # ステージに登録されている敵を取得
-        stage_enemies = list(stage.enemies.all())
-        
-        if not stage_enemies:
-            # ステージに敵が登録されていない場合、レベル範囲で絞り込み
-            stage_enemies = list(Enemy.objects.filter(
-                appear_level__lte=max_enemy_level
-            ))
-        
-        if not stage_enemies:
-            # それでも敵がいない場合、全ての敵から選択
-            stage_enemies = list(Enemy.objects.all())
-        
-        if not stage_enemies:
+        if not enemy:
             # 敵が1体も存在しない場合はエラー
             return render(request, "game/battle.html", {
                 "player": player,
@@ -398,101 +570,7 @@ def battle(request, player_id, enemy_id=None):
                 "enemy_hp_percent": 0,
             })
         
-        # レベル差に応じて出現確率を調整（近いレベルほど出やすい）
-        weighted_enemies = []
-        for enemy in stage_enemies:
-            # 敵のレベルを決定（プレイヤーレベル基準の範囲内でランダム）
-            # 出現レベル条件を満たさない敵はスキップ
-            if enemy.appear_level > player.level:
-                continue
-            
-            # 敵のレベルは min_enemy_level から max_enemy_level の範囲内
-            enemy_min_level = min_enemy_level
-            enemy_max_level = max_enemy_level
-            
-            if enemy_min_level > enemy_max_level:
-                continue  # レベル範囲外の敵はスキップ
-            
-            potential_level = random.randint(enemy_min_level, enemy_max_level)
-            level_diff = abs(player.level - potential_level)
-            
-            # レベル差が小さいほど重みを大きく + 出現率補正
-            if level_diff == 0:
-                base_weight = 20  # 同レベルは最も出やすい
-            elif level_diff == 1:
-                base_weight = 15
-            elif level_diff == 2:
-                base_weight = 10
-            elif level_diff == 3:
-                base_weight = 6
-            elif level_diff == 4:
-                base_weight = 3
-            else:
-                base_weight = 1
-
-            # appearance_rateで重みを調整（例: 1.5なら1.5倍、0.5なら半分）
-            weight = max(1, int(base_weight * max(enemy.appearance_rate, 0)))
-            
-            # プレイヤーレベルに基づく出現率補正
-            if potential_level > player.level:
-                if player.level <= 5:
-                    weight = int(weight * 0.75)
-                elif player.level <= 8:
-                    weight = int(weight * 0.5)
-                elif player.level <= 10:
-                    weight = int(weight * 0.6)
-                elif player.level <= 15:
-                    weight = int(weight * 0.7)
-                else:
-                    weight = int(weight * 0.8)
-            
-            weight = max(1, weight)  # 最低でも1
-            weighted_enemies.extend([(enemy, potential_level)] * weight)
-        
-        # ランダムに敵を選択
-        enemy, selected_level = random.choice(weighted_enemies)
-        enemy.level = selected_level
-        
-        # 強敵判定（プレイヤーレベル10以上で5%の確率）
-        is_strong = False
-        if player.level >= 10 and random.random() < 0.05:
-            is_strong = True
-            enemy.level += random.randint(10, 15)
-        
-        # レベルに応じてステータスを変更（レベル1基準）
-        enemy.max_hp = enemy.base_max_hp + (enemy.level - 1) * enemy.base_max_hp // 10
-        enemy.hp = enemy.max_hp
-        # レベル14までは敵のステータス上昇を抑え、21以降は急上昇
-        if enemy.level <= 14:
-            enemy.atk = enemy.base_atk + (enemy.level - 1) * enemy.base_atk // 6
-            enemy.defense = enemy.base_def + (enemy.level - 1) * enemy.base_def // 6
-            enemy.spd = enemy.base_spd + (enemy.level - 1) * enemy.base_spd // 6
-        else:
-            # レベル15以降は急激に強くなる
-            level_20_atk = enemy.base_atk + 14 * enemy.base_atk // 10
-            level_20_def = enemy.base_def + 14 * enemy.base_def // 10
-            level_20_spd = enemy.base_spd + 14 * enemy.base_spd // 10
-            
-            additional_levels = enemy.level - 15
-            enemy.atk = level_20_atk + additional_levels * enemy.base_atk // 4
-            enemy.defense = level_20_def + additional_levels * enemy.base_def // 4
-            enemy.spd = level_20_spd + additional_levels * enemy.base_spd // 4
-        
-        # expとゴールドの計算（敵のレベルがプレイヤーより高い場合は報酬増加）
-        base_high_exp = enemy.base_exp + (enemy.level - 1) * enemy.base_exp // 3
-        if enemy.level > player.level:
-            enemy.exp = int(base_high_exp * random.uniform(1.3, 1.4))
-            enemy.drop_gold = enemy.drop_gold_base + (enemy.level - 1) * enemy.drop_gold_base // 6
-        else:
-            enemy.exp = int(base_high_exp * random.uniform(0.7, 0.8))
-            enemy.drop_gold = enemy.drop_gold_base + (enemy.level - 1) * enemy.drop_gold_base // 10
-        
-        enemy.is_defeated = False
-        enemy.is_strong = is_strong
-        enemy.save()
-        
-        # セッションに敵のIDを保存
-        request.session["enemy_id"] = enemy.id
+        enemy_id = enemy.id
         
         # 戦闘用ステータスを更新（装備ボーナス込み）
         player.update_battle_stats()
@@ -589,57 +667,6 @@ def battle(request, player_id, enemy_id=None):
         context.update(kwargs)
         return context
 
-    def game_over(message):
-        # ゲームオーバー時にスコアを計算してユーザーに記録
-        if player.user and not player.is_guest:
-            score = calculate_score(player)
-            player.user.update_score(score)
-        
-        message += f"{player.name} は力尽きた… ゲームオーバー！\n"
-        player.defeats = 0
-        player.level = 1
-        player.exp = 0
-        player.next_exp = 500
-        player.max_hp = 100  # 【素の最大HP】をリセット
-        player.hp = 100  # 【素の現在HP】をリセット
-        player.atk = 10  # 【素のATK】をリセット
-        player.defense = 5  # 【素のDEF】をリセット
-        player.spd = 5  # 【素のSPD】をリセット
-        player.max_mp = 30
-        player.mp = 30
-        player.stat_points = 0
-        player.job = "戦士"
-        player.item = "なし"
-        player.gold = 100  # ゴールドを初期値にリセット
-        player.weapon = None  # 武器をリセット
-        player.armor = None  # 防具をリセット
-        player.owned_equipment.clear()  # 所持装備を全削除
-        request.session["buffs"] = {}
-        request.session["debuffs"] = {}
-        request.session["special_states"] = {}
-        request.session["battle_count"] = 0  # 戦闘回数をリセット
-        request.session['session_purchased_items'] = []  # ショップセッション購入履歴をクリア
-        request.session['reset_shop'] = True  # ショップ在庫をリセット
-        
-        # 装備のis_purchasedは永続的なので、ゲームオーバー時にのみリセット
-        Equipment.objects.all().update(is_purchased=False)
-        
-        player.save()
-
-        # 敵のステータスをリセット
-        enemies = Enemy.objects.all()
-        for enemy in enemies:
-            enemy.level = 1
-            enemy.hp = enemy.base_max_hp
-            enemy.max_hp = enemy.base_max_hp
-            enemy.atk = enemy.base_atk
-            enemy.defense = enemy.base_def
-            enemy.spd = enemy.base_spd
-            enemy.is_defeated = False
-            enemy.save()
-
-        return message
-
     def tohome(message):
         # 休むペナルティ：経験値を全て失い、ゴールドの30%を減少
         gold_penalty = int(player.gold * 0.3)
@@ -683,6 +710,15 @@ def battle(request, player_id, enemy_id=None):
         enemy.hp = 0
         enemy.is_defeated = True
         enemy.save()
+        
+        # 敵を倒した回数をカウントアップ
+        player.defeats += 1
+        if enemy.is_strong:
+            player.strong_defeats += 1
+        player.save()
+        
+        # クエストを初期化（まだ作成されていないPlayerQuestを作成）
+        initialize_player_quests(player)
         
         # クエスト進捗更新（敵撃破）
         enemy_defeat_quests = PlayerQuest.objects.filter(
@@ -1145,8 +1181,8 @@ def battle(request, player_id, enemy_id=None):
         
         # プレイヤーが倒れたかチェック
         if player.total_hp_battle <= 0:
-            player.defeats += 1
-            if player.defeats >= 3:
+            player.death_count += 1
+            if player.death_count >= 3:
                 request.session['gameover_player_id'] = player.id
                 return redirect('game:gameover')
             else:
@@ -1180,7 +1216,7 @@ def battle(request, player_id, enemy_id=None):
         
         # デバッグ用：kキーでゲームオーバー
         if actionp == 'debug_gameover':
-            player.defeats = 3  # 完全敗北状態にする
+            player.death_count = 3  # 完全敗北状態にする
             player.save()
             request.session['gameover_player_id'] = player.id
             return redirect('game:gameover')
@@ -1228,8 +1264,8 @@ def battle(request, player_id, enemy_id=None):
                 
                 # プレイヤーが倒れたかチェック
                 if player.total_hp_battle <= 0:
-                    player.defeats += 1
-                    if player.defeats >= 3:
+                    player.death_count += 1
+                    if player.death_count >= 3:
                         request.session['gameover_player_id'] = player.id
                         return redirect('game:gameover')
                     else:
@@ -1261,8 +1297,8 @@ def battle(request, player_id, enemy_id=None):
                 
                 # プレイヤーが倒れたかチェック
                 if player.total_hp_battle <= 0:
-                    player.defeats += 1
-                    if player.defeats >= 3:
+                    player.death_count += 1
+                    if player.death_count >= 3:
                         request.session['gameover_player_id'] = player.id
                         return redirect('game:gameover')
                     else:
@@ -1297,8 +1333,8 @@ def battle(request, player_id, enemy_id=None):
             # プレイヤーの総HPが0以下になったかチェック
             # プレイヤーが倒れたかチェック
             if player.total_hp_battle <= 0:
-                player.defeats += 1
-                if player.defeats >= 3:
+                player.death_count += 1
+                if player.death_count >= 3:
                     request.session['gameover_player_id'] = player.id
                     return redirect('game:gameover')
                 else:
@@ -1312,8 +1348,8 @@ def battle(request, player_id, enemy_id=None):
             
             # プレイヤーの総HPが0以下になったかチェック
             if player.total_hp_battle <= 0:
-                player.defeats += 1
-                if player.defeats >= 3:
+                player.death_count += 1
+                if player.death_count >= 3:
                     request.session['gameover_player_id'] = player.id
                     return redirect('game:gameover')
                 else:
@@ -1690,15 +1726,19 @@ def use_inventory_item(request, player_id, inventory_item_id):
     return redirect(f"{reverse('game:inventory', kwargs={'player_id': player.id})}?category={category}&search={search_query}")
 
 def gameover(request):
-    # スコア計算（現在は固定値）
-    score = 100000
-    initial_point = score // 10000  # 例: スコアの1/10を初期ポイントとする
-    
-    # セッションからplayer_idを取得してPlayerを削除
+    # セッションからplayer_idを取得してスコア計算
     player_id = request.session.get('gameover_player_id')
+    score = 0
+    initial_point = 0
+    
     if player_id:
         try:
             player = Player.objects.get(id=player_id)
+            # プレイヤーのスコアを計算
+            score = calculate_score(player)
+            initial_point = score // 10000  # スコアの1/10000を初期ポイントとする
+            
+            # Playerを削除
             player.delete()
             del request.session['gameover_player_id']
         except Player.DoesNotExist:
@@ -1727,6 +1767,9 @@ def quest(request, player_id):
     """クエスト画面"""
     player = Player.objects.get(id=player_id)
     
+    # プレイヤーのクエストを初期化
+    initialize_player_quests(player)
+    
     # プレイヤーに適用可能なクエストテンプレートを取得
     life_templates = QuestTemplate.objects.filter(
         quest_type='life',
@@ -1740,21 +1783,6 @@ def quest(request, player_id):
         is_active=True,
         job='all'  # アカウントクエストは全職業共通
     ).order_by('order')[:8]
-    
-    # PlayerQuestを自動生成（存在しない場合のみ）
-    for template in life_templates:
-        PlayerQuest.objects.get_or_create(
-            player=player,
-            quest_template=template,
-            defaults={'progress_current': 0, 'is_completed': False, 'is_claimed': False}
-        )
-    
-    for template in account_templates:
-        PlayerQuest.objects.get_or_create(
-            player=player,
-            quest_template=template,
-            defaults={'progress_current': 0, 'is_completed': False, 'is_claimed': False}
-        )
     
     # PlayerQuestを取得
     life_quests = []
@@ -1904,6 +1932,38 @@ def action_skill_end(request, player_id, enemy_id):
     request.session['action_skill_message'] = message
     
     return redirect('game:battle', player_id=player_id, enemy_id=enemy_id)
+
+
+def continue_battle(request, player_id):
+    """勝利後、続けて新しい敵と戦う"""
+    player = Player.objects.get(id=player_id)
+    
+    # ステージIDを取得
+    stage_id = request.session.get('stage_id')
+    if stage_id:
+        stage = Stage.objects.get(id=stage_id)
+    else:
+        stage = Stage.objects.first()
+        request.session['stage_id'] = stage.id if stage else None
+    
+    # 新しい敵を選択
+    enemy = select_new_enemy(player, stage, request)
+    
+    if not enemy:
+        # 敵が選択できない場合はホーム画面に戻る
+        return redirect('game:battle_start', player_id=player.id)
+    
+    # バフ・デバフをリセット
+    request.session["buffs"] = {}
+    request.session["debuffs"] = {}
+    request.session["special_states"] = {}
+    request.session["message_history"] = []
+    
+    # 戦闘用HPを素のHPに反映（回復は無し）
+    player.sync_hp_from_battle()
+    
+    # 戦闘画面にリダイレクト
+    return redirect('game:battle', player_id=player.id, enemy_id=enemy.id)
 
 
 def convert_guest_to_user(request, player_id):

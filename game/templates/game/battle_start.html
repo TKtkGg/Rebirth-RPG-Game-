@@ -503,9 +503,9 @@
         <div class="modal-title">オプション</div>
         <div class="modal-options">
             <button type="button" class="modal-option option-blue" disabled>設定</button>
-            <form method="POST" action="{% url 'accounts:logout' %}">
+            <form method="POST" action="{% url 'accounts:logout' %}" id="logoutForm">
                 {% csrf_token %}
-                <button type="submit" class="modal-option option-orange">ログアウトしてタイトルに戻る</button>
+                <button type="submit" class="modal-option option-orange" id="logoutButton">ログアウトしてタイトルに戻る</button>
             </form>
             <button type="button" class="modal-option option-red" id="settingsResume">ゲームに戻る</button>
         </div>
@@ -518,6 +518,8 @@
         const settingsOverlay = document.getElementById('settingsOverlay');
         const settingsClose = document.getElementById('settingsClose');
         const settingsResume = document.getElementById('settingsResume');
+        const logoutForm = document.getElementById('logoutForm');
+        const isGuest = {{ is_guest|lower }};
         
         const openSettings = function () {
             settingsOverlay.classList.add('active');
@@ -541,6 +543,18 @@
                 closeSettings();
             }
         });
+        
+        // ゲストモードの場合、ログアウト時に確認ダイアログを表示
+        if (logoutForm && isGuest) {
+            logoutForm.addEventListener('submit', function (event) {
+                const confirmed = confirm(
+                    'ゲストモードでプレイしているため、ログアウトするとデータは完全に削除され、二度と戻ることはできません。\n\n本当にログアウトしますか？'
+                );
+                if (!confirmed) {
+                    event.preventDefault();
+                }
+            });
+        }
     });
 </script>
 

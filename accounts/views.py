@@ -1,5 +1,5 @@
 from django.shortcuts import render, redirect
-from django.contrib.auth import login, get_user_model
+from django.contrib.auth import login, logout, get_user_model
 from django.urls import reverse_lazy
 from django.views.generic import CreateView
 from .forms import SignupForm
@@ -10,6 +10,34 @@ User = get_user_model()
 def home(request):
     """アカウントシステムのホーム画面"""
     return render(request, 'accounts/home.html')
+
+
+def custom_logout(request):
+    """カスタムログアウト処理（ゲストプレイヤーデータを削除）"""
+    if request.method == 'POST':
+        # セッションからゲストプレイヤーIDを取得
+        guest_player_id = request.session.get('guest_player_id')
+        
+        if guest_player_id:
+            # ゲストプレイヤーのデータを削除
+            from game.models import Player
+            try:
+                player = Player.objects.get(id=guest_player_id, is_guest=True)
+                player.delete()
+            except Player.DoesNotExist:
+                pass
+            
+            # セッションから削除
+            if 'guest_player_id' in request.session:
+                del request.session['guest_player_id']
+        
+        # ログアウト処理
+        logout(request)
+        
+        # アカウントホーム画面にリダイレクト
+        return redirect('accounts:home')
+    
+    return redirect('accounts:home')
 
 
 class SignupView(CreateView):

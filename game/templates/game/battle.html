@@ -602,9 +602,12 @@
                         {% endif %}
                     </div>
                 </div>
-                <div class="button-area">
-                    <a href="{% url 'game:battle_start' player.id %}" style="text-decoration: none;">
-                        <button type="button" class="battle-button return-button">戻る</button>
+                <div class="button-area" style="flex-direction: column; gap: 15px;">
+                    <a href="{% url 'game:continue_battle' player.id %}" style="text-decoration: none; width: 100%;">
+                        <button type="button" class="battle-button attack-button" style="width: 100%; font-size: 24px;">続けて戦う</button>
+                    </a>
+                    <a href="{% url 'game:battle_start' player.id %}" style="text-decoration: none; width: 100%;">
+                        <button type="button" class="battle-button return-button" style="width: 100%;">戻る</button>
                     </a>
                 </div>
             {% elif player.total_hp_battle > 0 and enemy and not recovering %}
