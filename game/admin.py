@@ -4,8 +4,8 @@ from .models import Player, Enemy, Equipment, Item, Stage, QuestTemplate, Player
 
 @admin.register(QuestTemplate)
 class QuestTemplateAdmin(admin.ModelAdmin):
-    list_display = ['title', 'quest_type', 'job', 'condition_display', 'progress_max', 'reward_display', 'order', 'is_active']
-    list_filter = ['quest_type', 'job', 'condition_type', 'is_active']
+    list_display = ['title', 'quest_type', 'job', 'condition_display', 'progress_max', 'reward_display', 'derivation_level', 'derived_quest', 'order', 'is_active']
+    list_filter = ['quest_type', 'job', 'condition_type', 'is_active', 'derivation_level']
     search_fields = ['title', 'description']
     ordering = ['quest_type', 'order']
     list_editable = ['order', 'is_active']
@@ -19,6 +19,10 @@ class QuestTemplateAdmin(admin.ModelAdmin):
         }),
         ('報酬', {
             'fields': ('reward_exp', 'reward_gold')
+        }),
+        ('派生クエスト', {
+            'fields': ('derivation_level', 'derived_quest'),
+            'description': '派生段階と次に派生するクエストを設定します。派生クエストを設定すると、クリア後に自動的にそのクエストに置き換わります。'
         }),
     )
     

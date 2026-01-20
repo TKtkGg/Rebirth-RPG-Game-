@@ -42,7 +42,7 @@ class Equipment(models.Model):
 
 class Item(models.Model):
     TARGET = [
-        ('mp',"MP"),
+        ('mp',"SP"),
         ('hp',"HP"),
     ]
 
@@ -328,6 +328,10 @@ class QuestTemplate(models.Model):
     reward_gold = models.IntegerField(default=0)  # 報酬ゴールド
     order = models.IntegerField(default=0)  # 表示順序
     is_active = models.BooleanField(default=True)  # 有効フラグ
+    
+    # 派生クエストシステム
+    derived_quest = models.ForeignKey('self', on_delete=models.SET_NULL, null=True, blank=True, related_name='previous_quest')  # 次の派生クエスト
+    derivation_level = models.IntegerField(default=0)  # 派生段階（0=初期、1=1段階目、2=2段階目...）
     
     class Meta:
         ordering = ['quest_type', 'order']

@@ -22,13 +22,27 @@ def calculate_score(player):
     - 倒した敵の数 × 100
     - 倒した強敵の数 × 1000
     - プレイヤーレベル × 100
+    
+    戻り値:
+        辞書 {
+            'hp_score': int,
+            'atk_score': int,
+            'def_score': int,
+            'spd_score': int,
+            'mp_score': int,
+            'equipment_score': int,
+            'defeat_score': int,
+            'strong_defeat_score': int,
+            'level_score': int,
+            'total_score': int
+        }
     """
     # 基本ステータススコア
     atk_score = player.atk * 100
     def_score = player.defense * 100
     spd_score = player.spd * 100
     hp_score = player.max_hp * 10
-    sp_score = player.max_mp * 10
+    mp_score = player.max_mp * 10
     
     # 装備スコア（所持している全装備のscoreフィールドの合計）
     equipment_score = sum(eq.score for eq in player.owned_equipment.all())
@@ -38,29 +52,76 @@ def calculate_score(player):
     strong_defeat_score = player.strong_defeats * 1000
     
     # レベルスコア
-    level_score = player.level * 500
+    level_score = player.level * 300
     
     # 合計スコア
     total_score = (
-        atk_score + def_score + spd_score + hp_score + sp_score +
+        atk_score + def_score + spd_score + hp_score + mp_score +
         equipment_score + defeat_score + strong_defeat_score + level_score
     )
     
-    return total_score
+    return {
+        'hp_score': hp_score,
+        'atk_score': atk_score,
+        'def_score': def_score,
+        'spd_score': spd_score,
+        'mp_score': mp_score,
+        'equipment_score': equipment_score,
+        'defeat_score': defeat_score,
+        'strong_defeat_score': strong_defeat_score,
+        'level_score': level_score,
+        'total_score': total_score
+    }
+
+
+def find_quest_in_derivation_chain(player, initial_template):
+    """
+    初期クエストから派生チェーンを辿り、プレイヤーのPlayerQuestを探す
+    
+    Args:
+        player: プレイヤーオブジェクト
+        initial_template: 初期クエストのテンプレート（derivation_level=0）
+    
+    Returns:
+        PlayerQuest or None
+    """
+    print(f"=== 派生チェーン探索開始: {initial_template.title} ===")
+    # 派生チェーンを構築（初期クエスト→派生1→派生2→...）
+    chain = [initial_template]
+    current = initial_template
+    while current.derived_quest:
+        chain.append(current.derived_quest)
+        current = current.derived_quest
+    
+    print(f"派生チェーン: {[t.title for t in chain]}")
+    
+    # チェーン内のどのテンプレートに一致するPlayerQuestがあるか探す
+    for template in chain:
+        pq = PlayerQuest.objects.filter(player=player, quest_template=template).first()
+        print(f"  {template.title} (derivation_level={template.derivation_level}) -> PlayerQuest: {pq}")
+        if pq:
+            print(f"  ✓ 発見: {pq.quest_template.title}")
+            return pq
+    
+    print(f"  ✗ PlayerQuestが見つかりませんでした")
+    return None
 
 
 def initialize_player_quests(player):
     """
     プレイヤーのクエストを初期化する
     存在しないPlayerQuestを自動生成する
+    派生クエスト（derivation_level > 0）は初期化しない
+    派生チェーン内にPlayerQuestが既に存在する場合は作成しない
     
     Args:
         player: Playerオブジェクト
     """
-    # プレイヤーに適用可能なクエストテンプレートを取得
+    # プレイヤーに適用可能なクエストテンプレートを取得（初期クエストのみ）
     life_templates = QuestTemplate.objects.filter(
         quest_type='life',
-        is_active=True
+        is_active=True,
+        derivation_level=0  # 初期クエストのみ
     ).filter(
         models.Q(job='all') | models.Q(job=player.job)
     )
@@ -68,23 +129,38 @@ def initialize_player_quests(player):
     account_templates = QuestTemplate.objects.filter(
         quest_type='account',
         is_active=True,
-        job='all'
+        job='all',
+        derivation_level=0  # 初期クエストのみ
     )
     
-    # PlayerQuestを自動生成（存在しない場合のみ）
+    # PlayerQuestを自動生成（派生チェーン内に存在しない場合のみ）
     for template in life_templates:
-        PlayerQuest.objects.get_or_create(
-            player=player,
-            quest_template=template,
-            defaults={'progress_current': 0, 'is_completed': False, 'is_claimed': False}
-        )
+        # 派生チェーン内にPlayerQuestが存在するかチェック
+        existing_in_chain = find_quest_in_derivation_chain(player, template)
+        if not existing_in_chain:
+            # 存在しない場合のみ作成
+            PlayerQuest.objects.create(
+                player=player,
+                quest_template=template,
+                progress_current=0,
+                is_completed=False,
+                is_claimed=False
+            )
+            print(f"初期クエスト作成: {template.title}")
     
     for template in account_templates:
-        PlayerQuest.objects.get_or_create(
-            player=player,
-            quest_template=template,
-            defaults={'progress_current': 0, 'is_completed': False, 'is_claimed': False}
-        )
+        # 派生チェーン内にPlayerQuestが存在するかチェック
+        existing_in_chain = find_quest_in_derivation_chain(player, template)
+        if not existing_in_chain:
+            # 存在しない場合のみ作成
+            PlayerQuest.objects.create(
+                player=player,
+                quest_template=template,
+                progress_current=0,
+                is_completed=False,
+                is_claimed=False
+            )
+            print(f"初期クエスト作成: {template.title}")
 
 
 def level_up_player(player, message=""):
@@ -191,6 +267,14 @@ def start_game(request):
 
         request.session['session_purchased_items'] = []
         request.session['reset_shop'] = True
+        
+        # 前回のゲームオーバーのスコア情報を削除
+        if 'gameover_score' in request.session:
+            del request.session['gameover_score']
+        if 'gameover_initial_point' in request.session:
+            del request.session['gameover_initial_point']
+        if 'score_breakdown' in request.session:
+            del request.session['score_breakdown']
         
         # ジョブに応じたステータス設定
         if job == "戦士":
@@ -1728,68 +1812,66 @@ def use_inventory_item(request, player_id, inventory_item_id):
 def gameover(request):
     # セッションからplayer_idを取得してスコア計算
     player_id = request.session.get('gameover_player_id')
-    score = 0
-    initial_point = 0
     
-    if player_id:
+    # セッションに保存されたスコアがあればそれを使う
+    score = request.session.get('gameover_score', 0)
+    initial_point = request.session.get('gameover_initial_point', 0)
+    
+    # プレイヤーがまだ存在する場合のみ計算と削除を行う
+    if player_id and score == 0:
         try:
             player = Player.objects.get(id=player_id)
             # プレイヤーのスコアを計算
-            score = calculate_score(player)
+            score_data = calculate_score(player)
+            score = score_data['total_score']
             initial_point = score // 10000  # スコアの1/10000を初期ポイントとする
             
-            # 各スコアを計算
-            hp_score = player.max_hp * 10
-            atk_score = player.atk * 100
-            def_score = player.defense * 100
-            spd_score = player.spd * 100
-            mp_score = player.max_mp * 10
-            equipment_score = sum(eq.score for eq in player.owned_equipment.all())
-            defeat_score = player.defeats * 100
-            strong_defeat_score = player.strong_defeats * 1000
-            level_score = player.level * 300
+            # スコアをセッションに保存（内訳から戻った時のため）
+            request.session['gameover_score'] = score
+            request.session['gameover_initial_point'] = initial_point
             
             # スコア内訳をセッションに保存
             request.session['score_breakdown'] = {
                 'hp': player.max_hp,
-                'hp_score': hp_score,
+                'hp_score': score_data['hp_score'],
                 'atk': player.atk,
-                'atk_score': atk_score,
+                'atk_score': score_data['atk_score'],
                 'defense': player.defense,
-                'def_score': def_score,
+                'def_score': score_data['def_score'],
                 'spd': player.spd,
-                'spd_score': spd_score,
+                'spd_score': score_data['spd_score'],
                 'mp': player.max_mp,
-                'mp_score': mp_score,
+                'mp_score': score_data['mp_score'],
                 'equipment_list': [eq.name for eq in player.owned_equipment.all()],
-                'equipment_score': equipment_score,
+                'equipment_score': score_data['equipment_score'],
                 'defeats': player.defeats,
-                'defeat_score': defeat_score,
+                'defeat_score': score_data['defeat_score'],
                 'strong_defeats': player.strong_defeats,
-                'strong_defeat_score': strong_defeat_score,
+                'strong_defeat_score': score_data['strong_defeat_score'],
                 'level': player.level,
-                'level_score': level_score,
+                'level_score': score_data['level_score'],
                 'total_score': score
             }
             
             # Playerを削除
             player.delete()
             del request.session['gameover_player_id']
+            
+            # ログインユーザーの場合、アカウントにスコアとポイントを保存
+            if request.user.is_authenticated:
+                user = request.user
+                
+                # 最高スコアの場合のみ更新
+                if score > user.best_score:
+                    user.best_score = score
+                
+                # 初期ポイントは毎回更新
+                user.initial_points = initial_point
+                user.total_plays += 1
+                user.save()
+                
         except Player.DoesNotExist:
             pass
-    
-    # ログインユーザーの場合、アカウントにスコアとポイントを保存
-    if request.user.is_authenticated:
-        user = request.user
-        
-        # 最高スコアの場合のみ更新
-        if score > user.best_score:
-            user.best_score = score
-        
-        # 初期ポイントは毎回更新
-        user.initial_points = initial_point
-        user.total_plays += 1
-        user.save()
     
     return render(request, 'game/gameover.html', {
         'score': score,
@@ -1817,10 +1899,12 @@ def quest(request, player_id):
     # プレイヤーのクエストを初期化
     initialize_player_quests(player)
     
-    # プレイヤーに適用可能なクエストテンプレートを取得
+    # プレイヤーに適用可能なクエストテンプレートを取得（初期クエストのみ）
+    # 派生クエストはPlayerQuestから取得されるので、ここでは初期クエストのみ
     life_templates = QuestTemplate.objects.filter(
         quest_type='life',
-        is_active=True
+        is_active=True,
+        derivation_level=0  # 初期クエストのみ
     ).filter(
         models.Q(job='all') | models.Q(job=player.job)
     ).order_by('order')[:8]
@@ -1828,21 +1912,22 @@ def quest(request, player_id):
     account_templates = QuestTemplate.objects.filter(
         quest_type='account',
         is_active=True,
-        job='all'  # アカウントクエストは全職業共通
+        job='all',  # アカウントクエストは全職業共通
+        derivation_level=0  # 初期クエストのみ
     ).order_by('order')[:8]
     
-    # PlayerQuestを取得
+    # PlayerQuestを取得（派生クエストも含めて探す）
     life_quests = []
     for template in life_templates:
-        pq = PlayerQuest.objects.filter(player=player, quest_template=template).first()
-        if pq:
-            life_quests.append(pq)
+        # このテンプレートまたはその派生チェーン内のPlayerQuestを探す
+        pq = find_quest_in_derivation_chain(player, template)
+        life_quests.append(pq)  # Noneの可能性もあるがそのまま追加
     
     account_quests = []
     for template in account_templates:
-        pq = PlayerQuest.objects.filter(player=player, quest_template=template).first()
-        if pq:
-            account_quests.append(pq)
+        # このテンプレートまたはその派生チェーン内のPlayerQuestを探す
+        pq = find_quest_in_derivation_chain(player, template)
+        account_quests.append(pq)  # Noneの可能性もあるがそのまま追加
     
     # 8つに満たない場合は空で埋める
     while len(life_quests) < 8:
@@ -1875,9 +1960,37 @@ def claim_quest_reward(request, quest_id):
         
         player.save()
         
-        # 報酬受け取りフラグを立てる
-        player_quest.is_claimed = True
-        player_quest.save()
+        # 派生クエストがあるかチェック
+        current_template = player_quest.quest_template
+        derived_template = current_template.derived_quest
+        
+        if derived_template:
+            # 派生クエストに置き換える
+            print(f"派生クエスト発見: {current_template.title} -> {derived_template.title}")
+            
+            # 派生クエストのPlayerQuestが既に存在する場合は削除
+            # （unique_together制約を回避するため）
+            existing_derived = PlayerQuest.objects.filter(
+                player=player,
+                quest_template=derived_template
+            ).exclude(id=player_quest.id).first()
+            
+            if existing_derived:
+                print(f"既存の派生クエストを削除: {existing_derived.id}")
+                existing_derived.delete()
+            
+            # 現在のPlayerQuestを派生クエストに置き換える
+            player_quest.quest_template = derived_template
+            player_quest.progress_current = 0  # 進捗をリセット
+            player_quest.is_completed = False
+            player_quest.is_claimed = False
+            player_quest.save()
+            print(f"派生クエスト保存完了: PlayerQuest ID={player_quest.id}, Template={player_quest.quest_template.title}")
+        else:
+            print(f"派生クエストなし: {current_template.title}")
+            # 派生クエストがない場合は報酬受け取りフラグを立てる
+            player_quest.is_claimed = True
+            player_quest.save()
     
     # 元のタブに戻るためにクエストタイプをパラメータとして渡す
     return redirect(f"{reverse('game:quest', kwargs={'player_id': player.id})}?tab={quest_type}")
