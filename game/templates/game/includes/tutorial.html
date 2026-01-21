@@ -1,0 +1,326 @@
+{% load static %}
+<!-- チュートリアルオーバーレイ -->
+<style>
+    /* チュートリアル用のスタイル */
+    .tutorial-overlay {
+        display: none;
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background: rgba(0, 0, 0, 0.8);
+        z-index: 10000;
+        align-items: center;
+        justify-content: center;
+    }
+
+    .tutorial-overlay.active {
+        display: flex;
+    }
+
+    .tutorial-container {
+        width: 90%;
+        min-width: 1000px;
+        height: 80vh;
+        max-height: 800px;
+        background: rgba(0, 0, 0, 0.75);
+        border-radius: 0;
+        box-shadow: 0 8px 30px rgba(0, 0, 0, 0.5);
+        border: 4px solid rgba(139, 105, 20, 0.9);
+        display: flex;
+        flex-direction: column;
+        padding: 0;
+        position: relative;
+    }
+
+    .tutorial-content-area {
+        display: flex;
+        flex-direction: column;
+        height: 100%;
+    }
+
+    .tutorial-image-area {
+        flex: 3;
+        background: transparent;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        overflow: hidden;
+        padding: 20px;
+    }
+
+    .tutorial-image-area img {
+        max-width: 100%;
+        max-height: 100%;
+        object-fit: contain;
+        border: 4px solid rgba(139, 105, 20, 0.9) !important;
+        box-shadow: 0 4px 10px rgba(0, 0, 0, 0.5);
+    }
+
+    .tutorial-description-area {
+        flex: 1;
+        background: transparent;
+        padding: 30px;
+        overflow-y: auto;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        text-align: center;
+        border-top: 4px solid rgba(139, 105, 20, 0.9);
+    }
+
+    .tutorial-description-area p {
+        font-size: 28px;
+        font-weight: bold;
+        color: #fff;
+        line-height: 1.6;
+        margin: 0;
+        white-space: pre-line;
+        text-shadow: 2px 2px 4px rgba(0, 0, 0, 1);
+    }
+
+    .tutorial-navigation {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 0 20px;
+        margin-top: 30px;
+        gap: 50px;
+    }
+    .tutorial-nav-button {
+        width: 80px;
+        height: 80px;
+        background: transparent;
+        border: 4px solid rgba(139, 105, 20, 0.9);
+        cursor: pointer;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        transition: all 0.3s;
+        color: rgba(139, 105, 20, 0.9);
+        font-size: 50px;
+        font-weight: bold;
+    }
+
+    .tutorial-nav-button:hover:not(:disabled) {
+        border-color: rgba(180, 140, 30, 0.9);
+        color: rgba(180, 140, 30, 0.9);
+        transform: scale(1.1);
+    }
+
+    .tutorial-nav-button:active:not(:disabled) {
+        transform: scale(1.0);
+    }
+
+    .tutorial-nav-button:disabled {
+        border-color: rgba(139, 105, 20, 0.3);
+        cursor: not-allowed;
+        color: rgba(139, 105, 20);
+        color: rgba(255, 255, 255, 0.3);
+    }
+
+    .tutorial-indicators {
+        display: flex;
+        gap: 15px;
+        justify-content: center;
+        flex: 1;
+    }
+
+    .tutorial-indicator {
+        width: 20px;
+        height: 20px;
+        border-radius: 50%;
+        background: white;
+        transition: background 0.3s;
+        cursor: pointer;
+        box-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
+    }
+
+    .tutorial-indicator.active {
+        background: black;
+    }
+
+    .tutorial-help-button {
+        position: fixed;
+        bottom: 30px;
+        right: 30px;
+        width: 60px;
+        height: 60px;
+        background: rgba(0, 0, 0, 0.75);
+        border: 4px solid rgba(139, 105, 20, 0.9);
+        border-radius: 50%;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        cursor: pointer;
+        box-shadow: 0 4px 10px rgba(0, 0, 0, 0.5);
+        z-index: 9998;
+        transition: all 0.3s;
+    }
+
+    .tutorial-help-button:hover {
+        transform: scale(1.1);
+        box-shadow: 0 6px 15px rgba(0, 0, 0, 0.7);
+        border-color: rgba(180, 140, 30, 0.9);
+    }
+
+    .tutorial-help-button span {
+        font-size: 36px;
+        font-weight: bold;
+        color: rgba(139, 105, 20, 0.9);
+    }
+</style>
+
+<!-- ヘルプボタン -->
+<button type="button" class="tutorial-help-button" id="tutorialHelpButton">
+    <span>?</span>
+</button>
+
+<!-- チュートリアルオーバーレイ -->
+<div class="tutorial-overlay" id="tutorialOverlay">
+    <div style="display: flex; flex-direction: column; align-items: center;">
+        <div class="tutorial-container">
+            <div class="tutorial-content-area">
+                <div class="tutorial-image-area">
+                    <img id="tutorialSlideImage" src="" alt="チュートリアル画像">
+                </div>
+                <div class="tutorial-description-area">
+                    <p id="tutorialSlideDescription">説明文がここに表示されます</p>
+                </div>
+            </div>
+        </div>
+
+        <div class="tutorial-navigation">
+            <button type="button" class="tutorial-nav-button" id="tutorialPrevButton" disabled>◀</button>
+            <div class="tutorial-indicators" id="tutorialIndicators">
+                <!-- JavaScriptで動的に生成 -->
+            </div>
+            <button type="button" class="tutorial-nav-button" id="tutorialNextButton">▶</button>
+        </div>
+    </div>
+</div>
+
+<script>
+(function() {
+    // チュートリアルデータ（各ページで上書き可能）
+    window.tutorialSlides = window.tutorialSlides || [
+        { image: '', description: 'スライド1の説明' },
+        { image: '', description: 'スライド2の説明' },
+        { image: '', description: 'スライド3の説明' },
+        { image: '', description: 'スライド4の説明' },
+    ];
+
+    let currentSlide = 0;
+
+    // DOM要素
+    const overlay = document.getElementById('tutorialOverlay');
+    const helpButton = document.getElementById('tutorialHelpButton');
+    const prevButton = document.getElementById('tutorialPrevButton');
+    const nextButton = document.getElementById('tutorialNextButton');
+    const slideImage = document.getElementById('tutorialSlideImage');
+    const slideDescription = document.getElementById('tutorialSlideDescription');
+    const indicatorsContainer = document.getElementById('tutorialIndicators');
+
+    // インジケーターを生成
+    function createIndicators() {
+        indicatorsContainer.innerHTML = '';
+        window.tutorialSlides.forEach((_, index) => {
+            const indicator = document.createElement('div');
+            indicator.className = 'tutorial-indicator';
+            if (index === currentSlide) {
+                indicator.classList.add('active');
+            }
+            indicator.addEventListener('click', () => goToSlide(index));
+            indicatorsContainer.appendChild(indicator);
+        });
+    }
+
+    // スライドを表示
+    function showSlide(index) {
+        const slides = window.tutorialSlides;
+        
+        // スライドのコンテンツを更新
+        if (slides[index].image) {
+            slideImage.src = slides[index].image;
+            slideImage.style.display = 'block';
+        } else {
+            slideImage.style.display = 'none';
+        }
+        slideDescription.textContent = slides[index].description;
+
+        // インジケーターを更新
+        const indicators = document.querySelectorAll('.tutorial-indicator');
+        indicators.forEach((ind, i) => {
+            if (i === index) {
+                ind.classList.add('active');
+            } else {
+                ind.classList.remove('active');
+            }
+        });
+
+        // ボタンの有効/無効を制御
+        prevButton.disabled = (index === 0);
+        
+        // 最後のスライドでは次のボタンのテキストを変更
+        if (index === slides.length - 1) {
+            nextButton.textContent = '✓';
+        } else {
+            nextButton.textContent = '▶';
+        }
+    }
+
+    // 前のスライドへ
+    function prevSlide() {
+        if (currentSlide > 0) {
+            currentSlide--;
+            showSlide(currentSlide);
+        }
+    }
+
+    // 次のスライドへ
+    function nextSlide() {
+        if (currentSlide < window.tutorialSlides.length - 1) {
+            currentSlide++;
+            showSlide(currentSlide);
+        } else {
+            // 最後のスライドで次ボタンを押したらチュートリアル終了
+            closeTutorial();
+        }
+    }
+
+    // 特定のスライドへジャンプ
+    function goToSlide(index) {
+        currentSlide = index;
+        showSlide(currentSlide);
+    }
+
+    // チュートリアルを開く
+    function openTutorial() {
+        currentSlide = 0;
+        overlay.classList.add('active');
+        createIndicators();
+        showSlide(currentSlide);
+    }
+
+    // チュートリアルを閉じる
+    function closeTutorial() {
+        overlay.classList.remove('active');
+    }
+
+    // イベントリスナー
+    if (helpButton) {
+        helpButton.addEventListener('click', openTutorial);
+    }
+    if (prevButton) {
+        prevButton.addEventListener('click', prevSlide);
+    }
+    if (nextButton) {
+        nextButton.addEventListener('click', nextSlide);
+    }
+
+    // グローバルに公開
+    window.openTutorial = openTutorial;
+    window.closeTutorial = closeTutorial;
+})();
+</script>

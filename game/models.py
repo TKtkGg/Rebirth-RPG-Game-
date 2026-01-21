@@ -307,6 +307,7 @@ class QuestTemplate(models.Model):
     
     QUEST_CONDITIONS = [
         ('defeat_enemy', '敵を倒す'),
+        ('defeat_strong_enemy', '強敵を倒す'),
         ('spend_gold', 'ゴールドを使う'),
     ]
     

@@ -813,6 +813,18 @@ def battle(request, player_id, enemy_id=None):
         )
         for player_quest in enemy_defeat_quests:
             player_quest.update_progress(1)
+        
+        # クエスト進捗更新（強敵撃破）
+        if enemy.is_strong:
+            strong_enemy_defeat_quests = PlayerQuest.objects.filter(
+                player=player,
+                quest_template__condition_type='defeat_strong_enemy',
+                is_completed=False
+            )
+            # condition_targetが空または敵の名前と一致する場合
+            for player_quest in strong_enemy_defeat_quests:
+                if not player_quest.quest_template.condition_target or player_quest.quest_template.condition_target == enemy.name:
+                    player_quest.update_progress(1)
 
         # レベルアップ処理
         message = level_up_player(player, message)
