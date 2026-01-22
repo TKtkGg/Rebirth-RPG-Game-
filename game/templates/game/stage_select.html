@@ -16,7 +16,7 @@
         left: 0;
         width: 100vw;
         height: 100vh;
-        background-image: url("{% static 'game/img/ステージ選択.png' %}");
+        background-image: url("{% static 'game/img/背景/ステージ選択.png' %}");
         background-size: 105% 105vh;
         background-position: center;
         background-repeat: no-repeat;
@@ -143,7 +143,7 @@
             {% for stage in stages %}
             <div class="stage-card {% if stage.unlock_level > player.level %}locked{% endif %}" 
                  {% if stage.unlock_level <= player.level %}onclick="location.href='{% url 'game:battle_start_redirect' player.id %}?stage_id={{ stage.id }}'"{% endif %}>
-                <img src="{% static 'game/img/' %}{{ stage.background_image }}" alt="{{ stage.name }}" class="stage-image">
+                <img src="{% static 'game/img/背景/' %}{{ stage.background_image }}" alt="{{ stage.name }}" class="stage-image">
                 
                 {% if stage.unlock_level > player.level %}
                 <div class="stage-overlay">

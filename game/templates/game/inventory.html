@@ -402,10 +402,10 @@
 <div class="inventory-container">
     <div class="sidebar">
         <div class="search-icon-container">
-            <img src="{% static 'game/img/検索_アイコン.png' %}" alt="検索" class="search-icon" onclick="openSearchOverlay()">
+            <img src="{% static 'game/img/アイコン/検索_アイコン.png' %}" alt="検索" class="search-icon" onclick="openSearchOverlay()">
             {% if search_query %}
             <a href="{% url 'game:inventory' player.id %}?category={{ category }}">
-                <img src="{% static 'game/img/バツ_アイコン.png' %}" alt="クリア" class="clear-search-btn" style="width: 50px; height: 50px;">
+                <img src="{% static 'game/img/アイコン/バツ_アイコン.png' %}" alt="クリア" class="clear-search-btn" style="width: 50px; height: 50px;">
             </a>
             {% endif %}
         </div>
@@ -423,7 +423,7 @@
                 <div>
                     <a href="{% url 'game:inventory' player.id %}?category={{ category }}{% if search_query %}&search={{ search_query }}{% endif %}&selected_item={{ inv_item.id }}" style="text-decoration: none;">
                         <div class="item-card {% if selected_item and selected_item.id == inv_item.id %}selected{% endif %}">
-                            <img src="{% static 'game/img/回復_アイコン.png' %}" alt="{{ inv_item.item.name }}" class="item-icon">
+                            <img src="{% static 'game/img/アイコン/回復_アイコン.png' %}" alt="{{ inv_item.item.name }}" class="item-icon">
                             <div class="item-name">{{ inv_item.item.name }}</div>
                             <div class="item-quantity">({{ inv_item.quantity }})</div>
                             <form method="POST" action="{% url 'game:use_inventory_item' player.id inv_item.id %}" style="margin: 0;" onclick="event.stopPropagation();">

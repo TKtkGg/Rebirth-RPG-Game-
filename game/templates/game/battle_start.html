@@ -17,7 +17,7 @@
         left: 0;
         width: 100vw;
         height: 100vh;
-        background-image: url("{% static 'game/img/ホーム.jpg' %}");
+        background-image: url("{% static 'game/img/背景/ホーム.jpg' %}");
         background-size: cover;
         background-position: center;
         background-repeat: no-repeat;
@@ -337,15 +337,15 @@
     }
     
     .option-red {
-        background-image: linear-gradient(rgba(120, 20, 20, 0.8), rgba(200, 40, 40, 0.7)), url("{% static 'game/img/ホーム.jpg' %}");
+        background-image: linear-gradient(rgba(120, 20, 20, 0.8), rgba(200, 40, 40, 0.7)), url("{% static 'game/img/背景/ホーム.jpg' %}");
     }
     
     .option-blue {
-        background-image: linear-gradient(rgba(20, 40, 120, 0.8), rgba(40, 160, 200, 0.7)), url("{% static 'game/img/ホーム.jpg' %}");
+        background-image: linear-gradient(rgba(20, 40, 120, 0.8), rgba(40, 160, 200, 0.7)), url("{% static 'game/img/背景/ホーム.jpg' %}");
     }
     
     .option-orange {
-        background-image: linear-gradient(rgba(139, 90, 20, 0.85), rgba(255, 140, 0, 0.75)), url("{% static 'game/img/ホーム.jpg' %}");
+        background-image: linear-gradient(rgba(139, 90, 20, 0.85), rgba(255, 140, 0, 0.75)), url("{% static 'game/img/背景/ホーム.jpg' %}");
     }
     
     @media (max-width: 1200px) {
@@ -466,13 +466,13 @@
             
             <div class="status-row quick-action-row">
                 <a href="{% url 'game:inventory' player.id %}" class="quick-action-button" aria-label="持ち物">
-                    <img src="{% static 'game/img/持ち物_アイコン.png' %}" alt="持ち物">
+                    <img src="{% static 'game/img/アイコン/持ち物_アイコン.png' %}" alt="持ち物">
                 </a>
                 <a href="{% url 'game:quest' player.id %}" class="quick-action-button" aria-label="クエスト">
-                    <img src="{% static 'game/img/クエスト_アイコン.png' %}" alt="クエスト">
+                    <img src="{% static 'game/img/アイコン/クエスト_アイコン.png' %}" alt="クエスト">
                 </a>
                 <button type="button" class="quick-action-button" id="settingsTrigger" aria-label="設定を開く">
-                    <img src="{% static 'game/img/設定_アイコン.png' %}" alt="設定">
+                    <img src="{% static 'game/img/アイコン/設定_アイコン.png' %}" alt="設定">
                 </button>
             </div>
         </div>
@@ -562,24 +562,24 @@
     // ホーム画面用のチュートリアルスライドデータを定義
     window.tutorialSlides = [
         {
-            image: '{% static "game/img/ホーム.jpg" %}',
-            description: 'ホーム画面へようこそ！ここから冒険に出発したり、ショップで装備を購入したり、\n休んでHPを回復したりすることができます。'
+            image: '{% static "game/img/チュートリアル/1-1.png" %}',
+            description: 'ここはホーム画面です。ここから冒険に出発したり、ショップで装備を購入したり、\n休んでHPを回復したりすることができます。'
         },
         {
-            image: '',
-            description: '左側のステータスパネルでは今のレベルや能力値、装備を確認できます。\nポイントがあれば、\n+ボタンでステータスポイントを振り分けることができます。'
+            image: '{% static "game/img/チュートリアル/1-2.png" %}',
+            description: '左側のステータスパネルでは、今のレベルや能力値の確認、装備の変更などができます。\nポイントがあれば、+ボタンでステータスポイントを振り分けることができます。\nまた、持ち物やクエストの確認、設定画面の呼び出しもここから行えます。'
         },
         {
-            image: '',
+            image: '{% static "game/img/チュートリアル/1-3.png" %}',
             description: '冒険ボタンを押すとステージ選択画面に移動します。\n各ステージで敵と戦い、勝利すると経験値やゴールドを獲得できます。'
         },
         {
-            image: '',
-            description: 'ショップでは武器や防具、回復アイテムなどを購入できます。\n休むとHPとSPを全回復できますが、経験値を少し失うので、\n使うときには注意が必要です。'
+            image: '{% static "game/img/チュートリアル/1-4.png" %}',
+            description: 'ショップでは武器や防具、回復アイテムなどを購入できます。\n休むとHPとSPを全回復できますが、経験値を少し失うので、使うときには注意が必要です。'
         },
         {
-            image: '',
-            description: '画面右下の「?」ボタンからいつでもこのチュートリアルを見ることができます。\n頑張って冒険を進めましょう！'
+            image: '{% static "game/img/チュートリアル/1-5.png" %}',
+            description: '画面右下の?ボタンからいつでもこのチュートリアルを見ることができます。\nあなたの良き冒険ライフを、心から祈っております！'
         }
     ];
 </script>

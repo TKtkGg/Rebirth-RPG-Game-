@@ -17,7 +17,7 @@
         left: 0;
         width: 100vw;
         height: 100vh;
-        background-image: url("{% static 'game/img/' %}{{ stage.background_image }}");
+        background-image: url("{% static 'game/img/背景/' %}{{ stage.background_image }}");
         background-size: 100%;
         background-position: center bottom;
         background-repeat: no-repeat;
@@ -475,6 +475,68 @@
             height: 60px;
         }
     }
+    
+    /* ダメージ表示用アニメーション */
+    .damage-number {
+        position: absolute;
+        font-size: 60px;
+        font-weight: bold;
+        color: #ff0000;
+        text-shadow: 
+            3px 3px 0 #000,
+            -3px -3px 0 #000,
+            3px -3px 0 #000,
+            -3px 3px 0 #000,
+            0 0 10px rgba(255, 0, 0, 0.8);
+        pointer-events: none;
+        z-index: 1000;
+        animation: damageFloat 1s ease-out forwards;
+    }
+    
+    @keyframes damageFloat {
+        0% {
+            opacity: 0;
+            transform: translateY(0) scale(0.5);
+        }
+        20% {
+            opacity: 1;
+            transform: translateY(-20px) scale(1.2);
+        }
+        100% {
+            opacity: 0;
+            transform: translateY(-80px) scale(1);
+        }
+    }
+    
+    /* 攻撃時のフラッシュエフェクト */
+    .attack-flash {
+        animation: flashEffect 0.3s ease-out;
+    }
+    
+    @keyframes flashEffect {
+        0%, 100% {
+            filter: brightness(1);
+        }
+        50% {
+            filter: brightness(1.5);
+        }
+    }
+
+    /* 敵のフェードアウト（撃破時） */
+    .enemy-fadeout {
+        animation: enemyFadeOut 1.0s ease-out forwards;
+    }
+
+    @keyframes enemyFadeOut {
+        0% {
+            opacity: 1;
+            transform: translateY(0);
+        }
+        100% {
+            opacity: 0;
+            transform: translateY(18px);
+        }
+    }
 </style>
 
 <div class="battle-container">
@@ -488,24 +550,24 @@
                 <div class="enemy-status-effects">
                     {% if buffs.enemy %}
                         {% if buffs.enemy.atk %}
-                            <img src="{% static 'game/img/ATKバフ.png' %}" alt="ATKバフ" class="status-effect-icon">
+                            <img src="{% static 'game/img/アイコン/ATKバフ.png' %}" alt="ATKバフ" class="status-effect-icon">
                         {% endif %}
                         {% if buffs.enemy.def %}
-                            <img src="{% static 'game/img/DEFバフ.png' %}" alt="DEFバフ" class="status-effect-icon">
+                            <img src="{% static 'game/img/アイコン/DEFバフ.png' %}" alt="DEFバフ" class="status-effect-icon">
                         {% endif %}
                         {% if buffs.enemy.spd %}
-                            <img src="{% static 'game/img/SPDバフ.png' %}" alt="SPDバフ" class="status-effect-icon">
+                            <img src="{% static 'game/img/アイコン/SPDバフ.png' %}" alt="SPDバフ" class="status-effect-icon">
                         {% endif %}
                     {% endif %}
                     {% if debuffs.enemy %}
                         {% if debuffs.enemy.atk %}
-                            <img src="{% static 'game/img/ATKデバフ.png' %}" alt="ATKデバフ" class="status-effect-icon">
+                            <img src="{% static 'game/img/アイコン/ATKデバフ.png' %}" alt="ATKデバフ" class="status-effect-icon">
                         {% endif %}
                         {% if debuffs.enemy.def %}
-                            <img src="{% static 'game/img/DEFデバフ.png' %}" alt="DEFデバフ" class="status-effect-icon">
+                            <img src="{% static 'game/img/アイコン/DEFデバフ.png' %}" alt="DEFデバフ" class="status-effect-icon">
                         {% endif %}
                         {% if debuffs.enemy.spd %}
-                            <img src="{% static 'game/img/SPDデバフ.png' %}" alt="SPDデバフ" class="status-effect-icon">
+                            <img src="{% static 'game/img/アイコン/SPDデバフ.png' %}" alt="SPDデバフ" class="status-effect-icon">
                         {% endif %}
                     {% endif %}
                 </div>
@@ -522,7 +584,7 @@
     <!-- プレイヤーのエリア -->
     <div class="player-area">
         <div class="player-status-box">
-            {% if not "を倒した" in message and not "にげた" in message %}
+            {% if not escaped and not gained_exp and not gained_gold and not recovering %}
                 <div style="display: flex; align-items: center; gap: 8px; width: 100%;">
                     <div style="width: 120px;">{{ player.name }}</div>
                     <div class="status-gauge">
@@ -552,24 +614,24 @@
                     <div class="status-effects">
                         {% if buffs.player %}
                             {% if buffs.player.atk %}
-                                <img src="{% static 'game/img/ATKバフ.png' %}" alt="ATKバフ" class="status-effect-icon">
+                                <img src="{% static 'game/img/アイコン/ATKバフ.png' %}" alt="ATKバフ" class="status-effect-icon">
                             {% endif %}
                             {% if buffs.player.def %}
-                                <img src="{% static 'game/img/DEFバフ.png' %}" alt="DEFバフ" class="status-effect-icon">
+                                <img src="{% static 'game/img/アイコン/DEFバフ.png' %}" alt="DEFバフ" class="status-effect-icon">
                             {% endif %}
                             {% if buffs.player.spd %}
-                                <img src="{% static 'game/img/SPDバフ.png' %}" alt="SPDバフ" class="status-effect-icon">
+                                <img src="{% static 'game/img/アイコン/SPDバフ.png' %}" alt="SPDバフ" class="status-effect-icon">
                             {% endif %}
                         {% endif %}
                         {% if debuffs.player %}
                             {% if debuffs.player.atk %}
-                                <img src="{% static 'game/img/ATKデバフ.png' %}" alt="ATKデバフ" class="status-effect-icon">
+                                <img src="{% static 'game/img/アイコン/ATKデバフ.png' %}" alt="ATKデバフ" class="status-effect-icon">
                             {% endif %}
                             {% if debuffs.player.def %}
-                                <img src="{% static 'game/img/DEFデバフ.png' %}" alt="DEFデバフ" class="status-effect-icon">
+                                <img src="{% static 'game/img/アイコン/DEFデバフ.png' %}" alt="DEFデバフ" class="status-effect-icon">
                             {% endif %}
                             {% if debuffs.player.spd %}
-                                <img src="{% static 'game/img/SPDデバフ.png' %}" alt="SPDデバフ" class="status-effect-icon">
+                                <img src="{% static 'game/img/アイコン/SPDデバフ.png' %}" alt="SPDデバフ" class="status-effect-icon">
                             {% endif %}
                         {% endif %}
                     </div>
@@ -590,13 +652,13 @@
                         <button type="button" class="battle-button return-button">戻る</button>
                     </a>
                 </div>
-            {% elif "を倒した" in message %}
+            {% elif gained_exp or gained_gold or "を倒した" in message %}
                 <div class="reward-info">
                     <div style="font-size: 24px; font-weight: bold; color: #333; margin-top: 10px; text-align: center;">
                         <h3>勝利！</h3>
                         <p>経験値 : {{ gained_exp }}</p>
                         <p>ゴールド : {{ gained_gold }}</p>
-                        {% if existLevel < player.level %}
+                        {% if existLevel and existLevel < player.level %}
                             <p>レベルアップ！</p>
                             <p>LV : {{ existLevel }} → {{ player.level }}</p>
                         {% endif %}
@@ -838,7 +900,7 @@
                 const enemyHpValue = document.querySelector('.enemy-hp-value');
                 if (enemyHpBar && enemyHpValue) {
                     enemyHpBar.style.width = data.enemy_hp_percent + '%';
-                    enemyHpValue.textContent = data.enemy_hp + ' / ' + data.enemy_max_hp;
+                    enemyHpValue.textContent = data.enemy_hp;
                 }
             })
             .catch(error => console.error('Error:', error));
@@ -872,6 +934,289 @@
         overlay.addEventListener('click', handleClick);
     })();
     {% endif %}
+</script>
+
+<script>
+    // ホーム画面用のチュートリアルスライドデータを定義
+    window.tutorialSlides = [
+        {
+            image: '{% static "game/img/背景/ホーム.jpg" %}',
+            description: ''
+        },
+        {
+            image: '',
+            description: ''
+        },
+        {
+            image: '',
+            description: ''
+        },
+        {
+            image: '',
+            description: ''
+        },
+        {
+            image: '',
+            description: ''
+        }
+    ];
+</script>
+
+{% include 'game/includes/tutorial.html' %}
+
+<script>
+// 戦闘アニメーションシステム
+(function() {
+    // 戦闘中フラグ
+    let isBattleAnimating = false;
+    
+    // ダメージ表示関数
+    function showDamage(targetElement, damage) {
+        return new Promise((resolve) => {
+            const rect = targetElement.getBoundingClientRect();
+            const damageEl = document.createElement('div');
+            damageEl.className = 'damage-number';
+            damageEl.textContent = damage;
+            damageEl.style.left = rect.left + rect.width / 2 - 30 + 'px';
+            damageEl.style.top = rect.top + 'px';
+            document.body.appendChild(damageEl);
+            
+            // アニメーション終了後に削除
+            setTimeout(() => {
+                damageEl.remove();
+                resolve();
+            }, 700);
+        });
+    }
+    
+    // 攻撃フラッシュエフェクト
+    function attackFlash(targetElement) {
+        targetElement.classList.add('attack-flash');
+        setTimeout(() => {
+            targetElement.classList.remove('attack-flash');
+        }, 100);
+    }
+
+    // 敵のフェードアウト（撃破時）
+    function fadeOutEnemy(enemyElement) {
+        return new Promise(resolve => {
+            if (!enemyElement) {
+                resolve();
+                return;
+            }
+            if (enemyElement.classList.contains('enemy-fadeout')) {
+                resolve();
+                return;
+            }
+            enemyElement.classList.add('enemy-fadeout');
+            setTimeout(() => resolve(), 1200);
+        });
+    }
+
+    // メッセージを追加表示
+    function appendMessage(text) {
+        if (!text) return;
+        const messageArea = document.getElementById('message-area');
+        if (!messageArea) return;
+        const messageEl = document.createElement('div');
+        messageEl.className = 'message-item';
+        messageEl.textContent = text;
+        messageArea.appendChild(messageEl);
+        messageArea.scrollTop = messageArea.scrollHeight;
+    }
+    
+    // HPバーを更新
+    function updateHPBar(targetType, currentHP, maxHP) {
+        if (targetType === 'enemy') {
+            const hpBar = document.querySelector('.enemy-hp-bar-fill');
+            const hpValue = document.querySelector('.enemy-hp-value');
+            if (hpBar && hpValue) {
+                const percent = (currentHP / maxHP) * 100;
+                hpBar.style.width = percent + '%';
+                hpValue.textContent = `${currentHP}`;
+            }
+        } else if (targetType === 'player') {
+            const hpBar = document.querySelector('.status-gauge-fill.hp');
+            const hpValue = document.querySelector('.status-gauge-value');
+            if (hpBar && hpValue) {
+                const percent = (currentHP / maxHP) * 100;
+                hpBar.style.width = percent + '%';
+                hpValue.textContent = `${currentHP}`;
+            }
+        }
+    }
+    
+    // 戦闘アクションを実行
+    async function executeBattleAction(formData) {
+        if (isBattleAnimating) {
+            console.log('Battle animation already in progress');
+            return;
+        }
+        isBattleAnimating = true;
+        
+        // ボタンを一時的に無効化
+        const buttons = document.querySelectorAll('.battle-button');
+        buttons.forEach(btn => btn.disabled = true);
+        
+        try {
+            console.log('Sending battle action request...');
+            const response = await fetch("{% url 'game:battle_start_redirect' player.id %}", {
+                method: 'POST',
+                body: formData,
+                headers: {
+                    'X-CSRFToken': formData.get('csrfmiddlewaretoken'),
+                    'X-Requested-With': 'XMLHttpRequest'
+                }
+            });
+            
+            if (!response.ok) {
+                throw new Error(`HTTP error! status: ${response.status}`);
+            }
+            
+            const result = await response.json();
+            console.log('Battle result:', result);
+            
+            if (result.error) {
+                console.error('Battle error:', result.error);
+                alert('エラーが発生しました: ' + result.error);
+                isBattleAnimating = false;
+                buttons.forEach(btn => btn.disabled = false);
+                return;
+            }
+            
+            const enemyImage = document.querySelector('.enemy-image');
+            const playerStatusBox = document.querySelector('.player-status-box');
+            
+            // 先攻・後攻に応じてアニメーション実行
+            if (result.player_first) {
+                console.log('Player attacks first');
+                // プレイヤーが先攻
+                await playerAttackAnimation(result.player_action, enemyImage);
+                // プレイヤーの攻撃後、敵のHPバーを更新
+                updateHPBar('enemy', result.enemy_hp, result.enemy_max_hp);
+                
+                // 敵が倒されていなければ敵のターン
+                if (!result.battle_ended && result.enemy_hp > 0) {
+                    console.log('Enemy counterattacks');
+                    await new Promise(resolve => setTimeout(resolve, 200)); // 少し間を空ける
+                    await enemyAttackAnimation(result.enemy_action, playerStatusBox);
+                    // 敵の攻撃後、プレイヤーのHPバーを更新
+                    updateHPBar('player', result.player_hp, result.player_max_hp);
+                } else if (result.battle_ended && result.player_won) {
+                    console.log('Enemy defeated! Fading out...');
+                    updateHPBar('enemy', 0, result.enemy_max_hp);
+                    await fadeOutEnemy(enemyImage);
+                }
+            } else {
+                console.log('Enemy attacks first');
+                // 敵が先攻
+                updateHPBar('player', result.player_hp, result.player_max_hp);
+                await enemyAttackAnimation(result.enemy_action, playerStatusBox);
+                
+                // プレイヤーが倒されていなければプレイヤーのターン
+                if (!result.battle_ended && result.player_hp > 0) {
+                    console.log('Player counterattacks');
+                    await new Promise(resolve => setTimeout(resolve, 200)); // 少し間を空ける
+                    updateHPBar('enemy', result.enemy_hp, result.enemy_max_hp);
+                    await playerAttackAnimation(result.player_action, enemyImage);
+                    
+                    if (result.battle_ended && result.player_won) {
+                        console.log('Enemy defeated! Fading out...');
+                        updateHPBar('enemy', 0, result.enemy_max_hp);
+                        await fadeOutEnemy(enemyImage);
+                    }
+                }
+            }
+            
+            // 戦闘終了判定
+            if (result.battle_ended) {
+                console.log('Battle ended - player_won:', result.player_won, 'player_died:', result.player_died);
+                if (result.player_won) {
+                    updateHPBar('enemy', 0, result.enemy_max_hp);
+                    await fadeOutEnemy(enemyImage);
+                    console.log('Reloading page for victory screen');
+                    window.location.reload();
+                } else if (result.player_died) {
+                    console.log('Redirecting to home');
+                    window.location.href = "{% url 'game:battle_start' player.id %}";
+                }
+            } else {
+                console.log('Battle continues');
+                // 戦闘が続く場合、ボタンを再度有効化
+                isBattleAnimating = false;
+                buttons.forEach(btn => btn.disabled = false);
+            }
+            
+        } catch (error) {
+            console.error('Battle animation error:', error);
+            alert('通信エラーが発生しました: ' + error.message);
+            isBattleAnimating = false;
+            buttons.forEach(btn => btn.disabled = false);
+        }
+    }
+    
+    // プレイヤーの攻撃アニメーション
+    async function playerAttackAnimation(action, targetElement) {
+        if (!action) {
+            console.log('Player action is null, skipping animation');
+            return;
+        }
+        if (action.damage > 0) {
+            attackFlash(targetElement);
+            appendMessage(action.message);
+            await showDamage(targetElement, action.damage);
+        } else {
+            // 回避の場合
+            appendMessage(action.message);
+            await new Promise(resolve => setTimeout(resolve, 200));
+        }
+    }
+    
+    // 敵の攻撃アニメーション
+    async function enemyAttackAnimation(action, targetElement) {
+        if (!action) {
+            console.log('Enemy action is null, skipping animation');
+            return;
+        }
+        if (action.damage > 0) {
+            attackFlash(targetElement);
+            appendMessage(action.message);
+            await showDamage(targetElement, action.damage);
+        } else {
+            appendMessage(action.message);
+            await new Promise(resolve => setTimeout(resolve, 200));
+        }
+    }
+    
+    // 攻撃・防御ボタンにイベントリスナーを追加
+    const battleForm = document.querySelector('#action-buttons form');
+    if (battleForm) {
+        const attackBtn = battleForm.querySelector('button[value="attack"]');
+        const defendBtn = battleForm.querySelector('button[value="defend"]');
+        
+        if (attackBtn) {
+            attackBtn.addEventListener('click', async function(e) {
+                e.preventDefault();
+                if (isBattleAnimating) return;
+                
+                const formData = new FormData(battleForm);
+                formData.set('action', 'attack');
+                await executeBattleAction(formData);
+            });
+        }
+        
+        if (defendBtn) {
+            defendBtn.addEventListener('click', async function(e) {
+                e.preventDefault();
+                if (isBattleAnimating) return;
+                
+                const formData = new FormData(battleForm);
+                formData.set('action', 'defend');
+                await executeBattleAction(formData);
+            });
+        }
+    }
+})();
 </script>
 
 {% endblock %}

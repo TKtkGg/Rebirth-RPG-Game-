@@ -20,8 +20,8 @@
     }
 
     .tutorial-container {
-        width: 90%;
-        min-width: 1000px;
+        width: 1000px;
+        flex-shrink: 0;
         height: 80vh;
         max-height: 800px;
         background: rgba(0, 0, 0, 0.75);
@@ -51,10 +51,9 @@
     }
 
     .tutorial-image-area img {
-        max-width: 100%;
+        width: 90%;
         max-height: 100%;
         object-fit: contain;
-        border: 4px solid rgba(139, 105, 20, 0.9) !important;
         box-shadow: 0 4px 10px rgba(0, 0, 0, 0.5);
     }
 
@@ -71,7 +70,7 @@
     }
 
     .tutorial-description-area p {
-        font-size: 28px;
+        font-size: 20px;
         font-weight: bold;
         color: #fff;
         line-height: 1.6;

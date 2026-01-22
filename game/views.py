@@ -3,6 +3,7 @@ from django.shortcuts import render,redirect
 from django.contrib.auth import logout
 from django.urls import reverse
 from django.db import models
+from django.http import JsonResponse
 from .models import Player, Enemy, Equipment, Item, Stage, QuestTemplate, PlayerQuest
 from .skills import ENEMY_SKILLS, PLAYER_SKILLS
 from .weapons_armors import WEAPONS, ARMORS
@@ -623,6 +624,44 @@ def battle(request, player_id, enemy_id=None):
     
     player=Player.objects.get(id=player_id)
     
+    # AJAXで勝利した後のリロード時の処理
+    if request.session.get('battle_won'):
+        gained_exp = request.session.pop('gained_exp', 0)
+        gained_gold = request.session.pop('gained_gold', 0)
+        old_level = request.session.pop('old_level', player.level)
+        request.session.pop('battle_won')
+        
+        # セッションをクリア
+        request.session.pop('enemy_id', None)
+        request.session["message_history"] = []
+        request.session["buffs"] = {}
+        request.session["debuffs"] = {}
+        request.session["special_states"] = {}
+        
+        # ステージを取得
+        stage_id = request.session.get('stage_id')
+        stage = Stage.objects.get(id=stage_id) if stage_id else Stage.objects.first()
+        
+        # 勝利画面を表示
+        player_skills = PLAYER_SKILLS.get(player.job, [])
+        player_items = PlayerInventory.objects.filter(player=player, quantity__gt=0).select_related('item')
+        
+        return render(request, "game/battle.html", {
+            "player": player,
+            "enemy": None,
+            "message": f"勝利！\n経験値を{gained_exp}ゲットした！\n{gained_gold}Gゲットした！",
+            "message_history": [],
+            "player_skills": player_skills,
+            "player_items": player_items,
+            "stage": stage,
+            "player_hp_percent": 100,
+            "player_sp_percent": 100,
+            "enemy_hp_percent": 0,
+            "gained_exp": gained_exp,
+            "gained_gold": gained_gold,
+            "existLevel": old_level,
+        })
+    
     # ステージIDを取得（GETパラメータまたはセッション）
     stage_id = request.GET.get('stage_id') or request.session.get('stage_id')
     if stage_id:
@@ -838,6 +877,12 @@ def battle(request, player_id, enemy_id=None):
         
         # 戦闘用HPを素のHPに反映
         player.sync_hp_from_battle()
+        
+        # AJAX用に勝利情報をセッションに保存
+        request.session['gained_exp'] = gained_exp
+        request.session['gained_gold'] = gained_gold
+        request.session['old_level'] = existLevel
+        
         return message,gained_exp,gained_gold,existLevel
     
     def calculate_player_attack(multiplier=1.0, damage_variance=(-1, 2)):
@@ -1305,6 +1350,13 @@ def battle(request, player_id, enemy_id=None):
         return render(request, "game/battle.html", render_battle_screen(message))
 
     if request.method == 'POST':
+        # AJAX判定
+        is_ajax = request.headers.get('X-Requested-With') == 'XMLHttpRequest'
+        start_player_hp = player.total_hp_battle
+        start_enemy_hp = enemy.hp
+        did_enemy_act = False
+        player_action_message = ""
+        enemy_action_message = ""
         
         actionp = request.POST.get('action')
         special = request.POST.get('special')
@@ -1406,10 +1458,13 @@ def battle(request, player_id, enemy_id=None):
         
         actione = choose_enemyAction(enemy, player, buffs, debuffs)
 
-        spdcheck = spdcheck(actionp,actione)
-        if spdcheck:
+        is_player_first = spdcheck(actionp,actione)
+        if is_player_first:
             message,success = playerAction(message,actionp,special,actione)
+            player_action_message = message
             if not success:
+                if is_ajax:
+                    return JsonResponse({'error': message}, status=400)
                 return render(request, "game/battle.html", render_battle_screen(message))
             
             # アクションモードチェック
@@ -1419,8 +1474,12 @@ def battle(request, player_id, enemy_id=None):
             
             if enemy.hp <= 0:
                 message, gained_exp, gained_gold, existLevel = win(message)
-                return render(request, "game/battle.html", render_battle_screen(message, enemy_override=None, gained_exp=gained_exp, existLevel=existLevel, gained_gold=gained_gold))
-            ex_message,buffs,debuffs = enemyAction(message,enemy,player,buffs,debuffs,actionp,actione)
+                if not is_ajax:
+                    return render(request, "game/battle.html", render_battle_screen(message, enemy_override=None, gained_exp=gained_exp, existLevel=existLevel, gained_gold=gained_gold))
+            else:
+                ex_message,buffs,debuffs = enemyAction(message,enemy,player,buffs,debuffs,actionp,actione)
+                did_enemy_act = True
+                enemy_action_message = ex_message
             # セッションに保存
             request.session["buffs"] = buffs
             request.session["debuffs"] = debuffs
@@ -1432,12 +1491,16 @@ def battle(request, player_id, enemy_id=None):
                 player.death_count += 1
                 if player.death_count >= 3:
                     request.session['gameover_player_id'] = player.id
-                    return redirect('game:gameover')
+                    if not is_ajax:
+                        return redirect('game:gameover')
                 else:
                     message = tohome(message)
-                    return render(request, "game/battle.html", render_battle_screen(message, redirect_after=True, redirect_url="battle_start", recovering=True))          
+                    if not is_ajax:
+                        return render(request, "game/battle.html", render_battle_screen(message, redirect_after=True, redirect_url="battle_start", recovering=True))          
         else:
             message,buffs,debuffs = enemyAction(message,enemy,player,buffs,debuffs,actionp,actione)
+            enemy_action_message = message
+            did_enemy_act = True
             # セッションに保存
             request.session["buffs"] = buffs
             request.session["debuffs"] = debuffs
@@ -1447,14 +1510,19 @@ def battle(request, player_id, enemy_id=None):
                 player.death_count += 1
                 if player.death_count >= 3:
                     request.session['gameover_player_id'] = player.id
-                    return redirect('game:gameover')
+                    if not is_ajax:
+                        return redirect('game:gameover')
                 else:
                     message = tohome(message)
-                    return render(request, "game/battle.html", render_battle_screen(message, redirect_after=True, redirect_url="battle_start", recovering=True))
+                    if not is_ajax:
+                        return render(request, "game/battle.html", render_battle_screen(message, redirect_after=True, redirect_url="battle_start", recovering=True))
             
             ex_message,success = playerAction(message,actionp,special,actione)
+            player_action_message = ex_message
             message += ex_message
             if not success:
+                if is_ajax:
+                    return JsonResponse({'error': message}, status=400)
                 return render(request, "game/battle.html", render_battle_screen(message))
             
             # アクションモードチェック
@@ -1464,7 +1532,8 @@ def battle(request, player_id, enemy_id=None):
             
             if enemy.hp <= 0:
                 message,gained_exp,gained_gold,existLevel = win(message)
-                return render(request, "game/battle.html", render_battle_screen(message, enemy_override=None, gained_exp=gained_exp, existLevel=existLevel, gained_gold=gained_gold))
+                if not is_ajax:
+                    return render(request, "game/battle.html", render_battle_screen(message, enemy_override=None, gained_exp=gained_exp, existLevel=existLevel, gained_gold=gained_gold))
           
 
         # ターン経過でバフを減少
@@ -1507,6 +1576,61 @@ def battle(request, player_id, enemy_id=None):
             request.session["message_history"] = message_history
 
         player.save()
+        
+        # AJAX対応：JSON形式で戦闘結果を返す
+        if is_ajax:
+            # 先攻判定
+            player_first = is_player_first
+            player_action_damage = max(0, start_enemy_hp - enemy.hp)
+            enemy_action_damage = max(0, start_player_hp - player.total_hp_battle)
+            
+            # 戦闘結果を構築
+            battle_result = {
+                'player_first': player_first,
+                'player_hp': player.total_hp_battle,
+                'player_max_hp': player.total_max_hp_battle,
+                'player_mp': player.mp,
+                'player_max_mp': player.max_mp,
+                'enemy_hp': enemy.hp if enemy.hp > 0 else 0,
+                'enemy_max_hp': enemy.max_hp,
+                'battle_ended': False,
+                'player_won': False,
+                'player_died': False,
+                'message': message,
+                'player_action': {
+                    'damage': player_action_damage,
+                    'message': player_action_message,
+                },
+                'enemy_action': None if not did_enemy_act else {
+                    'damage': enemy_action_damage,
+                    'message': enemy_action_message,
+                },
+            }
+            
+            # 勝利判定
+            if enemy.hp <= 0:
+                battle_result['battle_ended'] = True
+                battle_result['player_won'] = True
+                battle_result['enemy_hp'] = 0
+                
+                # 勝利情報をセッションに保存（リロード時に使用）
+                gained_exp = request.session.get('gained_exp', 0)
+                gained_gold = request.session.get('gained_gold', 0)
+                old_level = request.session.get('old_level', player.level)
+                
+                request.session['battle_won'] = True
+                battle_result['gained_exp'] = gained_exp
+                battle_result['gained_gold'] = gained_gold
+                battle_result['leveled_up'] = (player.level > old_level)
+                battle_result['new_level'] = player.level if player.level > old_level else None
+            
+            # 敗北判定
+            elif player.total_hp_battle <= 0:
+                battle_result['battle_ended'] = True
+                battle_result['player_died'] = True
+                battle_result['player_hp'] = 0
+            
+            return JsonResponse(battle_result)
         
         return render(request, "game/battle.html", render_battle_screen(message))
     

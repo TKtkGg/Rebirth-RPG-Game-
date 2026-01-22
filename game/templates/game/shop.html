@@ -16,7 +16,7 @@
         left: 0;
         width: 100vw;
         height: 100vh;
-        background-image: url("{% static 'game/img/ショップ_背景.png' %}");
+        background-image: url("{% static 'game/img/背景/ショップ_背景.png' %}");
         background-size: cover;
         background-position: center;
         background-repeat: no-repeat;
@@ -37,7 +37,7 @@
         left: 0;
         width: 100vw;
         height: 100vh;
-        background-image: url("{% static 'game/img/ショップ_背景.png' %}");
+        background-image: url("{% static 'game/img/背景/ショップ_背景.png' %}");
         background-size: cover;
         background-position: center;
         background-repeat: no-repeat;
@@ -419,7 +419,7 @@
                  data-def-bonus="{{ weapon.def_bonus }}"
                  data-hp-bonus="{{ weapon.hp_bonus }}"
                  data-spd-bonus="{{ weapon.spd_bonus }}">
-                <img src="{% static 'game/img/武器_アイコン.png' %}" alt="武器" class="shop-item-icon">
+                <img src="{% static 'game/img/アイコン/武器_アイコン.png' %}" alt="武器" class="shop-item-icon">
                 <div class="shop-item-name">{{ weapon.name }}</div>
                 <div class="shop-item-price">{{ weapon.price }}G</div>
             </div>
@@ -436,7 +436,7 @@
                  data-def-bonus="{{ armor.def_bonus }}"
                  data-hp-bonus="{{ armor.hp_bonus }}"
                  data-spd-bonus="{{ armor.spd_bonus }}">
-                <img src="{% static 'game/img/防具_アイコン.png' %}" alt="防具" class="shop-item-icon">
+                <img src="{% static 'game/img/アイコン/防具_アイコン.png' %}" alt="防具" class="shop-item-icon">
                 <div class="shop-item-name">{{ armor.name }}</div>
                 <div class="shop-item-price">{{ armor.price }}G</div>
             </div>
@@ -453,7 +453,7 @@
                  data-description="{{ item.description }}"
                  data-effect-amount="{{ item.effect_amount }}"
                  data-target="{{ item.target }}">
-                <img src="{% static 'game/img/回復_アイコン.png' %}" alt="アイテム" class="shop-item-icon">
+                <img src="{% static 'game/img/アイコン/回復_アイコン.png' %}" alt="アイテム" class="shop-item-icon">
                 <div class="shop-item-name">{{ item.name }}</div>
                 <div class="shop-item-price">{{ item.price }}G</div>
                 <div class="shop-item-stock">{{ item.current_stock }}/{{ item.max_stock }}</div>

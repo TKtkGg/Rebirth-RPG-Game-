@@ -293,7 +293,7 @@
                              data-spd="{{ weapon.spd_bonus }}"
                              data-hp="{{ weapon.hp_bonus }}"
                              data-description="{{ weapon.description|default:'説明なし' }}">
-                            <img src="{% static 'game/img/武器_アイコン.png' %}" alt="{{ weapon.name }}" class="equipment-icon">
+                            <img src="{% static 'game/img/アイコン/武器_アイコン.png' %}" alt="{{ weapon.name }}" class="equipment-icon">
                             <div class="equipment-name">{{ weapon.name }}</div>
                         </div>
                         {% endfor %}
@@ -317,7 +317,7 @@
                              data-spd="{{ armor.spd_bonus }}"
                              data-hp="{{ armor.hp_bonus }}"
                              data-description="{{ armor.description|default:'説明なし' }}">
-                            <img src="{% static 'game/img/防具_アイコン.png' %}" alt="{{ armor.name }}" class="equipment-icon">
+                            <img src="{% static 'game/img/アイコン/防具_アイコン.png' %}" alt="{{ armor.name }}" class="equipment-icon">
                             <div class="equipment-name">{{ armor.name }}</div>
                         </div>
                         {% endfor %}
