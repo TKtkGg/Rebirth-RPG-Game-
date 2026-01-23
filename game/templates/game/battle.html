@@ -493,6 +493,33 @@
         animation: damageFloat 1s ease-out forwards;
     }
 
+    /* 攻撃エフェクト表示 */
+    .attack-effect {
+        position: absolute;
+        width: 180px;
+        height: 180px;
+        object-fit: contain;
+        pointer-events: none;
+        z-index: 1100;
+        animation: attackEffectPop 0.6s ease-out forwards;
+        transform-origin: center;
+    }
+
+    @keyframes attackEffectPop {
+        0% {
+            opacity: 0;
+            transform: scale(0.5);
+        }
+        30% {
+            opacity: 1;
+            transform: scale(1.1);
+        }
+        100% {
+            opacity: 0;
+            transform: scale(1.0);
+        }
+    }
+
     .heal-number {
         position: absolute;
         font-size: 56px;
@@ -1056,6 +1083,33 @@
             }
         });
     }
+
+    // 攻撃音を再生
+    function playAttackSound(url) {
+        if (!url) return;
+        try {
+            const audio = new Audio(url);
+            audio.volume = 1.0;
+            audio.play().catch(() => {});
+        } catch (e) {
+            console.warn('Failed to play sound:', e);
+        }
+    }
+
+    // 攻撃エフェクトを表示
+    function showAttackEffect(url, targetElement) {
+        if (!url || !targetElement) return;
+        const rect = targetElement.getBoundingClientRect();
+        const effectEl = document.createElement('img');
+        effectEl.className = 'attack-effect';
+        effectEl.src = url;
+        effectEl.style.left = rect.left + rect.width / 2 - 70 + 'px';
+        effectEl.style.top = rect.top + rect.height / 2 - 70 + 'px';
+        document.body.appendChild(effectEl);
+        setTimeout(() => {
+            effectEl.remove();
+        }, 600);
+    }
     
     // 攻撃フラッシュエフェクト
     function attackFlash(targetElement) {
@@ -1254,7 +1308,7 @@
                 await enemyAttackAnimation(result.enemy_action, enemyImage, playerStatusBox);
                 
                 // プレイヤーが倒されていなければプレイヤーのターン
-                if (!result.battle_ended && result.player_hp > 0) {
+                if (!result.player_died && result.player_hp > 0) {
                     console.log('Player counterattacks');
                     await new Promise(resolve => setTimeout(resolve, 200)); // 少し間を空ける
                     updateHPBar('enemy', result.enemy_hp, result.enemy_max_hp);
@@ -1310,6 +1364,8 @@
 
         if (action.effect_type === 'damage') {
             attackFlash(target);
+            playAttackSound(action.attack_sound);
+            showAttackEffect(action.attack_effect, target);
             appendMessage(action.message);
             await showNumber(target, action.damage, 'damage-number', delay);
             return;
@@ -1357,6 +1413,8 @@
 
         if (action.effect_type === 'damage') {
             attackFlash(target);
+            playAttackSound(action.attack_sound);
+            showAttackEffect(action.attack_effect, target);
             appendMessage(action.message);
             await showNumber(target, action.damage, 'damage-number');
             return;

@@ -36,6 +36,8 @@ class Equipment(models.Model):
     is_purchased = models.BooleanField(default=False)  # 購入済みフラグ（ショップ用）
     appear_level = models.IntegerField(default=1)  # ショップに出現する最小プレイヤーレベル
     score = models.IntegerField(default=0)  # この装備が持つスコア
+    attack_sound = models.FileField(upload_to='game/sounds/attacks/', blank=True, null=True)  # 攻撃音(武器用)
+    attack_effect = models.FileField(upload_to='game/effects/attacks/', blank=True, null=True)  # 攻撃エフェクト(武器用)
     
     def __str__(self):
         return f"{self.name} ({self.get_equipment_type_display()})"
@@ -260,6 +262,8 @@ class Player(models.Model):
 class Enemy(models.Model):
     name = models.CharField(max_length=30)
     image_url = models.CharField(max_length=200, default="game/img/スライム.png")  # 敵の画像URL
+    attack_sound = models.FileField(upload_to='game/sounds/attacks/', blank=True, null=True)  # 攻撃音
+    attack_effect = models.FileField(upload_to='game/effects/attacks/', blank=True, null=True)  # 攻撃エフェクト
     
     # 戦闘中の現在のステータス
     max_hp = models.IntegerField(default=50)

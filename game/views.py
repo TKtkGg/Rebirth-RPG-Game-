@@ -1373,6 +1373,10 @@ def battle(request, player_id, enemy_id=None):
         item_effect_type = None
         item_effect_value = 0
         item_message = ""
+        player_attack_sound = player.weapon.attack_sound.url if player.weapon and player.weapon.attack_sound else ""
+        player_attack_effect = player.weapon.attack_effect.url if player.weapon and player.weapon.attack_effect else ""
+        enemy_attack_sound = enemy.attack_sound.url if enemy and enemy.attack_sound else ""
+        enemy_attack_effect = enemy.attack_effect.url if enemy and enemy.attack_effect else ""
         
         actionp = request.POST.get('action')
         special = request.POST.get('special')
@@ -1474,6 +1478,8 @@ def battle(request, player_id, enemy_id=None):
                             'target': 'player',
                             'value': item_effect_value,
                             'is_finisher': False,
+                            'attack_sound': "",
+                            'attack_effect': "",
                         },
                         'enemy_action': None if not did_enemy_act else {
                             'damage': enemy_action_damage,
@@ -1483,6 +1489,8 @@ def battle(request, player_id, enemy_id=None):
                             'target': 'player',
                             'value': 0,
                             'is_finisher': False,
+                            'attack_sound': enemy_attack_sound,
+                            'attack_effect': enemy_attack_effect,
                         },
                     }
                     if enemy.hp <= 0:
@@ -1741,6 +1749,8 @@ def battle(request, player_id, enemy_id=None):
                     'target': player_action_target,
                     'value': player_action_value,
                     'is_finisher': False,
+                    'attack_sound': player_attack_sound,
+                    'attack_effect': player_attack_effect,
                 },
                 'enemy_action': None if not did_enemy_act else {
                     'damage': enemy_action_damage,
@@ -1750,6 +1760,8 @@ def battle(request, player_id, enemy_id=None):
                     'target': enemy_action_target,
                     'value': 0,
                     'is_finisher': False,
+                    'attack_sound': enemy_attack_sound,
+                    'attack_effect': enemy_attack_effect,
                 },
             }
             
