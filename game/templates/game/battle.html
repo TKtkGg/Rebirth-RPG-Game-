@@ -492,6 +492,38 @@
         z-index: 1000;
         animation: damageFloat 1s ease-out forwards;
     }
+
+    .heal-number {
+        position: absolute;
+        font-size: 56px;
+        font-weight: bold;
+        color: #4cd964;
+        text-shadow:
+            3px 3px 0 #0a3d1a,
+            -3px -3px 0 #0a3d1a,
+            3px -3px 0 #0a3d1a,
+            -3px 3px 0 #0a3d1a,
+            0 0 10px rgba(76, 217, 100, 0.8);
+        pointer-events: none;
+        z-index: 1000;
+        animation: damageFloat 1s ease-out forwards;
+    }
+
+    .mp-number {
+        position: absolute;
+        font-size: 56px;
+        font-weight: bold;
+        color: #4dabf7;
+        text-shadow:
+            3px 3px 0 #0b2e4a,
+            -3px -3px 0 #0b2e4a,
+            3px -3px 0 #0b2e4a,
+            -3px 3px 0 #0b2e4a,
+            0 0 10px rgba(77, 171, 247, 0.8);
+        pointer-events: none;
+        z-index: 1000;
+        animation: damageFloat 1s ease-out forwards;
+    }
     
     @keyframes damageFloat {
         0% {
@@ -520,6 +552,33 @@
         50% {
             filter: brightness(1.5);
         }
+    }
+
+    .buff-flash {
+        animation: buffFlash 0.4s ease-out;
+    }
+
+    .debuff-flash {
+        animation: debuffFlash 0.4s ease-out;
+    }
+
+    .guard-flash {
+        animation: guardFlash 0.4s ease-out;
+    }
+
+    @keyframes buffFlash {
+        0%, 100% { box-shadow: 0 0 0 rgba(76, 217, 100, 0); }
+        50% { box-shadow: 0 0 18px rgba(76, 217, 100, 0.9); }
+    }
+
+    @keyframes debuffFlash {
+        0%, 100% { box-shadow: 0 0 0 rgba(255, 107, 107, 0); }
+        50% { box-shadow: 0 0 18px rgba(255, 107, 107, 0.9); }
+    }
+
+    @keyframes guardFlash {
+        0%, 100% { box-shadow: 0 0 0 rgba(74, 144, 226, 0); }
+        50% { box-shadow: 0 0 18px rgba(74, 144, 226, 0.9); }
     }
 
     /* 敵のフェードアウト（撃破時） */
@@ -591,14 +650,14 @@
                         <span>HP:</span>
                         <div class="status-gauge-bar">
                             <div class="status-gauge-fill hp" style="width: {{ player_hp_percent }}%;"></div>
-                            <span class="status-gauge-value">{{ player.total_hp_battle }}</span>
+                            <span class="status-gauge-value hp-value">{{ player.total_hp_battle }}</span>
                         </div>
                     </div>
                     <div class="status-gauge">
                         <span>SP:</span>
                         <div class="status-gauge-bar">
                             <div class="status-gauge-fill sp" style="width: {{ player_sp_percent }}%;"></div>
-                            <span class="status-gauge-value">{{ player.mp }}</span>
+                            <span class="status-gauge-value sp-value">{{ player.mp }}</span>
                         </div>
                     </div>
                 </div>
@@ -970,31 +1029,49 @@
     // 戦闘中フラグ
     let isBattleAnimating = false;
     
-    // ダメージ表示関数
-    function showDamage(targetElement, damage) {
+    // 数値表示関数
+    function showNumber(targetElement, value, className, delay = 0) {
         return new Promise((resolve) => {
-            const rect = targetElement.getBoundingClientRect();
-            const damageEl = document.createElement('div');
-            damageEl.className = 'damage-number';
-            damageEl.textContent = damage;
-            damageEl.style.left = rect.left + rect.width / 2 - 30 + 'px';
-            damageEl.style.top = rect.top + 'px';
-            document.body.appendChild(damageEl);
-            
-            // アニメーション終了後に削除
-            setTimeout(() => {
-                damageEl.remove();
+            if (!targetElement) {
                 resolve();
-            }, 700);
+                return;
+            }
+            const rect = targetElement.getBoundingClientRect();
+            const numberEl = document.createElement('div');
+            numberEl.className = className;
+            numberEl.textContent = value;
+            numberEl.style.left = rect.left + rect.width / 2 - 30 + 'px';
+            numberEl.style.top = rect.top + 'px';
+            const show = () => {
+                document.body.appendChild(numberEl);
+                setTimeout(() => {
+                    numberEl.remove();
+                    resolve();
+                }, 700);
+            };
+            if (delay > 0) {
+                setTimeout(show, delay);
+            } else {
+                show();
+            }
         });
     }
     
     // 攻撃フラッシュエフェクト
     function attackFlash(targetElement) {
+        if (!targetElement) return;
         targetElement.classList.add('attack-flash');
         setTimeout(() => {
             targetElement.classList.remove('attack-flash');
         }, 100);
+    }
+
+    function statusFlash(targetElement, className) {
+        if (!targetElement) return;
+        targetElement.classList.add(className);
+        setTimeout(() => {
+            targetElement.classList.remove(className);
+        }, 400);
     }
 
     // 敵のフェードアウト（撃破時）
@@ -1037,13 +1114,68 @@
             }
         } else if (targetType === 'player') {
             const hpBar = document.querySelector('.status-gauge-fill.hp');
-            const hpValue = document.querySelector('.status-gauge-value');
+            const hpValue = document.querySelector('.status-gauge-value.hp-value');
             if (hpBar && hpValue) {
                 const percent = (currentHP / maxHP) * 100;
                 hpBar.style.width = percent + '%';
                 hpValue.textContent = `${currentHP}`;
             }
         }
+    }
+
+    // SPバーを更新
+    function updateSPBar(currentSP, maxSP) {
+        const spBar = document.querySelector('.status-gauge-fill.sp');
+        const spValue = document.querySelector('.status-gauge-value.sp-value');
+        if (spBar && spValue) {
+            const percent = (currentSP / maxSP) * 100;
+            spBar.style.width = percent + '%';
+            spValue.textContent = `${currentSP}`;
+        }
+    }
+
+    // バフ・デバフの表示を更新
+    const iconBase = "{% static 'game/img/アイコン/' %}";
+
+    function buildStatusIcons(targetEffects, isBuff) {
+        const icons = [];
+        if (!targetEffects) return icons;
+        if (targetEffects.atk) icons.push({
+            src: iconBase + (isBuff ? 'ATKバフ.png' : 'ATKデバフ.png'),
+            alt: isBuff ? 'ATKバフ' : 'ATKデバフ'
+        });
+        if (targetEffects.def) icons.push({
+            src: iconBase + (isBuff ? 'DEFバフ.png' : 'DEFデバフ.png'),
+            alt: isBuff ? 'DEFバフ' : 'DEFデバフ'
+        });
+        if (targetEffects.spd) icons.push({
+            src: iconBase + (isBuff ? 'SPDバフ.png' : 'SPDデバフ.png'),
+            alt: isBuff ? 'SPDバフ' : 'SPDデバフ'
+        });
+        return icons;
+    }
+
+    function renderStatusEffects(container, buffsForTarget, debuffsForTarget) {
+        if (!container) return;
+        const icons = [
+            ...buildStatusIcons(buffsForTarget, true),
+            ...buildStatusIcons(debuffsForTarget, false)
+        ];
+        container.innerHTML = '';
+        icons.forEach(icon => {
+            const img = document.createElement('img');
+            img.src = icon.src;
+            img.alt = icon.alt;
+            img.className = 'status-effect-icon';
+            container.appendChild(img);
+        });
+    }
+
+    function updateStatusEffects(buffs, debuffs) {
+        const playerContainer = document.querySelector('.player-status-box .status-effects');
+        const enemyContainer = document.querySelector('.enemy-status-effects');
+        renderStatusEffects(playerContainer, buffs?.player, debuffs?.player);
+        renderStatusEffects(enemyContainer, buffs?.enemy, debuffs?.enemy);
     }
     
     // 戦闘アクションを実行
@@ -1086,43 +1218,54 @@
             
             const enemyImage = document.querySelector('.enemy-image');
             const playerStatusBox = document.querySelector('.player-status-box');
+
+            // バフ・デバフ表示を即時更新
+            updateStatusEffects(result.buffs, result.debuffs);
             
             // 先攻・後攻に応じてアニメーション実行
             if (result.player_first) {
                 console.log('Player attacks first');
                 // プレイヤーが先攻
-                await playerAttackAnimation(result.player_action, enemyImage);
+                await playerAttackAnimation(result.player_action, enemyImage, playerStatusBox);
                 // プレイヤーの攻撃後、敵のHPバーを更新
                 updateHPBar('enemy', result.enemy_hp, result.enemy_max_hp);
+                updateHPBar('player', result.player_hp, result.player_max_hp);
+                updateSPBar(result.player_mp, result.player_max_mp);
                 
                 // 敵が倒されていなければ敵のターン
                 if (!result.battle_ended && result.enemy_hp > 0) {
                     console.log('Enemy counterattacks');
                     await new Promise(resolve => setTimeout(resolve, 200)); // 少し間を空ける
-                    await enemyAttackAnimation(result.enemy_action, playerStatusBox);
+                    await enemyAttackAnimation(result.enemy_action, enemyImage, playerStatusBox);
                     // 敵の攻撃後、プレイヤーのHPバーを更新
                     updateHPBar('player', result.player_hp, result.player_max_hp);
+                    updateSPBar(result.player_mp, result.player_max_mp);
                 } else if (result.battle_ended && result.player_won) {
                     console.log('Enemy defeated! Fading out...');
                     updateHPBar('enemy', 0, result.enemy_max_hp);
+                    updateSPBar(result.player_mp, result.player_max_mp);
                     await fadeOutEnemy(enemyImage);
                 }
             } else {
                 console.log('Enemy attacks first');
                 // 敵が先攻
                 updateHPBar('player', result.player_hp, result.player_max_hp);
-                await enemyAttackAnimation(result.enemy_action, playerStatusBox);
+                updateSPBar(result.player_mp, result.player_max_mp);
+                await enemyAttackAnimation(result.enemy_action, enemyImage, playerStatusBox);
                 
                 // プレイヤーが倒されていなければプレイヤーのターン
                 if (!result.battle_ended && result.player_hp > 0) {
                     console.log('Player counterattacks');
                     await new Promise(resolve => setTimeout(resolve, 200)); // 少し間を空ける
                     updateHPBar('enemy', result.enemy_hp, result.enemy_max_hp);
-                    await playerAttackAnimation(result.player_action, enemyImage);
+                    updateHPBar('player', result.player_hp, result.player_max_hp);
+                    updateSPBar(result.player_mp, result.player_max_mp);
+                    await playerAttackAnimation(result.player_action, enemyImage, playerStatusBox);
                     
                     if (result.battle_ended && result.player_won) {
                         console.log('Enemy defeated! Fading out...');
                         updateHPBar('enemy', 0, result.enemy_max_hp);
+                        updateSPBar(result.player_mp, result.player_max_mp);
                         await fadeOutEnemy(enemyImage);
                     }
                 }
@@ -1133,6 +1276,7 @@
                 console.log('Battle ended - player_won:', result.player_won, 'player_died:', result.player_died);
                 if (result.player_won) {
                     updateHPBar('enemy', 0, result.enemy_max_hp);
+                    updateSPBar(result.player_mp, result.player_max_mp);
                     await fadeOutEnemy(enemyImage);
                     console.log('Reloading page for victory screen');
                     window.location.reload();
@@ -1156,36 +1300,88 @@
     }
     
     // プレイヤーの攻撃アニメーション
-    async function playerAttackAnimation(action, targetElement) {
+    async function playerAttackAnimation(action, enemyTarget, playerTarget) {
         if (!action) {
             console.log('Player action is null, skipping animation');
             return;
         }
-        if (action.damage > 0) {
-            attackFlash(targetElement);
+        const target = action.target === 'player' ? playerTarget : enemyTarget;
+        const delay = action.is_finisher ? 120 : 0;
+
+        if (action.effect_type === 'damage') {
+            attackFlash(target);
             appendMessage(action.message);
-            await showDamage(targetElement, action.damage);
-        } else {
-            // 回避の場合
-            appendMessage(action.message);
-            await new Promise(resolve => setTimeout(resolve, 200));
+            await showNumber(target, action.damage, 'damage-number', delay);
+            return;
         }
+        if (action.effect_type === 'heal') {
+            appendMessage(action.message);
+            await showNumber(playerTarget, action.value, 'heal-number', delay);
+            return;
+        }
+        if (action.effect_type === 'mp') {
+            appendMessage(action.message);
+            await showNumber(playerTarget, action.value, 'mp-number', delay);
+            return;
+        }
+        if (action.effect_type === 'buff') {
+            appendMessage(action.message);
+            statusFlash(target, 'buff-flash');
+            await new Promise(resolve => setTimeout(resolve, 200));
+            return;
+        }
+        if (action.effect_type === 'debuff') {
+            appendMessage(action.message);
+            statusFlash(target, 'debuff-flash');
+            await new Promise(resolve => setTimeout(resolve, 200));
+            return;
+        }
+        if (action.effect_type === 'guard' || action.effect_type === 'evade') {
+            appendMessage(action.message);
+            statusFlash(target, 'guard-flash');
+            await new Promise(resolve => setTimeout(resolve, 200));
+            return;
+        }
+
+        appendMessage(action.message);
+        await new Promise(resolve => setTimeout(resolve, 200));
     }
     
     // 敵の攻撃アニメーション
-    async function enemyAttackAnimation(action, targetElement) {
+    async function enemyAttackAnimation(action, enemyTarget, playerTarget) {
         if (!action) {
             console.log('Enemy action is null, skipping animation');
             return;
         }
-        if (action.damage > 0) {
-            attackFlash(targetElement);
+        const target = action.target === 'enemy' ? enemyTarget : playerTarget;
+
+        if (action.effect_type === 'damage') {
+            attackFlash(target);
             appendMessage(action.message);
-            await showDamage(targetElement, action.damage);
-        } else {
-            appendMessage(action.message);
-            await new Promise(resolve => setTimeout(resolve, 200));
+            await showNumber(target, action.damage, 'damage-number');
+            return;
         }
+        if (action.effect_type === 'buff') {
+            appendMessage(action.message);
+            statusFlash(target, 'buff-flash');
+            await new Promise(resolve => setTimeout(resolve, 200));
+            return;
+        }
+        if (action.effect_type === 'debuff') {
+            appendMessage(action.message);
+            statusFlash(target, 'debuff-flash');
+            await new Promise(resolve => setTimeout(resolve, 200));
+            return;
+        }
+        if (action.effect_type === 'guard' || action.effect_type === 'evade') {
+            appendMessage(action.message);
+            statusFlash(target, 'guard-flash');
+            await new Promise(resolve => setTimeout(resolve, 200));
+            return;
+        }
+
+        appendMessage(action.message);
+        await new Promise(resolve => setTimeout(resolve, 200));
     }
     
     // 攻撃・防御ボタンにイベントリスナーを追加
@@ -1216,6 +1412,33 @@
             });
         }
     }
+
+    // 特技（非アクション）ボタン
+    document.querySelectorAll('#special-skills button[name="special"]:not(.action-skill-button)').forEach(btn => {
+        btn.addEventListener('click', async function(e) {
+            e.preventDefault();
+            if (isBattleAnimating) return;
+            const form = btn.closest('form');
+            if (!form) return;
+            const formData = new FormData(form);
+            formData.set('special', btn.value);
+            await executeBattleAction(formData);
+        });
+    });
+
+    // アイテム使用
+    document.querySelectorAll('.item-form').forEach(form => {
+        form.addEventListener('submit', async function(e) {
+            e.preventDefault();
+            if (isBattleAnimating) return;
+            const formData = new FormData(form);
+            const submitter = e.submitter || form.querySelector('button[name="use_item"]');
+            if (submitter && submitter.value) {
+                formData.set('use_item', submitter.value);
+            }
+            await executeBattleAction(formData);
+        });
+    });
 })();
 </script>
 

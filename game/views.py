@@ -1349,14 +1349,30 @@ def battle(request, player_id, enemy_id=None):
         # 戦闘を続行
         return render(request, "game/battle.html", render_battle_screen(message))
 
+    def summarize_effects(effects):
+        """effectsからアニメーション種別と対象を取得"""
+        if not effects:
+            return "none", None
+        # 優先順位: attack > buf > debuf > guaranteed_evasion > defense
+        for effect_type in ("attack", "buf", "debuf", "guaranteed_evasion", "defense"):
+            for effect in effects:
+                if effect.get("type") == effect_type:
+                    return effect_type, effect.get("target")
+        return "none", None
+
     if request.method == 'POST':
         # AJAX判定
         is_ajax = request.headers.get('X-Requested-With') == 'XMLHttpRequest'
         start_player_hp = player.total_hp_battle
+        start_player_mp = player.mp
         start_enemy_hp = enemy.hp
         did_enemy_act = False
         player_action_message = ""
         enemy_action_message = ""
+        used_item = None
+        item_effect_type = None
+        item_effect_value = 0
+        item_message = ""
         
         actionp = request.POST.get('action')
         special = request.POST.get('special')
@@ -1388,11 +1404,19 @@ def battle(request, player_id, enemy_id=None):
                     player.hp = max(0, player.total_hp_battle - weapon_bonus - armor_bonus)
                     
                     message = f"{player.name}は{item.name}を使った！\nHPが{actual_recovery}回復した！\n"
+                    item_message = message
+                    used_item = item
+                    item_effect_type = "heal"
+                    item_effect_value = actual_recovery
                 elif item.target == 'mp':
                     old_mp = player.mp
                     player.mp = min(player.mp + item.effect_amount, player.max_mp)
                     actual_recovery = player.mp - old_mp
                     message = f"{player.name}は{item.name}を使った！\nSPが{actual_recovery}回復した！\n"
+                    item_message = message
+                    used_item = item
+                    item_effect_type = "mp"
+                    item_effect_value = actual_recovery
                 
                 # アイテムを1つ消費
                 inventory_item.quantity -= 1
@@ -1405,6 +1429,8 @@ def battle(request, player_id, enemy_id=None):
                 request.session["buffs"] = buffs
                 request.session["debuffs"] = debuffs
                 message += ex_message
+                enemy_action_message = ex_message
+                did_enemy_act = True
                 
                 # メッセージ履歴に追加
                 message_history.append(message)
@@ -1421,6 +1447,55 @@ def battle(request, player_id, enemy_id=None):
                         return render(request, "game/battle.html", render_battle_screen(message, redirect_after=True))
                 
                 # 通常の戦闘画面に戻る
+                if is_ajax:
+                    # アイテム使用は必ず先攻
+                    player_first = True
+                    player_action_damage = 0
+                    enemy_action_damage = max(0, start_player_hp - player.total_hp_battle)
+                    battle_result = {
+                        'player_first': player_first,
+                        'player_hp': player.total_hp_battle,
+                        'player_max_hp': player.total_max_hp_battle,
+                        'player_mp': player.mp,
+                        'player_max_mp': player.max_mp,
+                        'enemy_hp': max(enemy.hp, 0),
+                        'enemy_max_hp': enemy.max_hp,
+                        'battle_ended': False,
+                        'player_won': False,
+                        'player_died': False,
+                        'message': message,
+                        'buffs': buffs,
+                        'debuffs': debuffs,
+                        'player_action': {
+                            'damage': player_action_damage,
+                            'message': item_message,
+                            'action_type': 'item',
+                            'effect_type': item_effect_type,
+                            'target': 'player',
+                            'value': item_effect_value,
+                            'is_finisher': False,
+                        },
+                        'enemy_action': None if not did_enemy_act else {
+                            'damage': enemy_action_damage,
+                            'message': enemy_action_message,
+                            'action_type': 'skill',
+                            'effect_type': 'damage',
+                            'target': 'player',
+                            'value': 0,
+                            'is_finisher': False,
+                        },
+                    }
+                    if enemy.hp <= 0:
+                        battle_result['battle_ended'] = True
+                        battle_result['player_won'] = True
+                        battle_result['enemy_hp'] = 0
+                        request.session['battle_won'] = True
+                    elif player.total_hp_battle <= 0:
+                        battle_result['battle_ended'] = True
+                        battle_result['player_died'] = True
+                        battle_result['player_hp'] = 0
+                    return JsonResponse(battle_result)
+
                 return render(request, "game/battle.html", render_battle_screen(message))
             except (PlayerInventory.DoesNotExist, ValueError):
                 pass  # アイテムが存在しない場合は無視
@@ -1583,6 +1658,65 @@ def battle(request, player_id, enemy_id=None):
             player_first = is_player_first
             player_action_damage = max(0, start_enemy_hp - enemy.hp)
             enemy_action_damage = max(0, start_player_hp - player.total_hp_battle)
+
+            # プレイヤー行動の種別・効果
+            player_action_type = None
+            player_effect_type = "none"
+            player_action_target = None
+            player_action_value = 0
+
+            if use_item_id and used_item:
+                player_action_type = "item"
+                player_action_target = "player"
+                player_effect_type = item_effect_type or "none"
+                player_action_value = item_effect_value
+            elif special:
+                player_action_type = "skill"
+                try:
+                    skill_index = int(special.replace('skill', '')) - 1
+                    if 0 <= skill_index < len(player_skills):
+                        skill_data = player_skills[skill_index]
+                        effect_type, target = summarize_effects(skill_data.get("effects", []))
+                        if effect_type == "attack":
+                            player_effect_type = "damage"
+                        elif effect_type == "buf":
+                            player_effect_type = "buff"
+                        elif effect_type == "debuf":
+                            player_effect_type = "debuff"
+                        elif effect_type == "guaranteed_evasion":
+                            player_effect_type = "evade"
+                        elif effect_type == "defense":
+                            player_effect_type = "guard"
+                        player_action_target = target
+                except ValueError:
+                    pass
+            else:
+                if actionp == 'attack':
+                    player_action_type = "attack"
+                    player_effect_type = "damage"
+                    player_action_target = "enemy"
+                elif actionp == 'defend':
+                    player_action_type = "defend"
+                    player_effect_type = "guard"
+                    player_action_target = "player"
+
+            # 敵行動の種別・効果
+            enemy_action_type = "skill"
+            enemy_effect_type = "none"
+            enemy_action_target = None
+            if actione:
+                effect_type, target = summarize_effects(actione.get("effects", []))
+                if effect_type == "attack":
+                    enemy_effect_type = "damage"
+                elif effect_type == "buf":
+                    enemy_effect_type = "buff"
+                elif effect_type == "debuf":
+                    enemy_effect_type = "debuff"
+                elif effect_type == "guaranteed_evasion":
+                    enemy_effect_type = "evade"
+                elif effect_type == "defense":
+                    enemy_effect_type = "guard"
+                enemy_action_target = target
             
             # 戦闘結果を構築
             battle_result = {
@@ -1597,13 +1731,25 @@ def battle(request, player_id, enemy_id=None):
                 'player_won': False,
                 'player_died': False,
                 'message': message,
+                'buffs': buffs,
+                'debuffs': debuffs,
                 'player_action': {
                     'damage': player_action_damage,
                     'message': player_action_message,
+                    'action_type': player_action_type,
+                    'effect_type': player_effect_type,
+                    'target': player_action_target,
+                    'value': player_action_value,
+                    'is_finisher': False,
                 },
                 'enemy_action': None if not did_enemy_act else {
                     'damage': enemy_action_damage,
                     'message': enemy_action_message,
+                    'action_type': enemy_action_type,
+                    'effect_type': enemy_effect_type,
+                    'target': enemy_action_target,
+                    'value': 0,
+                    'is_finisher': False,
                 },
             }
             
@@ -1612,6 +1758,7 @@ def battle(request, player_id, enemy_id=None):
                 battle_result['battle_ended'] = True
                 battle_result['player_won'] = True
                 battle_result['enemy_hp'] = 0
+                battle_result['player_action']['is_finisher'] = True
                 
                 # 勝利情報をセッションに保存（リロード時に使用）
                 gained_exp = request.session.get('gained_exp', 0)
