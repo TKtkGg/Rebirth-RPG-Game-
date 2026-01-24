@@ -505,6 +505,24 @@
         transform-origin: center;
     }
 
+    .evade-shake {
+        animation: evadeShake 1s ease-in-out;
+    }
+
+    @keyframes evadeShake {
+        0% { transform: translateX(0); }
+        10% { transform: translateX(-10px); }
+        20% { transform: translateX(10px); }
+        30% { transform: translateX(-10px); }
+        40% { transform: translateX(10px); }
+        50% { transform: translateX(-8px); }
+        60% { transform: translateX(8px); }
+        70% { transform: translateX(-6px); }
+        80% { transform: translateX(6px); }
+        90% { transform: translateX(-4px); }
+        100% { transform: translateX(0); }
+    }
+
     @keyframes attackEffectPop {
         0% {
             opacity: 0;
@@ -1110,6 +1128,45 @@
             effectEl.remove();
         }, 600);
     }
+
+    const commonEffectMap = {
+        guard: "{% static 'game/effect/防御.gif' %}",
+        buff: "{% static 'game/effect/バフ.gif' %}",
+        debuff: "{% static 'game/effect/デバフ.gif' %}",
+        heal: "{% static 'game/effect/HP回復.gif' %}",
+        mp: "{% static 'game/effect/SP回復.gif' %}",
+    };
+
+    const commonSoundMap = {
+        guard: "{% static 'game/sound/ガード音.mp3' %}",
+        buff: "{% static 'game/sound/バフ音.mp3' %}",
+        debuff: "{% static 'game/sound/デバフ音.mp3' %}",
+        heal: "{% static 'game/sound/回復音.mp3' %}",
+        mp: "{% static 'game/sound/回復音.mp3' %}",
+    };
+
+    const evadeSoundUrl = "{% static 'game/sound/回避.mp3' %}";
+    const guardHitSoundUrl = "{% static 'game/sound/ガード時被弾音.mp3' %}";
+    const escapeSoundUrl = "{% static 'game/sound/逃げる音.mp3' %}";
+
+    function playCommonEffect(effectType, targetElement) {
+        const effectUrl = commonEffectMap[effectType];
+        const soundUrl = commonSoundMap[effectType];
+        if (soundUrl) {
+            playAttackSound(soundUrl);
+        }
+        if (effectUrl) {
+            showAttackEffect(effectUrl, targetElement);
+        }
+    }
+
+    function enemyEvadeShake(targetElement) {
+        if (!targetElement) return;
+        targetElement.classList.add('evade-shake');
+        setTimeout(() => {
+            targetElement.classList.remove('evade-shake');
+        }, 1000);
+    }
     
     // 攻撃フラッシュエフェクト
     function attackFlash(targetElement) {
@@ -1289,7 +1346,7 @@
                 // 敵が倒されていなければ敵のターン
                 if (!result.battle_ended && result.enemy_hp > 0) {
                     console.log('Enemy counterattacks');
-                    await new Promise(resolve => setTimeout(resolve, 200)); // 少し間を空ける
+                    await new Promise(resolve => setTimeout(resolve, 300)); // 少し間を空ける
                     await enemyAttackAnimation(result.enemy_action, enemyImage, playerStatusBox);
                     // 敵の攻撃後、プレイヤーのHPバーを更新
                     updateHPBar('player', result.player_hp, result.player_max_hp);
@@ -1310,7 +1367,7 @@
                 // プレイヤーが倒されていなければプレイヤーのターン
                 if (!result.player_died && result.player_hp > 0) {
                     console.log('Player counterattacks');
-                    await new Promise(resolve => setTimeout(resolve, 200)); // 少し間を空ける
+                    await new Promise(resolve => setTimeout(resolve, 400)); // 少し間を空ける
                     updateHPBar('enemy', result.enemy_hp, result.enemy_max_hp);
                     updateHPBar('player', result.player_hp, result.player_max_hp);
                     updateSPBar(result.player_mp, result.player_max_mp);
@@ -1364,35 +1421,55 @@
 
         if (action.effect_type === 'damage') {
             attackFlash(target);
-            playAttackSound(action.attack_sound);
+            if (action.target_guarded) {
+                playAttackSound(guardHitSoundUrl);
+            } else {
+                playAttackSound(action.attack_sound);
+            }
             showAttackEffect(action.attack_effect, target);
             appendMessage(action.message);
             await showNumber(target, action.damage, 'damage-number', delay);
             return;
         }
+        if (action.effect_type === 'evade') {
+            playAttackSound(evadeSoundUrl);
+            if (target === enemyTarget) {
+                enemyEvadeShake(target);
+            }
+            appendMessage(action.message);
+            await new Promise(resolve => setTimeout(resolve, 200));
+            return;
+        }
         if (action.effect_type === 'heal') {
+            playCommonEffect('heal', playerTarget);
             appendMessage(action.message);
             await showNumber(playerTarget, action.value, 'heal-number', delay);
             return;
         }
         if (action.effect_type === 'mp') {
+            playCommonEffect('mp', playerTarget);
             appendMessage(action.message);
             await showNumber(playerTarget, action.value, 'mp-number', delay);
             return;
         }
         if (action.effect_type === 'buff') {
+            playCommonEffect('buff', target);
             appendMessage(action.message);
             statusFlash(target, 'buff-flash');
             await new Promise(resolve => setTimeout(resolve, 200));
             return;
         }
         if (action.effect_type === 'debuff') {
+            playCommonEffect('debuff', target);
             appendMessage(action.message);
             statusFlash(target, 'debuff-flash');
             await new Promise(resolve => setTimeout(resolve, 200));
             return;
         }
         if (action.effect_type === 'guard' || action.effect_type === 'evade') {
+            if (action.effect_type === 'guard') {
+                playCommonEffect('guard', target);
+            }
             appendMessage(action.message);
             statusFlash(target, 'guard-flash');
             await new Promise(resolve => setTimeout(resolve, 200));
@@ -1413,25 +1490,52 @@
 
         if (action.effect_type === 'damage') {
             attackFlash(target);
-            playAttackSound(action.attack_sound);
+            if (action.target_guarded) {
+                playAttackSound(guardHitSoundUrl);
+            } else {
+                playAttackSound(action.attack_sound);
+            }
             showAttackEffect(action.attack_effect, target);
             appendMessage(action.message);
             await showNumber(target, action.damage, 'damage-number');
             return;
         }
+        if (action.effect_type === 'evade') {
+            playAttackSound(evadeSoundUrl);
+            appendMessage(action.message);
+            await new Promise(resolve => setTimeout(resolve, 200));
+            return;
+        }
+        if (action.effect_type === 'heal') {
+            playCommonEffect('heal', playerTarget);
+            appendMessage(action.message);
+            await showNumber(playerTarget, action.value, 'heal-number');
+            return;
+        }
+        if (action.effect_type === 'mp') {
+            playCommonEffect('mp', playerTarget);
+            appendMessage(action.message);
+            await showNumber(playerTarget, action.value, 'mp-number');
+            return;
+        }
         if (action.effect_type === 'buff') {
+            playCommonEffect('buff', target);
             appendMessage(action.message);
             statusFlash(target, 'buff-flash');
             await new Promise(resolve => setTimeout(resolve, 200));
             return;
         }
         if (action.effect_type === 'debuff') {
+            playCommonEffect('debuff', target);
             appendMessage(action.message);
             statusFlash(target, 'debuff-flash');
             await new Promise(resolve => setTimeout(resolve, 200));
             return;
         }
         if (action.effect_type === 'guard' || action.effect_type === 'evade') {
+            if (action.effect_type === 'guard') {
+                playCommonEffect('guard', target);
+            }
             appendMessage(action.message);
             statusFlash(target, 'guard-flash');
             await new Promise(resolve => setTimeout(resolve, 200));
@@ -1447,6 +1551,7 @@
     if (battleForm) {
         const attackBtn = battleForm.querySelector('button[value="attack"]');
         const defendBtn = battleForm.querySelector('button[value="defend"]');
+        const escapeBtn = battleForm.querySelector('button[value="escape"]');
         
         if (attackBtn) {
             attackBtn.addEventListener('click', async function(e) {
@@ -1467,6 +1572,12 @@
                 const formData = new FormData(battleForm);
                 formData.set('action', 'defend');
                 await executeBattleAction(formData);
+            });
+        }
+
+        if (escapeBtn) {
+            escapeBtn.addEventListener('click', function() {
+                playAttackSound(escapeSoundUrl);
             });
         }
     }

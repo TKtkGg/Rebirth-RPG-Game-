@@ -175,21 +175,17 @@ def level_up_player(player, message=""):
     Returns:
         message: レベルアップメッセージを追加した文字列
     """
+    leveled_up = False
     while player.exp >= player.next_exp:
         player.level += 1
         player.stat_points += 3
         player.exp -= player.next_exp
         player.next_exp = int(300 + player.level * 30 * player.level)
-        
-        # レベルアップ時にHPとSPを最大まで回復
-        player.hp = player.max_hp
-        player.mp = player.max_mp
-        player.update_battle_stats()  # 戦闘用ステータスも更新
+        leveled_up = True
         
         message += f"レベルアップ！ レベル{player.level}になった！ ステータスポイント+3\n"
-        message += f"HPとSPが全回復した！\n"
     
-    return message
+    return message, leveled_up
 
 
 def get_player_from_request(request, player_id=None):
@@ -624,6 +620,15 @@ def battle(request, player_id, enemy_id=None):
     
     player=Player.objects.get(id=player_id)
     
+    def apply_levelup_recovery_if_needed(message=""):
+        if request.session.pop('pending_levelup_recovery', False):
+            player.hp = player.max_hp
+            player.mp = player.max_mp
+            player.update_battle_stats()
+            player.save()
+            message += "HPとSPが全回復した！\n"
+        return message
+
     # AJAXで勝利した後のリロード時の処理
     if request.session.get('battle_won'):
         gained_exp = request.session.pop('gained_exp', 0)
@@ -646,10 +651,12 @@ def battle(request, player_id, enemy_id=None):
         player_skills = PLAYER_SKILLS.get(player.job, [])
         player_items = PlayerInventory.objects.filter(player=player, quantity__gt=0).select_related('item')
         
+        victory_message = f"勝利！\n経験値を{gained_exp}ゲットした！\n{gained_gold}Gゲットした！\n"
+        victory_message = apply_levelup_recovery_if_needed(victory_message)
         return render(request, "game/battle.html", {
             "player": player,
             "enemy": None,
-            "message": f"勝利！\n経験値を{gained_exp}ゲットした！\n{gained_gold}Gゲットした！",
+            "message": victory_message,
             "message_history": [],
             "player_skills": player_skills,
             "player_items": player_items,
@@ -866,7 +873,9 @@ def battle(request, player_id, enemy_id=None):
                     player_quest.update_progress(1)
 
         # レベルアップ処理
-        message = level_up_player(player, message)
+        message, leveled_up = level_up_player(player, message)
+        if leveled_up:
+            request.session['pending_levelup_recovery'] = True
 
         # 戦闘回数をカウントアップ
         battle_count = request.session.get('battle_count', 0)
@@ -944,12 +953,17 @@ def battle(request, player_id, enemy_id=None):
             return min_rate + (spd - min_spd) * (max_rate - min_rate) / (max_spd - min_spd)
     
     def playerAction(message,action,special,actione):
+        action_result = {
+            "damage": 0,
+            "evaded": False,
+        }
         if action == 'attack':
             # 敵の回避判定（確定回避 or spd基づく確率）
             has_guaranteed_evasion = special_states.get("enemy", {}).get("guaranteed_evasion", {}).get("turn", 0) > 0
             
             if has_guaranteed_evasion:
                 message = f"{player.name}の攻撃！ {enemy.name}は回避した！\n"
+                action_result["evaded"] = True
             else:
                 enemy_spd_buff = buffs.get("enemy", {}).get("spd", {}).get("multiplier", 1.0)
                 enemy_spd_debuff = debuffs.get("enemy", {}).get("spd", {}).get("multiplier", 1.0)
@@ -958,10 +972,12 @@ def battle(request, player_id, enemy_id=None):
                 
                 if random.random() < evasion_rate:
                     message = f"{player.name}の攻撃！ {enemy.name}は回避した！\n"
+                    action_result["evaded"] = True
                 else:
                     damage = calculate_player_attack()
                     enemy.hp -= damage
                     enemy.save()
+                    action_result["damage"] = damage
                     message = f"{player.name}の攻撃！ {enemy.name}に{damage}ダメージ！\n"
             player.save()  # プレイヤーの状態を保存
         
@@ -1027,6 +1043,7 @@ def battle(request, player_id, enemy_id=None):
                     
                     if has_guaranteed_evasion:
                         message += f"{enemy.name}は回避した！\n"
+                        action_result["evaded"] = True
                     else:
                         enemy_spd_buff = buffs.get("enemy", {}).get("spd", {}).get("multiplier", 1.0)
                         enemy_spd_debuff = debuffs.get("enemy", {}).get("spd", {}).get("multiplier", 1.0)
@@ -1035,12 +1052,14 @@ def battle(request, player_id, enemy_id=None):
                         
                         if random.random() < evasion_rate:
                             message += f"{enemy.name}は回避した！\n"
+                            action_result["evaded"] = True
                         else:
                             damage = calculate_player_attack(
                                 multiplier=multiplier,
                                 damage_variance=(0, 3),
                             )
                             enemy.hp -= damage
+                            action_result["damage"] += damage
                             message += f"{enemy.name}に{damage}の大ダメージ！\n"
                             enemy.save()
                 
@@ -1066,7 +1085,7 @@ def battle(request, player_id, enemy_id=None):
             message += f"SPが{skill_cost}減った！\n"
             player.save()
                 
-        return message,True
+        return message,True,action_result
     
     def choose_enemyAction(enemy, player, buffs, debuffs):
         skills = ENEMY_SKILLS.get(enemy.name, [])
@@ -1304,6 +1323,7 @@ def battle(request, player_id, enemy_id=None):
         
         # 勝利処理
         message, gained_exp, gained_gold, existLevel = win(message)
+        message = apply_levelup_recovery_if_needed(message)
         return render(request, "game/battle.html", render_battle_screen(message, enemy_override=None, gained_exp=gained_exp, existLevel=existLevel, gained_gold=gained_gold))
     
     # アクション特技終了後の処理（敵が生きている場合）
@@ -1344,6 +1364,7 @@ def battle(request, player_id, enemy_id=None):
         # 敵が倒されたかチェック
         if enemy.hp <= 0:
             message, gained_exp, gained_gold, existLevel = win(message)
+            message = apply_levelup_recovery_if_needed(message)
             return render(request, "game/battle.html", render_battle_screen(message, enemy_override=None, gained_exp=gained_exp, existLevel=existLevel, gained_gold=gained_gold))
         
         # 戦闘を続行
@@ -1456,6 +1477,10 @@ def battle(request, player_id, enemy_id=None):
                     player_first = True
                     player_action_damage = 0
                     enemy_action_damage = max(0, start_player_hp - player.total_hp_battle)
+                    enemy_effect_type = "damage"
+                    if enemy_action_message and "回避" in enemy_action_message:
+                        enemy_effect_type = "evade"
+                        enemy_action_damage = 0
                     battle_result = {
                         'player_first': player_first,
                         'player_hp': player.total_hp_battle,
@@ -1480,17 +1505,19 @@ def battle(request, player_id, enemy_id=None):
                             'is_finisher': False,
                             'attack_sound': "",
                             'attack_effect': "",
+                            'target_guarded': False,
                         },
                         'enemy_action': None if not did_enemy_act else {
                             'damage': enemy_action_damage,
                             'message': enemy_action_message,
                             'action_type': 'skill',
-                            'effect_type': 'damage',
+                            'effect_type': enemy_effect_type,
                             'target': 'player',
                             'value': 0,
                             'is_finisher': False,
                             'attack_sound': enemy_attack_sound,
                             'attack_effect': enemy_attack_effect,
+                            'target_guarded': False,
                         },
                     }
                     if enemy.hp <= 0:
@@ -1542,8 +1569,9 @@ def battle(request, player_id, enemy_id=None):
         actione = choose_enemyAction(enemy, player, buffs, debuffs)
 
         is_player_first = spdcheck(actionp,actione)
+        player_action_result = {"damage": 0, "evaded": False}
         if is_player_first:
-            message,success = playerAction(message,actionp,special,actione)
+            message,success,player_action_result = playerAction(message,actionp,special,actione)
             player_action_message = message
             if not success:
                 if is_ajax:
@@ -1558,6 +1586,7 @@ def battle(request, player_id, enemy_id=None):
             if enemy.hp <= 0:
                 message, gained_exp, gained_gold, existLevel = win(message)
                 if not is_ajax:
+                    message = apply_levelup_recovery_if_needed(message)
                     return render(request, "game/battle.html", render_battle_screen(message, enemy_override=None, gained_exp=gained_exp, existLevel=existLevel, gained_gold=gained_gold))
             else:
                 ex_message,buffs,debuffs = enemyAction(message,enemy,player,buffs,debuffs,actionp,actione)
@@ -1600,7 +1629,7 @@ def battle(request, player_id, enemy_id=None):
                     if not is_ajax:
                         return render(request, "game/battle.html", render_battle_screen(message, redirect_after=True, redirect_url="battle_start", recovering=True))
             
-            ex_message,success = playerAction(message,actionp,special,actione)
+            ex_message,success,player_action_result = playerAction(message,actionp,special,actione)
             player_action_message = ex_message
             message += ex_message
             if not success:
@@ -1616,6 +1645,7 @@ def battle(request, player_id, enemy_id=None):
             if enemy.hp <= 0:
                 message,gained_exp,gained_gold,existLevel = win(message)
                 if not is_ajax:
+                    message = apply_levelup_recovery_if_needed(message)
                     return render(request, "game/battle.html", render_battle_screen(message, enemy_override=None, gained_exp=gained_exp, existLevel=existLevel, gained_gold=gained_gold))
           
 
@@ -1664,7 +1694,7 @@ def battle(request, player_id, enemy_id=None):
         if is_ajax:
             # 先攻判定
             player_first = is_player_first
-            player_action_damage = max(0, start_enemy_hp - enemy.hp)
+            player_action_damage = max(player_action_result.get("damage", 0), 0)
             enemy_action_damage = max(0, start_player_hp - player.total_hp_battle)
 
             # プレイヤー行動の種別・効果
@@ -1707,6 +1737,8 @@ def battle(request, player_id, enemy_id=None):
                     player_action_type = "defend"
                     player_effect_type = "guard"
                     player_action_target = "player"
+            if player_action_result.get("evaded") and player_action_type in ("attack", "skill"):
+                player_effect_type = "evade"
 
             # 敵行動の種別・効果
             enemy_action_type = "skill"
@@ -1725,6 +1757,12 @@ def battle(request, player_id, enemy_id=None):
                 elif effect_type == "defense":
                     enemy_effect_type = "guard"
                 enemy_action_target = target
+            if enemy_action_message and "回避" in enemy_action_message and enemy_effect_type == "damage":
+                enemy_effect_type = "evade"
+                enemy_action_damage = 0
+
+            player_target_guarded = player_effect_type == "damage" and player_action_target == "enemy" and is_defense_action(actione)
+            enemy_target_guarded = enemy_effect_type == "damage" and actionp == "defend"
             
             # 戦闘結果を構築
             battle_result = {
@@ -1751,6 +1789,7 @@ def battle(request, player_id, enemy_id=None):
                     'is_finisher': False,
                     'attack_sound': player_attack_sound,
                     'attack_effect': player_attack_effect,
+                    'target_guarded': player_target_guarded,
                 },
                 'enemy_action': None if not did_enemy_act else {
                     'damage': enemy_action_damage,
@@ -1762,6 +1801,7 @@ def battle(request, player_id, enemy_id=None):
                     'is_finisher': False,
                     'attack_sound': enemy_attack_sound,
                     'attack_effect': enemy_attack_effect,
+                    'target_guarded': enemy_target_guarded,
                 },
             }
             
