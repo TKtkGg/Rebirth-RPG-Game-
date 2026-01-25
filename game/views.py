@@ -617,8 +617,13 @@ def decrease_buff_debuff_turns(buffs, debuffs, special_states):
 
 def battle(request, player_id, enemy_id=None):
     from .models import PlayerInventory
-    
-    player=Player.objects.get(id=player_id)
+    try:
+        player = Player.objects.get(id=player_id)
+    except Player.DoesNotExist:
+        # 既にプレイヤーが削除済み（ゲームオーバー後など）の場合は安全に遷移
+        if request.session.get('gameover_player_id'):
+            return redirect('game:gameover')
+        return redirect('game:start')
     
     def apply_levelup_recovery_if_needed(message=""):
         if request.session.pop('pending_levelup_recovery', False):
@@ -718,6 +723,7 @@ def battle(request, player_id, enemy_id=None):
     
     # メッセージ履歴を取得（累積表示用）
     message_history = request.session.get("message_history", [])
+
 
     buffs = request.session.get("buffs", {})
     debuffs = request.session.get("debuffs", {})
@@ -1005,7 +1011,7 @@ def battle(request, player_id, enemy_id=None):
             
             # SP不足チェック
             if player.mp < skill_cost:
-                message = f"SPが足りません！ {skill_name} を発動するには SPが{skill_cost}必要です。"
+                message = "しかしSPが足りない！"
                 return message, False
             
             # アクション特技の場合は特別な処理
@@ -1575,7 +1581,7 @@ def battle(request, player_id, enemy_id=None):
             player_action_message = message
             if not success:
                 if is_ajax:
-                    return JsonResponse({'error': message}, status=400)
+                    return JsonResponse({'error': message}, status=200)
                 return render(request, "game/battle.html", render_battle_screen(message))
             
             # アクションモードチェック
@@ -1622,19 +1628,75 @@ def battle(request, player_id, enemy_id=None):
                 player.death_count += 1
                 if player.death_count >= 3:
                     request.session['gameover_player_id'] = player.id
+                    redirect_url = reverse('game:gameover')
                     if not is_ajax:
                         return redirect('game:gameover')
                 else:
                     message = tohome(message)
+                    redirect_url = reverse('game:battle_start', kwargs={'player_id': player.id})
                     if not is_ajax:
                         return render(request, "game/battle.html", render_battle_screen(message, redirect_after=True, redirect_url="battle_start", recovering=True))
+
+                if is_ajax:
+                    player.save()
+                    enemy_action_damage = max(0, start_player_hp - player.total_hp_battle)
+                    enemy_action_type = "skill"
+                    enemy_effect_type = "none"
+                    enemy_action_target = None
+                    if actione:
+                        effect_type, target = summarize_effects(actione.get("effects", []))
+                        if effect_type == "attack":
+                            enemy_effect_type = "damage"
+                        elif effect_type == "buf":
+                            enemy_effect_type = "buff"
+                        elif effect_type == "debuf":
+                            enemy_effect_type = "debuff"
+                        elif effect_type == "guaranteed_evasion":
+                            enemy_effect_type = "evade"
+                        elif effect_type == "defense":
+                            enemy_effect_type = "guard"
+                        enemy_action_target = target
+                    if enemy_action_message and "回避" in enemy_action_message and enemy_effect_type == "damage":
+                        enemy_effect_type = "evade"
+                        enemy_action_damage = 0
+
+                    battle_result = {
+                        'player_first': False,
+                        'player_hp': 0,
+                        'player_max_hp': player.total_max_hp_battle,
+                        'player_mp': player.mp,
+                        'player_max_mp': player.max_mp,
+                        'enemy_hp': enemy.hp if enemy.hp > 0 else 0,
+                        'enemy_max_hp': enemy.max_hp,
+                        'battle_ended': True,
+                        'player_won': False,
+                        'player_died': True,
+                        'message': message,
+                        'buffs': buffs,
+                        'debuffs': debuffs,
+                        'redirect_url': redirect_url,
+                        'player_action': None,
+                        'enemy_action': {
+                            'damage': enemy_action_damage,
+                            'message': enemy_action_message,
+                            'action_type': enemy_action_type,
+                            'effect_type': enemy_effect_type,
+                            'target': enemy_action_target,
+                            'value': 0,
+                            'is_finisher': False,
+                            'attack_sound': enemy_attack_sound,
+                            'attack_effect': enemy_attack_effect,
+                            'target_guarded': enemy_effect_type == "damage" and actionp == "defend",
+                        },
+                    }
+                    return JsonResponse(battle_result)
             
             ex_message,success,player_action_result = playerAction(message,actionp,special,actione)
             player_action_message = ex_message
             message += ex_message
             if not success:
                 if is_ajax:
-                    return JsonResponse({'error': message}, status=400)
+                    return JsonResponse({'error': message}, status=200)
                 return render(request, "game/battle.html", render_battle_screen(message))
             
             # アクションモードチェック
@@ -1828,6 +1890,10 @@ def battle(request, player_id, enemy_id=None):
                 battle_result['battle_ended'] = True
                 battle_result['player_died'] = True
                 battle_result['player_hp'] = 0
+                if player.death_count >= 3:
+                    battle_result['redirect_url'] = reverse('game:gameover')
+                else:
+                    battle_result['redirect_url'] = reverse('game:battle_start', kwargs={'player_id': player.id})
             
             return JsonResponse(battle_result)
         

@@ -1149,6 +1149,10 @@
     const guardHitSoundUrl = "{% static 'game/sound/ガード時被弾音.mp3' %}";
     const escapeSoundUrl = "{% static 'game/sound/逃げる音.mp3' %}";
 
+    {% if escaped %}
+    playAttackSound(escapeSoundUrl);
+    {% endif %}
+
     function playCommonEffect(effectType, targetElement) {
         const effectUrl = commonEffectMap[effectType];
         const soundUrl = commonSoundMap[effectType];
@@ -1312,16 +1316,29 @@
                 }
             });
             
+            let result = null;
             if (!response.ok) {
-                throw new Error(`HTTP error! status: ${response.status}`);
+                let errorMessage = '通信エラーが発生しました。';
+                try {
+                    const errorData = await response.json();
+                    if (errorData && errorData.error) {
+                        errorMessage = errorData.error;
+                    }
+                } catch (e) {
+                    // JSONが取得できない場合は既定メッセージ
+                }
+                appendMessage(errorMessage);
+                isBattleAnimating = false;
+                buttons.forEach(btn => btn.disabled = false);
+                return;
             }
             
-            const result = await response.json();
+            result = await response.json();
             console.log('Battle result:', result);
-            
+
             if (result.error) {
                 console.error('Battle error:', result.error);
-                alert('エラーが発生しました: ' + result.error);
+                appendMessage(result.error);
                 isBattleAnimating = false;
                 buttons.forEach(btn => btn.disabled = false);
                 return;
@@ -1392,8 +1409,9 @@
                     console.log('Reloading page for victory screen');
                     window.location.reload();
                 } else if (result.player_died) {
-                    console.log('Redirecting to home');
-                    window.location.href = "{% url 'game:battle_start' player.id %}";
+                    console.log('Redirecting after defeat');
+                    const redirectUrl = result.redirect_url || "{% url 'game:battle_start' player.id %}";
+                    window.location.href = redirectUrl;
                 }
             } else {
                 console.log('Battle continues');
@@ -1404,7 +1422,7 @@
             
         } catch (error) {
             console.error('Battle animation error:', error);
-            alert('通信エラーが発生しました: ' + error.message);
+            appendMessage('通信エラーが発生しました。');
             isBattleAnimating = false;
             buttons.forEach(btn => btn.disabled = false);
         }
@@ -1576,8 +1594,17 @@
         }
 
         if (escapeBtn) {
-            escapeBtn.addEventListener('click', function() {
-                playAttackSound(escapeSoundUrl);
+            escapeBtn.addEventListener('click', function(e) {
+                e.preventDefault();
+                if (isBattleAnimating) return;
+                setTimeout(() => {
+                    const hidden = document.createElement('input');
+                    hidden.type = 'hidden';
+                    hidden.name = 'action';
+                    hidden.value = 'escape';
+                    battleForm.appendChild(hidden);
+                    battleForm.submit();
+                }, 50);
             });
         }
     }
