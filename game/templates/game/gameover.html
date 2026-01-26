@@ -63,7 +63,7 @@
         <h1 class="gameover-title">GAME OVER</h1>
         <div class="score-info">
             <div><span class="score-label">Score：</span><span id="score-value">{{ score }}</span></div>
-            <div style="margin-top: 24px;"><span class="score-label">初期ポイント：</span><span id="init-point-value">0</span></div>
+            <div style="margin-top: 24px;"><span class="score-label">スコアポイント：</span><span id="init-point-value">0</span></div>
         </div>
     </div>
     <div class="gameover-buttons">
@@ -75,7 +75,7 @@
                 <button class="gameover-btn" type="submit">タイトルに戻る</button>
             </form>
             <form action="{% url 'game:start' %}" method="get" style="margin:0;">
-                <button class="gameover-btn" type="submit">続けてプレイ　</button>
+                <button class="gameover-btn" type="submit">ポイント分けへ</button>
             </form>
         </div>
     </div>

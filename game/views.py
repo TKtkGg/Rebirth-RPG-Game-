@@ -1002,7 +1002,7 @@ def battle(request, player_id, enemy_id=None):
             
             if skill_index < 0 or skill_index >= len(player_skills):
                 message = f"そのスキルは存在しません。"
-                return message, False
+                return message, False, action_result
             
             skill_data = player_skills[skill_index]
             skill_name = skill_data["name"]
@@ -1012,7 +1012,7 @@ def battle(request, player_id, enemy_id=None):
             # SP不足チェック
             if player.mp < skill_cost:
                 message = "しかしSPが足りない！"
-                return message, False
+                return message, False, action_result
             
             # アクション特技の場合は特別な処理
             if is_action_skill:
@@ -1025,7 +1025,7 @@ def battle(request, player_id, enemy_id=None):
                     'multiplier': skill_data["effects"][0].get("multiplier", 1.0)
                 }
                 # アクションモード用の特別なレンダリングを返す
-                return message, True
+                return message, True, action_result
             
             # SPを消費
             player.mp -= skill_cost
@@ -1525,6 +1525,10 @@ def battle(request, player_id, enemy_id=None):
                             'attack_effect': enemy_attack_effect,
                             'target_guarded': False,
                         },
+                        'item_update': {
+                            'item_id': item.id,
+                            'quantity': inventory_item.quantity,
+                        },
                     }
                     if enemy.hp <= 0:
                         battle_result['battle_ended'] = True
@@ -1577,6 +1581,7 @@ def battle(request, player_id, enemy_id=None):
         is_player_first = spdcheck(actionp,actione)
         player_action_result = {"damage": 0, "evaded": False}
         if is_player_first:
+            ex_message = ""
             message,success,player_action_result = playerAction(message,actionp,special,actione)
             player_action_message = message
             if not success:
@@ -1601,7 +1606,8 @@ def battle(request, player_id, enemy_id=None):
             # セッションに保存
             request.session["buffs"] = buffs
             request.session["debuffs"] = debuffs
-            message += ex_message    
+            if ex_message:
+                message += ex_message    
             
             # プレイヤーの総HPが0以下になったかチェック
             # プレイヤーが倒れたかチェック
@@ -2433,7 +2439,7 @@ def action_skill_click(request, player_id, enemy_id):
     # ダメージ計算
     base_damage = max(1, effective_atk - effective_def)
     damage_variance = random.randint(0, 3)
-    damage = int(base_damage * multiplier) + damage_variance
+    damage = max(int(base_damage * multiplier) + damage_variance,1)
     
     # 敵のHPを減らす
     enemy.hp = max(0, enemy.hp - damage)

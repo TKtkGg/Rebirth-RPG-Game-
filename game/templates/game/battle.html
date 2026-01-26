@@ -818,7 +818,7 @@
                         {% for inv_item in player_items %}
                         <form method="POST" style="margin: 0;" class="item-form" data-item-target="{{ inv_item.item.target }}">
                             {% csrf_token %}
-                            <button type="submit" name="use_item" value="{{ inv_item.item.id }}" class="battle-button special-button" style="width: 100%; text-align: center; padding: 8px; font-size: 16px;">
+                            <button type="submit" name="use_item" value="{{ inv_item.item.id }}" data-item-id="{{ inv_item.item.id }}" data-item-name="{{ inv_item.item.name }}" class="battle-button special-button" style="width: 100%; text-align: center; padding: 8px; font-size: 16px;">
                                 {{ inv_item.item.name }}<br>(×{{ inv_item.quantity }})
                             </button>
                         </form>
@@ -957,6 +957,52 @@
         const overlay = document.getElementById('action-overlay');
         const timerDisplay = document.getElementById('action-timer');
         const instructionText = document.getElementById('action-instruction');
+        const enemyImage = document.querySelector('.enemy-image');
+        const actionSkillSoundUrl = "{% if player.weapon and player.weapon.attack_sound %}{{ player.weapon.attack_sound.url }}{% else %}{% endif %}";
+        const actionSkillEffectUrl = "{% if player.weapon and player.weapon.attack_effect %}{{ player.weapon.attack_effect.url }}{% else %}{% endif %}";
+
+        function playActionSound(url) {
+            if (!url) return;
+            try {
+                const audio = new Audio(url);
+                audio.volume = 1.0;
+                audio.play().catch(() => {});
+            } catch (e) {
+                console.warn('Failed to play sound:', e);
+            }
+        }
+
+        function showActionEffect(url, targetElement) {
+            if (!url || !targetElement) return;
+            const rect = targetElement.getBoundingClientRect();
+            const effectEl = document.createElement('img');
+            effectEl.className = 'attack-effect';
+            effectEl.src = url;
+            effectEl.style.left = rect.left + rect.width / 2 - 70 + 'px';
+            effectEl.style.top = rect.top + rect.height / 2 - 70 + 'px';
+            document.body.appendChild(effectEl);
+            setTimeout(() => {
+                effectEl.remove();
+            }, 600);
+        }
+
+        function showDamageAround(targetElement, value) {
+            if (!targetElement) return;
+            const rect = targetElement.getBoundingClientRect();
+            const numberEl = document.createElement('div');
+            numberEl.className = 'damage-number';
+            numberEl.textContent = value;
+            const angle = Math.random() * Math.PI * 2;
+            const radius = 20 + Math.random() * 60;
+            const offsetX = Math.cos(angle) * radius;
+            const offsetY = Math.sin(angle) * radius;
+            numberEl.style.left = rect.left + rect.width / 2 - 30 + offsetX + 'px';
+            numberEl.style.top = rect.top + rect.height / 2 + offsetY + 'px';
+            document.body.appendChild(numberEl);
+            setTimeout(() => {
+                numberEl.remove();
+            }, 700);
+        }
         
         // オーバーレイを表示
         overlay.style.display = 'flex';
@@ -987,13 +1033,18 @@
             }
             
             clickCount++;
+
+            // 連打ごとの武器音・エフェクト
+            playActionSound(actionSkillSoundUrl);
+            showActionEffect(actionSkillEffectUrl, enemyImage);
             
             // ダメージ処理（Ajax）
             fetch("{% url 'game:action_skill_click' player.id enemy.id %}", {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
-                    'X-CSRFToken': '{{ csrf_token }}'
+                    'X-CSRFToken': '{{ csrf_token }}',
+                    'X-Requested-With': 'XMLHttpRequest'
                 },
                 body: JSON.stringify({})
             })
@@ -1005,6 +1056,9 @@
                 if (enemyHpBar && enemyHpValue) {
                     enemyHpBar.style.width = data.enemy_hp_percent + '%';
                     enemyHpValue.textContent = data.enemy_hp;
+                }
+                if (typeof data.damage !== 'undefined') {
+                    showDamageAround(enemyImage, data.damage);
                 }
             })
             .catch(error => console.error('Error:', error));
@@ -1292,6 +1346,25 @@
         renderStatusEffects(playerContainer, buffs?.player, debuffs?.player);
         renderStatusEffects(enemyContainer, buffs?.enemy, debuffs?.enemy);
     }
+
+    function updateItemInventory(itemUpdate) {
+        if (!itemUpdate || typeof itemUpdate.item_id === 'undefined') return;
+        const itemId = String(itemUpdate.item_id);
+        const quantity = Number(itemUpdate.quantity ?? 0);
+        const button = document.querySelector(`.item-form button[name="use_item"][value="${itemId}"]`);
+        if (!button) return;
+        const itemName = button.dataset.itemName || button.textContent.replace(/\s*\(×\d+\)\s*/g, '').trim();
+        if (quantity <= 0) {
+            const form = button.closest('form');
+            if (form) {
+                form.remove();
+            } else {
+                button.remove();
+            }
+        } else {
+            button.innerHTML = `${itemName}<br>(×${quantity})`;
+        }
+    }
     
     // 戦闘アクションを実行
     async function executeBattleAction(formData) {
@@ -1332,6 +1405,12 @@
                 buttons.forEach(btn => btn.disabled = false);
                 return;
             }
+
+            const contentType = response.headers.get('content-type') || '';
+            if (!contentType.includes('application/json')) {
+                window.location.href = response.url || window.location.href;
+                return;
+            }
             
             result = await response.json();
             console.log('Battle result:', result);
@@ -1349,6 +1428,8 @@
 
             // バフ・デバフ表示を即時更新
             updateStatusEffects(result.buffs, result.debuffs);
+            // アイテム残数の即時更新
+            updateItemInventory(result.item_update);
             
             // 先攻・後攻に応じてアニメーション実行
             if (result.player_first) {
@@ -1357,7 +1438,6 @@
                 await playerAttackAnimation(result.player_action, enemyImage, playerStatusBox);
                 // プレイヤーの攻撃後、敵のHPバーを更新
                 updateHPBar('enemy', result.enemy_hp, result.enemy_max_hp);
-                updateHPBar('player', result.player_hp, result.player_max_hp);
                 updateSPBar(result.player_mp, result.player_max_mp);
                 
                 // 敵が倒されていなければ敵のターン

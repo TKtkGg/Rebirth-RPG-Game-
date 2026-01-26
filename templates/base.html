@@ -30,17 +30,18 @@
         
         .game-title {
             position: absolute;
-            top: 15%;
+            top: 8%;
             left: 50%;
             transform: translateX(-50%);
-            font-size: 120px;
+            font-size: 100px;
             font-weight: bold;
             color: #fff;
             text-shadow: 
                 4px 4px 8px rgba(0, 0, 0, 0.8),
                 -2px -2px 4px rgba(255, 255, 255, 0.3);
-            letter-spacing: 20px;
+            letter-spacing: 3px;
             z-index: 10;
+            white-space: nowrap;
         }
         
         .content-container {
@@ -60,7 +61,7 @@
 <body>
     <div class="background-container"></div>
     
-    <div class="game-title">RPG</div>
+    <div class="game-title">Rebirth/リバース</div>
     
     <div class="content-container">
         {% block content %}
