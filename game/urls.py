@@ -25,4 +25,5 @@ urlpatterns = [
     path('convert_guest/<int:player_id>/', views.convert_guest_to_user, name='convert_guest_to_user'),  # ゲストからユーザーへ変換
     path('gameover/', views.gameover, name='gameover'),  # ゲームオーバー画面
     path('score_breakdown/', views.score_breakdown, name='score_breakdown'),  # スコア内訳画面
+    path('score_points/', views.score_points, name='score_points'),  # スコアポイント振り分け画面
 ]

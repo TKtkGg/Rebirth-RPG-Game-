@@ -2299,6 +2299,11 @@ def score_breakdown(request):
     })
 
 
+def score_points(request):
+    """スコアポイント振り分け画面（ステップ1: UIのみ）"""
+    return render(request, 'game/score_points.html')
+
+
 def quest(request, player_id):
     """クエスト画面"""
     player = Player.objects.get(id=player_id)
