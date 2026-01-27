@@ -5,6 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>{% block title %}My RPG Game{% endblock %}</title>
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css">
+    {% block extra_css %}{% endblock %}
 </head>
 <body>
     <header class="bg-primary text-white p3 mb-4">
@@ -20,5 +21,6 @@
     <footer class="bg-light text-center py-3 mt-4">
         <small>© 2025 TKG RPG Project</small>
     </footer>
+    {% block extra_js %}{% endblock %}
 </body>
 </html>

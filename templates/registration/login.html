@@ -1,100 +1,14 @@
 {% extends "base.html" %}
 
-{% block content %}
-<style>
-    .login-container {
-        display: flex;
-        flex-direction: column;
-        align-items: center;
-        justify-content: center;
-        min-height: 60vh;
-    }
-    
-    .login-box {
-        background-color: rgba(101, 67, 33, 0.9);
-        padding: 40px;
-        border-radius: 10px;
-        box-shadow: 0 6px 12px rgba(0, 0, 0, 0.4);
-        min-width: 400px;
-    }
-    
-    .login-box h2 {
-        color: white;
-        text-align: center;
-        margin-bottom: 30px;
-        font-size: 36px;
-        text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.5);
-    }
-    
-    .form-group {
-        margin-bottom: 20px;
-    }
-    
-    .form-group label {
-        display: block;
-        color: white;
-        font-size: 18px;
-        margin-bottom: 8px;
-        font-weight: bold;
-    }
-    
-    .form-group input {
-        width: 100%;
-        padding: 12px;
-        font-size: 16px;
-        border: 2px solid rgba(255, 255, 255, 0.3);
-        border-radius: 5px;
-        background-color: rgba(255, 255, 255, 0.9);
-        box-sizing: border-box;
-    }
-    
-    .error-messages {
-        color: #ffcccc;
-        background-color: rgba(139, 0, 0, 0.7);
-        padding: 10px;
-        border-radius: 5px;
-        margin-bottom: 15px;
-        font-size: 14px;
-    }
-    
-    .btn-submit {
-        width: 100%;
-        padding: 15px;
-        font-size: 24px;
-        font-weight: bold;
-        color: white;
-        background-color: rgba(139, 69, 19, 0.9);
-        border: none;
-        border-radius: 8px;
-        cursor: pointer;
-        margin-top: 20px;
-        box-shadow: 0 4px 6px rgba(0, 0, 0, 0.3);
-        transition: background-color 0.3s;
-    }
-    
-    .btn-submit:hover {
-        background-color: rgba(160, 82, 45, 0.9);
-    }
-    
-    .back-link {
-        text-align: center;
-        margin-top: 20px;
-    }
-    
-    .back-link a {
-        color: white;
-        text-decoration: none;
-        font-size: 16px;
-        text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.5);
-    }
-    
-    .back-link a:hover {
-        text-decoration: underline;
-    }
-</style>
+{% load static %}
 
-<div class="login-container">
-    <div class="login-box">
+{% block extra_css %}
+<link rel="stylesheet" href="{% static 'accounts/css/auth.css' %}">
+{% endblock %}
+
+{% block content %}
+<div class="login-container auth-container">
+    <div class="login-box auth-box">
         <h2>ログイン</h2>
         
         {% if form.errors %}
@@ -119,7 +33,7 @@
             <button type="submit" class="btn-submit">ログイン</button>
         </form>
         
-        <div class="back-link">
+        <div class="back-link auth-back-link">
             <a href="{% url 'accounts:home' %}">← ホームに戻る</a>
         </div>
     </div>

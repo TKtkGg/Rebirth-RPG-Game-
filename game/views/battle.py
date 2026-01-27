@@ -1,744 +1,33 @@
 """
-views.py
+戦闘関連のview関数
 
-このファイルは「入口」だけを担当し、各機能は views/ 配下のモジュールに委譲します。
-既存の `from . import views` を維持したまま責務分離するための中継です。
+戦闘画面の表示と戦闘ロジックの処理を担当します。
 """
-from pathlib import Path
-
-# views/ 配下のサブモジュールを import できるようにする
-# （game/views.py を "擬似パッケージ" として扱うため）
-__path__ = [str(Path(__file__).with_name("views"))]
-
-# 戦闘関連
-from .battle import battle, battle_start, action_skill_click, action_skill_end
-
-# ショップ関連
-from .shop import shop, buy_item
-
-# 装備関連
-from .equipment import equipment_change, equip_item
-
-# インベントリ関連
-from .inventory import inventory, use_inventory_item
-
-# クエスト関連
-from .quest import quest, claim_quest_reward
-
-# スコア関連
-from .score import score_breakdown, score_points
-
-# ゲームフロー関連
-from .gameflow import home, start_game, stage_select, gameover, convert_guest_to_user, continue_battle
-
-# ユーティリティ
-from .utils import (
-    calculate_score,
-    level_up_player,
-    initialize_player_quests,
-    get_player_from_request,
-    select_new_enemy,
-    SCORE_POINT_CONFIG,
-)
-
-__all__ = [
-    # 戦闘関連
-    "battle",
-    "battle_start",
-    "action_skill_click",
-    "action_skill_end",
-    # ショップ関連
-    "shop",
-    "buy_item",
-    # 装備関連
-    "equipment_change",
-    "equip_item",
-    # インベントリ関連
-    "inventory",
-    "use_inventory_item",
-    # クエスト関連
-    "quest",
-    "claim_quest_reward",
-    # スコア関連
-    "score_breakdown",
-    "score_points",
-    # ゲームフロー関連
-    "home",
-    "start_game",
-    "stage_select",
-    "gameover",
-    "convert_guest_to_user",
-    "continue_battle",
-    # ユーティリティ
-    "calculate_score",
-    "level_up_player",
-    "initialize_player_quests",
-    "get_player_from_request",
-    "select_new_enemy",
-    "SCORE_POINT_CONFIG",
-]
-'''
-"""
-views.py
-
-このファイルは「入口」だけを担当し、各機能は views/ 配下のモジュールに委譲します。
-既存の `from . import views` を維持したまま責務分離するための中継です。
-"""
-from pathlib import Path
-
-# views/ 配下のサブモジュールを import できるようにする
-# （game/views.py を "擬似パッケージ" として扱うため）
-__path__ = [str(Path(__file__).with_name("views"))]
-
-# 戦闘関連
-from .battle import battle, battle_start, action_skill_click, action_skill_end
-
-# ショップ関連
-from .shop import shop, buy_item
-
-# 装備関連
-from .equipment import equipment_change, equip_item
-
-# インベントリ関連
-from .inventory import inventory, use_inventory_item
-
-# クエスト関連
-from .quest import quest, claim_quest_reward
-
-# スコア関連
-from .score import score_breakdown, score_points
-
-# ゲームフロー関連
-from .gameflow import home, start_game, stage_select, gameover, convert_guest_to_user, continue_battle
-
-# ユーティリティ
-from .utils import (
-    calculate_score,
-    level_up_player,
-    initialize_player_quests,
-    get_player_from_request,
-    select_new_enemy,
-    SCORE_POINT_CONFIG,
-)
-
-__all__ = [
-    # 戦闘関連
-    "battle",
-    "battle_start",
-    "action_skill_click",
-    "action_skill_end",
-    # ショップ関連
-    "shop",
-    "buy_item",
-    # 装備関連
-    "equipment_change",
-    "equip_item",
-    # インベントリ関連
-    "inventory",
-    "use_inventory_item",
-    # クエスト関連
-    "quest",
-    "claim_quest_reward",
-    # スコア関連
-    "score_breakdown",
-    "score_points",
-    # ゲームフロー関連
-    "home",
-    "start_game",
-    "stage_select",
-    "gameover",
-    "convert_guest_to_user",
-    "continue_battle",
-    # ユーティリティ
-    "calculate_score",
-    "level_up_player",
-    "initialize_player_quests",
-    "get_player_from_request",
-    "select_new_enemy",
-    "SCORE_POINT_CONFIG",
-]
-"""
-views.py
-
-このファイルは「入口」だけを担当し、各機能は views/ 配下のモジュールに委譲します。
-既存の `from . import views` を維持したまま責務分離するための中継です。
-"""
-from pathlib import Path
-
-# views/ 配下のサブモジュールを import できるようにする
-# （game/views.py を "擬似パッケージ" として扱うため）
-__path__ = [str(Path(__file__).with_name("views"))]
-
-# 戦闘関連
-from .battle import battle, battle_start, action_skill_click, action_skill_end
-
-# ショップ関連
-from .shop import shop, buy_item
-
-# 装備関連
-from .equipment import equipment_change, equip_item
-
-# インベントリ関連
-from .inventory import inventory, use_inventory_item
-
-# クエスト関連
-from .quest import quest, claim_quest_reward
-
-# スコア関連
-from .score import score_breakdown, score_points
-
-# ゲームフロー関連
-from .gameflow import home, start_game, stage_select, gameover, convert_guest_to_user, continue_battle
-
-# ユーティリティ
-from .utils import (
-    calculate_score,
-    level_up_player,
-    initialize_player_quests,
-    get_player_from_request,
-    select_new_enemy,
-    SCORE_POINT_CONFIG,
-)
-
-__all__ = [
-    # 戦闘関連
-    "battle",
-    "battle_start",
-    "action_skill_click",
-    "action_skill_end",
-    # ショップ関連
-    "shop",
-    "buy_item",
-    # 装備関連
-    "equipment_change",
-    "equip_item",
-    # インベントリ関連
-    "inventory",
-    "use_inventory_item",
-    # クエスト関連
-    "quest",
-    "claim_quest_reward",
-    # スコア関連
-    "score_breakdown",
-    "score_points",
-    # ゲームフロー関連
-    "home",
-    "start_game",
-    "stage_select",
-    "gameover",
-    "convert_guest_to_user",
-    "continue_battle",
-    # ユーティリティ
-    "calculate_score",
-    "level_up_player",
-    "initialize_player_quests",
-    "get_player_from_request",
-    "select_new_enemy",
-    "SCORE_POINT_CONFIG",
-]
-"""
-views.py
-
-このファイルは「入口」だけを担当し、各機能は views/ 配下のモジュールに委譲します。
-既存の `from . import views` を維持したまま責務分離するための中継です。
-"""
-from pathlib import Path
-
-# views/ 配下のサブモジュールを import できるようにする
-# （game/views.py を "擬似パッケージ" として扱うため）
-__path__ = [str(Path(__file__).with_name("views"))]
-
-# 戦闘関連
-from .battle import battle, battle_start, action_skill_click, action_skill_end
-
-# ショップ関連
-from .shop import shop, buy_item
-
-# 装備関連
-from .equipment import equipment_change, equip_item
-
-# インベントリ関連
-from .inventory import inventory, use_inventory_item
-
-# クエスト関連
-from .quest import quest, claim_quest_reward
-
-# スコア関連
-from .score import score_breakdown, score_points
-
-# ゲームフロー関連
-from .gameflow import home, start_game, stage_select, gameover, convert_guest_to_user, continue_battle
-
-# ユーティリティ
-from .utils import (
-    calculate_score,
-    level_up_player,
-    initialize_player_quests,
-    get_player_from_request,
-    select_new_enemy,
-    SCORE_POINT_CONFIG,
-)
-
-__all__ = [
-    # 戦闘関連
-    "battle",
-    "battle_start",
-    "action_skill_click",
-    "action_skill_end",
-    # ショップ関連
-    "shop",
-    "buy_item",
-    # 装備関連
-    "equipment_change",
-    "equip_item",
-    # インベントリ関連
-    "inventory",
-    "use_inventory_item",
-    # クエスト関連
-    "quest",
-    "claim_quest_reward",
-    # スコア関連
-    "score_breakdown",
-    "score_points",
-    # ゲームフロー関連
-    "home",
-    "start_game",
-    "stage_select",
-    "gameover",
-    "convert_guest_to_user",
-    "continue_battle",
-    # ユーティリティ
-    "calculate_score",
-    "level_up_player",
-    "initialize_player_quests",
-    "get_player_from_request",
-    "select_new_enemy",
-    "SCORE_POINT_CONFIG",
-]
 import random
-from django.shortcuts import render,redirect
-from django.contrib.auth import logout
+from django.shortcuts import render, redirect
 from django.urls import reverse
-from django.db import models
 from django.http import JsonResponse
-from .models import Player, Enemy, Equipment, Item, Stage, QuestTemplate, PlayerQuest
-from .skills import ENEMY_SKILLS, PLAYER_SKILLS
-from .weapons_armors import WEAPONS, ARMORS
+from ..models import Player, Enemy, Stage, PlayerInventory, PlayerQuest
+from ..skills import ENEMY_SKILLS, PLAYER_SKILLS
+from .utils import (
+    get_player_from_request,
+    select_new_enemy,
+    level_up_player,
+    initialize_player_quests,
+    decrease_buff_debuff_turns,
+    _get_score_rates,
+)
 
-
-SCORE_POINT_CONFIG = [
-    {"key": "hp", "label": "HP", "base": 100, "inc": 5},
-    {"key": "atk", "label": "ATK", "base": 5, "inc": 1},
-    {"key": "def", "label": "DEF", "base": 5, "inc": 1},
-    {"key": "spd", "label": "SPD", "base": 5, "inc": 1},
-    {"key": "mp", "label": "SP", "base": 50, "inc": 5},
-    {"key": "gold", "label": "初期G", "base": 100, "inc": 50},
-    {"key": "gold_rate", "label": "G獲得倍率", "base": 1.0, "inc": 0.05, "format": "{:.2f}"},
-    {"key": "exp_rate", "label": "EXP獲得倍率", "base": 1.0, "inc": 0.05, "format": "{:.2f}"},
-]
-
-
-def _get_score_bonus_dict(user, category_key):
-    if not user:
-        return {}
-    if category_key == "all":
-        return user.score_bonus_all or {}
-    bonus_jobs = user.score_bonus_jobs or {}
-    return bonus_jobs.get(category_key, {})
-
-
-def _set_score_bonus_dict(user, category_key, bonus_dict):
-    if category_key == "all":
-        user.score_bonus_all = bonus_dict
-    else:
-        bonus_jobs = user.score_bonus_jobs or {}
-        bonus_jobs[category_key] = bonus_dict
-        user.score_bonus_jobs = bonus_jobs
-
-
-def _combine_score_bonus(user, job):
-    all_bonus = user.score_bonus_all or {}
-    job_bonus = (user.score_bonus_jobs or {}).get(job, {})
-    combined = {}
-    for cfg in SCORE_POINT_CONFIG:
-        key = cfg["key"]
-        combined[key] = int(all_bonus.get(key, 0)) + int(job_bonus.get(key, 0))
-    return combined
-
-
-def _get_score_rates(user, job):
-    if not user:
-        return 1.0, 1.0
-    combined = _combine_score_bonus(user, job)
-    gold_rate = 1.0 + combined.get("gold_rate", 0) * 0.05
-    exp_rate = 1.0 + combined.get("exp_rate", 0) * 0.05
-    return gold_rate, exp_rate
-
-
-def calculate_score(player):
-    """
-    ゲームスコアを計算
-    
-    スコア計算式:
-    - ATK × 100
-    - DEF × 100
-    - SPD × 100
-    - HP × 10
-    - SP × 10
-    - 装備の持つスコア（各装備のscoreフィールドの合計）
-    - 倒した敵の数 × 100
-    - 倒した強敵の数 × 1000
-    - プレイヤーレベル × 100
-    
-    戻り値:
-        辞書 {
-            'hp_score': int,
-            'atk_score': int,
-            'def_score': int,
-            'spd_score': int,
-            'mp_score': int,
-            'equipment_score': int,
-            'defeat_score': int,
-            'strong_defeat_score': int,
-            'level_score': int,
-            'total_score': int
-        }
-    """
-    # 基本ステータススコア
-    atk_score = player.atk * 100
-    def_score = player.defense * 100
-    spd_score = player.spd * 100
-    hp_score = player.max_hp * 10
-    mp_score = player.max_mp * 10
-    
-    # 装備スコア（所持している全装備のscoreフィールドの合計）
-    equipment_score = sum(eq.score for eq in player.owned_equipment.all())
-    
-    # 撃破スコア
-    defeat_score = player.defeats * 100
-    strong_defeat_score = player.strong_defeats * 1000
-    
-    # レベルスコア
-    level_score = player.level * 300
-    
-    # 合計スコア
-    total_score = (
-        atk_score + def_score + spd_score + hp_score + mp_score +
-        equipment_score + defeat_score + strong_defeat_score + level_score
-    )
-    
-    return {
-        'hp_score': hp_score,
-        'atk_score': atk_score,
-        'def_score': def_score,
-        'spd_score': spd_score,
-        'mp_score': mp_score,
-        'equipment_score': equipment_score,
-        'defeat_score': defeat_score,
-        'strong_defeat_score': strong_defeat_score,
-        'level_score': level_score,
-        'total_score': total_score
-    }
-
-
-def find_quest_in_derivation_chain(player, initial_template):
-    """
-    初期クエストから派生チェーンを辿り、プレイヤーのPlayerQuestを探す
-    
-    Args:
-        player: プレイヤーオブジェクト
-        initial_template: 初期クエストのテンプレート（derivation_level=0）
-    
-    Returns:
-        PlayerQuest or None
-    """
-    print(f"=== 派生チェーン探索開始: {initial_template.title} ===")
-    # 派生チェーンを構築（初期クエスト→派生1→派生2→...）
-    chain = [initial_template]
-    current = initial_template
-    while current.derived_quest:
-        chain.append(current.derived_quest)
-        current = current.derived_quest
-    
-    print(f"派生チェーン: {[t.title for t in chain]}")
-    
-    # チェーン内のどのテンプレートに一致するPlayerQuestがあるか探す
-    for template in chain:
-        pq = PlayerQuest.objects.filter(player=player, quest_template=template).first()
-        print(f"  {template.title} (derivation_level={template.derivation_level}) -> PlayerQuest: {pq}")
-        if pq:
-            print(f"  ✓ 発見: {pq.quest_template.title}")
-            return pq
-    
-    print(f"  ✗ PlayerQuestが見つかりませんでした")
-    return None
-
-
-def initialize_player_quests(player):
-    """
-    プレイヤーのクエストを初期化する
-    存在しないPlayerQuestを自動生成する
-    派生クエスト（derivation_level > 0）は初期化しない
-    派生チェーン内にPlayerQuestが既に存在する場合は作成しない
-    
-    Args:
-        player: Playerオブジェクト
-    """
-    # プレイヤーに適用可能なクエストテンプレートを取得（初期クエストのみ）
-    life_templates = QuestTemplate.objects.filter(
-        quest_type='life',
-        is_active=True,
-        derivation_level=0  # 初期クエストのみ
-    ).filter(
-        models.Q(job='all') | models.Q(job=player.job)
-    )
-    
-    account_templates = QuestTemplate.objects.filter(
-        quest_type='account',
-        is_active=True,
-        job='all',
-        derivation_level=0  # 初期クエストのみ
-    )
-    
-    # PlayerQuestを自動生成（派生チェーン内に存在しない場合のみ）
-    for template in life_templates:
-        # 派生チェーン内にPlayerQuestが存在するかチェック
-        existing_in_chain = find_quest_in_derivation_chain(player, template)
-        if not existing_in_chain:
-            # 存在しない場合のみ作成
-            PlayerQuest.objects.create(
-                player=player,
-                quest_template=template,
-                progress_current=0,
-                is_completed=False,
-                is_claimed=False
-            )
-            print(f"初期クエスト作成: {template.title}")
-    
-    for template in account_templates:
-        # 派生チェーン内にPlayerQuestが存在するかチェック
-        existing_in_chain = find_quest_in_derivation_chain(player, template)
-        if not existing_in_chain:
-            # 存在しない場合のみ作成
-            PlayerQuest.objects.create(
-                player=player,
-                quest_template=template,
-                progress_current=0,
-                is_completed=False,
-                is_claimed=False
-            )
-            print(f"初期クエスト作成: {template.title}")
-
-
-def level_up_player(player, message=""):
-    """
-    プレイヤーのレベルアップ処理を行う共通関数
-    
-    Args:
-        player: Playerオブジェクト
-        message: 既存のメッセージ文字列（追記される）
-    
-    Returns:
-        message: レベルアップメッセージを追加した文字列
-    """
-    leveled_up = False
-    while player.exp >= player.next_exp:
-        player.level += 1
-        player.stat_points += 3
-        player.exp -= player.next_exp
-        player.next_exp = int(300 + player.level * 30 * player.level)
-        leveled_up = True
-        
-        message += f"レベルアップ！ レベル{player.level}になった！ ステータスポイント+3\n"
-    
-    return message, leveled_up
-
-
-def get_player_from_request(request, player_id=None):
-    """
-    リクエストからプレイヤーを取得する
-    
-    Args:
-        request: HTTPリクエスト
-        player_id: プレイヤーID（指定された場合はそのIDのプレイヤーを取得）
-    
-    Returns:
-        Player: プレイヤーオブジェクト
-    
-    処理の優先順位:
-    1. player_idが指定されている場合: そのIDのプレイヤーを取得
-    2. ログインユーザーの場合: userに紐付いたプレイヤーを取得
-    3. ゲストの場合: セッションからプレイヤーIDを取得
-    """
-    if player_id:
-        return Player.objects.get(id=player_id)
-    
-    if request.user.is_authenticated:
-        # ログインユーザーの場合
-        try:
-            return request.user.player
-        except Player.DoesNotExist:
-            # プレイヤーが存在しない場合は作成
-            return Player.objects.create(
-                user=request.user,
-                name=request.user.username,
-                is_guest=False
-            )
-    else:
-        # ゲストの場合
-        guest_player_id = request.session.get('guest_player_id')
-        if guest_player_id:
-            try:
-                return Player.objects.get(id=guest_player_id, is_guest=True)
-            except Player.DoesNotExist:
-                pass
-    
-    return None
-
-def home(request):
-    return render(request, 'game/home.html')
-
-def stage_select(request, player_id):
-    """ステージ選択画面"""
-    player = Player.objects.get(id=player_id)
-    stages = Stage.objects.all().order_by('order')
-    
-    return render(request, 'game/stage_select.html', {
-        'player': player,
-        'stages': stages,
-    })
-
-def start_game(request):
-    """職業選択画面（ログインユーザー/ゲスト両対応）"""
-    force_guest = request.GET.get('guest') == '1'
-
-    # ゲストで始める指定がある場合はログアウトしておく
-    if force_guest and request.user.is_authenticated:
-        logout(request)
-
-    # 既にPlayerが存在する場合はゲーム画面へリダイレクト（ゲスト強制時はスキップ）
-    if request.user.is_authenticated and not force_guest:
-        try:
-            player = request.user.player
-            return redirect('game:battle_start', player_id=player.id)
-        except Player.DoesNotExist:
-            pass  # Playerが存在しない場合は職業選択へ進む
-    
-    if request.method == 'POST':
-        name = request.POST.get('name')
-        job = request.POST.get('job', '戦士')  # デフォルトは戦士
-
-        request.session['session_purchased_items'] = []
-        request.session['reset_shop'] = True
-        
-        # 前回のゲームオーバーのスコア情報を削除
-        if 'gameover_score' in request.session:
-            del request.session['gameover_score']
-        if 'gameover_initial_point' in request.session:
-            del request.session['gameover_initial_point']
-        if 'score_breakdown' in request.session:
-            del request.session['score_breakdown']
-        
-        # ジョブに応じたステータス設定
-        if job == "戦士":
-            base_hp, base_atk, base_def, base_spd, base_mp = 100, 5, 5, 5, 50
-            job_bonus_hp, job_bonus_atk, job_bonus_def, job_bonus_spd, job_bonus_mp = 10, 3, 3, -3, -5
-            stat_points = 0
-        elif job == "魔法使い":
-            base_hp, base_atk, base_def, base_spd, base_mp = 100, 5, 5, 5, 50
-            job_bonus_hp, job_bonus_atk, job_bonus_def, job_bonus_spd, job_bonus_mp = -5, 7, -2, 0, +10
-            stat_points = 0
-        elif job == "忍者":
-            base_hp, base_atk, base_def, base_spd, base_mp = 100, 5, 5, 5, 50
-            job_bonus_hp, job_bonus_atk, job_bonus_def, job_bonus_spd, job_bonus_mp = -5, 3, 0, 5, 0
-            stat_points = 0
-        elif job == "格闘家":
-            base_hp, base_atk, base_def, base_spd, base_mp = 100, 5, 5, 5, 50
-            job_bonus_hp, job_bonus_atk, job_bonus_def, job_bonus_spd, job_bonus_mp = -20, 8, 3, 5, -10
-            stat_points = 0
-        else:
-            base_hp, base_atk, base_def, base_spd, base_mp = 100, 5, 5, 5, 50
-            job_bonus_hp, job_bonus_atk, job_bonus_def, job_bonus_spd, job_bonus_mp = 0, 0, 0, 0, 0
-            stat_points = 0
-
-        score_bonus_counts = {}
-        bonus_hp = bonus_atk = bonus_def = bonus_spd = bonus_mp = bonus_gold = 0
-        if request.user.is_authenticated:
-            score_bonus_counts = _combine_score_bonus(request.user, job)
-            bonus_hp = score_bonus_counts.get("hp", 0) * 5 + request.user.bonus_hp
-            bonus_atk = score_bonus_counts.get("atk", 0) * 1 + request.user.bonus_atk
-            bonus_def = score_bonus_counts.get("def", 0) * 1 + request.user.bonus_def
-            bonus_spd = score_bonus_counts.get("spd", 0) * 1 + request.user.bonus_spd
-            bonus_mp = score_bonus_counts.get("mp", 0) * 5
-            bonus_gold = score_bonus_counts.get("gold", 0) * 50
-        
-        # 初期装備をデータベースから取得
-        wooden_sword = Equipment.objects.get(name="木の剣")
-        leather_armor = Equipment.objects.get(name="革の服")
-        
-        # ログインユーザーかゲストかで分岐
-        if request.user.is_authenticated:
-            # ログインユーザー: userに紐付けてPlayerを作成
-            player = Player.objects.create(
-                user=request.user,
-                name=name if name else request.user.username,
-                is_guest=False,
-                level=1,
-                exp=0,
-                next_exp=300,
-                max_hp=base_hp + job_bonus_hp + bonus_hp,
-                hp=base_hp + job_bonus_hp + bonus_hp,
-                atk=base_atk + job_bonus_atk + bonus_atk,
-                defense=base_def + job_bonus_def + bonus_def,
-                spd=base_spd + job_bonus_spd + bonus_spd,
-                max_mp=base_mp + job_bonus_mp + bonus_mp,
-                mp=base_mp + job_bonus_mp + bonus_mp,
-                stat_points=stat_points,
-                job=job,
-                weapon=wooden_sword,
-                armor=leather_armor,
-                gold=100 + bonus_gold,
-            )
-        else:
-            # ゲストプレイヤー: user=Noneで作成
-            player = Player.objects.create(
-                name=name,
-                is_guest=True,
-                level=1,
-                exp=0,
-                next_exp=300,
-                max_hp=base_hp + job_bonus_hp,
-                hp=base_hp + job_bonus_hp,
-                atk=base_atk + job_bonus_atk,
-                defense=base_def + job_bonus_def,
-                spd=base_spd + job_bonus_spd,
-                max_mp=base_mp + job_bonus_mp,
-                mp=base_mp + job_bonus_mp,
-                stat_points=stat_points,
-                job=job,
-                weapon=wooden_sword,
-                armor=leather_armor,
-                gold=100,
-            )
-            # ゲストプレイヤーの場合、セッションにIDを保存
-            request.session['guest_player_id'] = player.id
-        
-        # 初期装備を所持装備に追加
-        player.owned_equipment.add(wooden_sword, leather_armor)
-        
-        # クエストを初期化
-        initialize_player_quests(player)
-        
-        return redirect('game:battle_start', player_id=player.id)
-    
-    # GETリクエスト: 職業選択画面を表示
-    # ログインユーザーの場合はデフォルト名をユーザー名にする（ゲスト強制時は空にする）
-    default_name = request.user.username if request.user.is_authenticated and not force_guest else ""
-    
-    return render(request, 'game/start.html', {'default_name': default_name})
 
 def battle_start(request, player_id, enemy_id=None):
-    player = Player.objects.get(id=player_id)
+    """
+    戦闘開始画面（ホーム画面）を表示
+    
+    プレイヤーのステータス表示、休む機能、ステータスポイント配分を担当します。
+    """
+    player = get_player_from_request(request, player_id)
+    if not player:
+        return redirect('game:start')
     
     # プレイヤーのHPが0以下の場合、最大HPに回復
     if player.total_hp_battle <= 0:
@@ -768,7 +57,7 @@ def battle_start(request, player_id, enemy_id=None):
     request.session['buffs'] = {}
     request.session['debuffs'] = {}
 
-    exp_percent = int(player.exp / player.next_exp * 100)
+    exp_percent = int(player.exp / player.next_exp * 100) if player.next_exp > 0 else 0
 
     continue_count = 2 - player.death_count
 
@@ -813,191 +102,134 @@ def battle_start(request, player_id, enemy_id=None):
     })
 
 
-def select_new_enemy(player, stage, request):
+def action_skill_click(request, player_id, enemy_id):
     """
-    新しい敵を選択する共通関数
+    アクション特技のクリック時ダメージ処理
     
-    Args:
-        player: プレイヤーオブジェクト
-        stage: ステージオブジェクト
-        request: リクエストオブジェクト
-    
-    Returns:
-        enemy: 選択された敵オブジェクト（セッションに保存済み）
+    AJAXリクエストで連続クリック時のダメージを計算し、敵のHPを減らします。
     """
-    # プレイヤーレベルに応じた敵のレベル範囲を決定
-    if player.level <= 5:
-        min_enemy_level = stage.min_enemy_level
-        max_enemy_level = min(player.level + 1, stage.max_enemy_level)
-    elif player.level <= 8:
-        min_enemy_level = stage.min_enemy_level
-        max_enemy_level = min(player.level + 2, stage.max_enemy_level)
-    elif player.level <= 10:
-        min_enemy_level = stage.min_enemy_level
-        max_enemy_level = min(player.level + 3, stage.max_enemy_level)
-    elif player.level <= 15:
-        min_enemy_level = stage.min_enemy_level
-        max_enemy_level = min(player.level + 4, stage.max_enemy_level)
-    else:
-        min_enemy_level = stage.min_enemy_level
-        max_enemy_level = min(player.level + 5, stage.max_enemy_level)
+    if request.method != 'POST':
+        return JsonResponse({'error': 'POST required'}, status=400)
     
-    # ステージに登録されている敵を取得
-    stage_enemies = list(stage.enemies.all())
+    player = get_player_from_request(request, player_id)
+    if not player:
+        return JsonResponse({'error': 'Player not found'}, status=404)
     
-    if not stage_enemies:
-        stage_enemies = list(Enemy.objects.filter(appear_level__lte=max_enemy_level))
+    try:
+        enemy = Enemy.objects.get(id=enemy_id)
+    except Enemy.DoesNotExist:
+        return JsonResponse({'error': 'Enemy not found'}, status=404)
     
-    if not stage_enemies:
-        stage_enemies = list(Enemy.objects.all())
+    # アクションモードのデータを取得
+    action_data = request.session.get('action_mode')
+    if not action_data:
+        return JsonResponse({'error': 'No action mode'}, status=400)
     
-    if not stage_enemies:
-        return None
+    # バフ・デバフを取得
+    buffs = request.session.get("buffs", {})
+    debuffs = request.session.get("debuffs", {})
     
-    # レベル差に応じて出現確率を調整
-    weighted_enemies = []
-    for enemy in stage_enemies:
-        if enemy.appear_level > player.level:
-            continue
-        
-        enemy_min_level = min_enemy_level
-        enemy_max_level = max_enemy_level
-        
-        if enemy_min_level > enemy_max_level:
-            continue
-        
-        potential_level = random.randint(enemy_min_level, enemy_max_level)
-        level_diff = abs(player.level - potential_level)
-        
-        # レベル差が小さいほど重みを大きく
-        if level_diff == 0:
-            base_weight = 20
-        elif level_diff == 1:
-            base_weight = 15
-        elif level_diff == 2:
-            base_weight = 10
-        elif level_diff == 3:
-            base_weight = 6
-        elif level_diff == 4:
-            base_weight = 3
-        else:
-            base_weight = 1
-        
-        weight = max(1, int(base_weight * max(enemy.appearance_rate, 0)))
-        
-        if potential_level > player.level:
-            if player.level <= 5:
-                weight = int(weight * 0.75)
-            elif player.level <= 8:
-                weight = int(weight * 0.5)
-            elif player.level <= 10:
-                weight = int(weight * 0.6)
-            elif player.level <= 15:
-                weight = int(weight * 0.7)
-            else:
-                weight = int(weight * 0.8)
-        
-        weight = max(1, weight)
-        weighted_enemies.extend([(enemy, potential_level)] * weight)
+    # ダメージ計算（通常攻撃と同じ計算式）
+    multiplier = action_data.get('multiplier', 1.0)
     
-    if not weighted_enemies:
-        return None
+    # プレイヤーの攻撃力（バフ・デバフ適用）
+    player_atk_buff = buffs.get("player", {}).get("atk", {}).get("multiplier", 1.0)
+    player_atk_debuff = debuffs.get("player", {}).get("atk", {}).get("multiplier", 1.0)
+    effective_atk = player.total_atk_battle * player_atk_buff * player_atk_debuff
     
-    # ランダムに敵を選択
-    enemy, selected_level = random.choice(weighted_enemies)
-    enemy.level = selected_level
+    # 敵の防御力（バフ・デバフ適用）
+    enemy_def_buff = buffs.get("enemy", {}).get("def", {}).get("multiplier", 1.0)
+    enemy_def_debuff = debuffs.get("enemy", {}).get("def", {}).get("multiplier", 1.0)
+    effective_def = enemy.defense * enemy_def_buff * enemy_def_debuff
     
-    # 強敵判定
-    is_strong = False
-    if player.level >= 10 and random.random() < 0.05:
-        is_strong = True
-        enemy.level += random.randint(10, 15)
+    # ダメージ計算
+    base_damage = max(1, effective_atk - effective_def)
+    damage_variance = random.randint(0, 3)
+    damage = max(int(base_damage * multiplier) + damage_variance, 1)
     
-    # レベルに応じてステータスを変更
-    enemy.max_hp = enemy.base_max_hp + (enemy.level - 1) * enemy.base_max_hp // 10
-    enemy.hp = enemy.max_hp
-    
-    if enemy.level <= 14:
-        enemy.atk = enemy.base_atk + (enemy.level - 1) * enemy.base_atk // 6
-        enemy.defense = enemy.base_def + (enemy.level - 1) * enemy.base_def // 6
-        enemy.spd = enemy.base_spd + (enemy.level - 1) * enemy.base_spd // 6
-    else:
-        level_20_atk = enemy.base_atk + 14 * enemy.base_atk // 10
-        level_20_def = enemy.base_def + 14 * enemy.base_def // 10
-        level_20_spd = enemy.base_spd + 14 * enemy.base_spd // 10
-        
-        additional_levels = enemy.level - 15
-        enemy.atk = level_20_atk + additional_levels * enemy.base_atk // 4
-        enemy.defense = level_20_def + additional_levels * enemy.base_def // 4
-        enemy.spd = level_20_spd + additional_levels * enemy.base_spd // 4
-    
-    # expとゴールドの計算
-    base_high_exp = enemy.base_exp + (enemy.level - 1) * enemy.base_exp // 3
-    if enemy.level > player.level:
-        enemy.exp = int(base_high_exp * random.uniform(1.3, 1.4))
-        enemy.drop_gold = enemy.drop_gold_base + (enemy.level - 1) * enemy.drop_gold_base // 6
-    else:
-        enemy.exp = int(base_high_exp * random.uniform(0.7, 0.8))
-        enemy.drop_gold = enemy.drop_gold_base + (enemy.level - 1) * enemy.drop_gold_base // 10
-    
-    enemy.is_defeated = False
-    enemy.is_strong = is_strong
+    # 敵のHPを減らす
+    enemy.hp = max(0, enemy.hp - damage)
     enemy.save()
     
-    # セッションに敵のIDを保存
-    request.session["enemy_id"] = enemy.id
+    # 累積ダメージをセッションに保存
+    total_damage = request.session.get('action_total_damage', 0)
+    total_damage += damage
+    request.session['action_total_damage'] = total_damage
     
-    return enemy
+    # 敵のHP割合を計算
+    enemy_hp_percent = int((enemy.hp / enemy.max_hp) * 100) if enemy.max_hp > 0 else 0
+    
+    return JsonResponse({
+        'damage': damage,
+        'enemy_hp': enemy.hp,
+        'enemy_max_hp': enemy.max_hp,
+        'enemy_hp_percent': enemy_hp_percent,
+        'enemy_defeated': enemy.hp <= 0
+    })
 
 
-def decrease_buff_debuff_turns(buffs, debuffs, special_states):
+def action_skill_end(request, player_id, enemy_id):
     """
-    ターン経過でバフ・デバフ・特殊状態を減少させる共通関数
+    アクション特技終了処理
     
-    Args:
-        buffs: バフの辞書
-        debuffs: デバフの辞書
-        special_states: 特殊状態の辞書
-    
-    Returns:
-        tuple: (更新されたbuffs, debuffs, special_states)
+    アクションモード終了後、敵のターンを実行するか勝利処理を行います。
     """
-    # バフの減少
-    for target in list(buffs.keys()):
-        for stat in list(buffs[target].keys()):
-            buffs[target][stat]["turn"] -= 1
-            if buffs[target][stat]["turn"] <= 0:
-                del buffs[target][stat]
-        if not buffs[target]:
-            del buffs[target]
+    if request.method != 'POST':
+        return redirect('game:battle', player_id=player_id, enemy_id=enemy_id)
     
-    # デバフの減少
-    for target in list(debuffs.keys()):
-        for stat in list(debuffs[target].keys()):
-            debuffs[target][stat]["turn"] -= 1
-            if debuffs[target][stat]["turn"] <= 0:
-                del debuffs[target][stat]
-        if not debuffs[target]:
-            del debuffs[target]
+    player = get_player_from_request(request, player_id)
+    if not player:
+        return redirect('game:start')
     
-    # 特殊状態の減少
-    for target in list(special_states.keys()):
-        for state in list(special_states[target].keys()):
-            special_states[target][state]["turn"] -= 1
-            if special_states[target][state]["turn"] <= 0:
-                del special_states[target][state]
-        if not special_states[target]:
-            del special_states[target]
+    try:
+        enemy = Enemy.objects.get(id=enemy_id)
+    except Enemy.DoesNotExist:
+        return redirect('game:battle_start', player_id=player_id)
     
-    return buffs, debuffs, special_states
+    # セッションからaction_modeを削除
+    action_data = request.session.pop('action_mode', None)
+    if not action_data:
+        return redirect('game:battle', player_id=player_id, enemy_id=enemy_id)
+    
+    # click_countと累積ダメージを取得
+    click_count = int(request.POST.get('click_count', 0))
+    total_damage = request.session.pop('action_total_damage', 0)
+    
+    # メッセージを作成
+    message = f"{player.name}の{action_data['skill_name']}！\n"
+    message += f"{click_count}回の連続攻撃！ 合計{total_damage}ダメージ！\n"
+    
+    # 敵のHPチェック（既に倒されている場合は勝利処理へ）
+    if enemy.hp <= 0:
+        # 敵が倒された場合、勝利処理のフラグを立てる
+        request.session['after_action_skill_win'] = True
+        request.session['action_skill_message'] = message
+        return redirect('game:battle', player_id=player_id, enemy_id=enemy_id)
+    
+    # 敵が生きている場合、敵のターンを実行
+    request.session['after_action_skill'] = True
+    request.session['action_skill_message'] = message
+    
+    return redirect('game:battle', player_id=player_id, enemy_id=enemy_id)
 
 
 def battle(request, player_id, enemy_id=None):
-    from .models import PlayerInventory
+    """
+    戦闘画面のメイン処理
+    
+    プレイヤーと敵の戦闘を処理します。攻撃、防御、スキル、アイテム使用、逃走などの
+    すべての戦闘アクションを担当します。AJAX対応でリアルタイムな戦闘アニメーションを
+    実現します。
+    """
     try:
-        player = Player.objects.get(id=player_id)
+        player = get_player_from_request(request, player_id)
     except Player.DoesNotExist:
         # 既にプレイヤーが削除済み（ゲームオーバー後など）の場合は安全に遷移
+        if request.session.get('gameover_player_id'):
+            return redirect('game:gameover')
+        return redirect('game:start')
+    
+    if not player:
         if request.session.get('gameover_player_id'):
             return redirect('game:gameover')
         return redirect('game:start')
@@ -1027,7 +259,10 @@ def battle(request, player_id, enemy_id=None):
         
         # ステージを取得
         stage_id = request.session.get('stage_id')
-        stage = Stage.objects.get(id=stage_id) if stage_id else Stage.objects.first()
+        try:
+            stage = Stage.objects.get(id=stage_id) if stage_id else Stage.objects.first()
+        except Stage.DoesNotExist:
+            stage = Stage.objects.first()
         
         # 勝利画面を表示
         player_skills = PLAYER_SKILLS.get(player.job, [])
@@ -1054,8 +289,12 @@ def battle(request, player_id, enemy_id=None):
     # ステージIDを取得（GETパラメータまたはセッション）
     stage_id = request.GET.get('stage_id') or request.session.get('stage_id')
     if stage_id:
-        request.session['stage_id'] = stage_id
-        stage = Stage.objects.get(id=stage_id)
+        try:
+            request.session['stage_id'] = stage_id
+            stage = Stage.objects.get(id=stage_id)
+        except Stage.DoesNotExist:
+            stage = Stage.objects.first()
+            request.session['stage_id'] = stage.id if stage else None
     else:
         # デフォルトステージ（草原）
         stage = Stage.objects.first()
@@ -1094,13 +333,15 @@ def battle(request, player_id, enemy_id=None):
         request.session["debuffs"] = {}
         request.session["special_states"] = {}
     else:
-        enemy = Enemy.objects.get(id=enemy_id)
+        try:
+            enemy = Enemy.objects.get(id=enemy_id)
+        except Enemy.DoesNotExist:
+            return redirect('game:battle_start', player_id=player.id)
     
     message = ""
     
     # メッセージ履歴を取得（累積表示用）
     message_history = request.session.get("message_history", [])
-
 
     buffs = request.session.get("buffs", {})
     debuffs = request.session.get("debuffs", {})
@@ -1279,7 +520,7 @@ def battle(request, player_id, enemy_id=None):
         request.session['gained_gold'] = gained_gold
         request.session['old_level'] = existLevel
         
-        return message,gained_exp,gained_gold,existLevel
+        return message, gained_exp, gained_gold, existLevel
     
     def calculate_player_attack(multiplier=1.0, damage_variance=(-1, 2)):
         """プレイヤーの攻撃ダメージを計算する共通関数
@@ -1339,7 +580,7 @@ def battle(request, player_id, enemy_id=None):
             # 線形補間
             return min_rate + (spd - min_spd) * (max_rate - min_rate) / (max_spd - min_spd)
     
-    def playerAction(message,action,special,actione):
+    def playerAction(message, action, special, actione):
         action_result = {
             "damage": 0,
             "evaded": False,
@@ -1378,14 +619,14 @@ def battle(request, player_id, enemy_id=None):
 
         elif special:
             # skills.pyからプレイヤーのスキルを取得
-            player_skills = PLAYER_SKILLS.get(player.job, [])
+            player_skills_local = PLAYER_SKILLS.get(player.job, [])
             skill_index = int(special.replace('skill', '')) - 1  # skill1 -> 0, skill2 -> 1, ...
             
-            if skill_index < 0 or skill_index >= len(player_skills):
+            if skill_index < 0 or skill_index >= len(player_skills_local):
                 message = f"そのスキルは存在しません。"
                 return message, False, action_result
             
-            skill_data = player_skills[skill_index]
+            skill_data = player_skills_local[skill_index]
             skill_name = skill_data["name"]
             skill_cost = skill_data["cost"]
             is_action_skill = skill_data.get("is_action", False)
@@ -1472,7 +713,7 @@ def battle(request, player_id, enemy_id=None):
             message += f"SPが{skill_cost}減った！\n"
             player.save()
                 
-        return message,True,action_result
+        return message, True, action_result
     
     def choose_enemyAction(enemy, player, buffs, debuffs):
         skills = ENEMY_SKILLS.get(enemy.name, [])
@@ -1569,7 +810,7 @@ def battle(request, player_id, enemy_id=None):
         
         return adjusted_skills[0] if adjusted_skills else None  # フォールバックとして最初のスキルを選択
 
-    def enemyAction(message,enemy,player,buffs,debuffs,actionp,actione):     
+    def enemyAction(message, enemy, player, buffs, debuffs, actionp, actione):     
         message = f"{enemy.name}の{actione['name']}！　"
 
         for effect in actione["effects"]:
@@ -1642,7 +883,7 @@ def battle(request, player_id, enemy_id=None):
 
                 message += f"{target_obj.name}の{stat}が{turn}ターン" + ("上がった！\n" if etype == "buf" else "下がった\n")  
 
-        return message,buffs,debuffs
+        return message, buffs, debuffs
 
     def is_defense_action(actione):
         """actioneが防御スキルかどうかを判定"""
@@ -1650,7 +891,7 @@ def battle(request, player_id, enemy_id=None):
             return False
         return any(effect.get("type") == "defense" for effect in actione.get("effects", []))
 
-    def spdcheck(actionp,actione):
+    def spdcheck(actionp, actione):
         if actionp == 'defend' or actionp == 'item':
             return True
         elif is_defense_action(actione):
@@ -1837,7 +1078,7 @@ def battle(request, player_id, enemy_id=None):
                 
                 # アイテム使用後は敵のターン（必ず先手だがターン経過）
                 actione = choose_enemyAction(enemy, player, buffs, debuffs)
-                ex_message,buffs,debuffs = enemyAction(message,enemy,player,buffs,debuffs,'item',actione)
+                ex_message, buffs, debuffs = enemyAction(message, enemy, player, buffs, debuffs, 'item', actione)
                 request.session["buffs"] = buffs
                 request.session["debuffs"] = debuffs
                 message += ex_message
@@ -1935,7 +1176,7 @@ def battle(request, player_id, enemy_id=None):
             else:
                 # 逃走失敗 - 敵のターンへ
                 actione = choose_enemyAction(enemy, player, buffs, debuffs)
-                ex_message,buffs,debuffs = enemyAction(message,enemy,player,buffs,debuffs,actionp,actione)
+                ex_message, buffs, debuffs = enemyAction(message, enemy, player, buffs, debuffs, actionp, actione)
                 request.session["buffs"] = buffs
                 request.session["debuffs"] = debuffs
                 message += ex_message
@@ -1959,11 +1200,11 @@ def battle(request, player_id, enemy_id=None):
         
         actione = choose_enemyAction(enemy, player, buffs, debuffs)
 
-        is_player_first = spdcheck(actionp,actione)
+        is_player_first = spdcheck(actionp, actione)
         player_action_result = {"damage": 0, "evaded": False}
         if is_player_first:
             ex_message = ""
-            message,success,player_action_result = playerAction(message,actionp,special,actione)
+            message, success, player_action_result = playerAction(message, actionp, special, actione)
             player_action_message = message
             if not success:
                 if is_ajax:
@@ -1981,7 +1222,7 @@ def battle(request, player_id, enemy_id=None):
                     message = apply_levelup_recovery_if_needed(message)
                     return render(request, "game/battle.html", render_battle_screen(message, enemy_override=None, gained_exp=gained_exp, existLevel=existLevel, gained_gold=gained_gold))
             else:
-                ex_message,buffs,debuffs = enemyAction(message,enemy,player,buffs,debuffs,actionp,actione)
+                ex_message, buffs, debuffs = enemyAction(message, enemy, player, buffs, debuffs, actionp, actione)
                 did_enemy_act = True
                 enemy_action_message = ex_message
             # セッションに保存
@@ -2003,7 +1244,7 @@ def battle(request, player_id, enemy_id=None):
                     if not is_ajax:
                         return render(request, "game/battle.html", render_battle_screen(message, redirect_after=True, redirect_url="battle_start", recovering=True))          
         else:
-            message,buffs,debuffs = enemyAction(message,enemy,player,buffs,debuffs,actionp,actione)
+            message, buffs, debuffs = enemyAction(message, enemy, player, buffs, debuffs, actionp, actione)
             enemy_action_message = message
             did_enemy_act = True
             # セッションに保存
@@ -2078,7 +1319,7 @@ def battle(request, player_id, enemy_id=None):
                     }
                     return JsonResponse(battle_result)
             
-            ex_message,success,player_action_result = playerAction(message,actionp,special,actione)
+            ex_message, success, player_action_result = playerAction(message, actionp, special, actione)
             player_action_message = ex_message
             message += ex_message
             if not success:
@@ -2092,7 +1333,7 @@ def battle(request, player_id, enemy_id=None):
                 return render(request, "game/battle.html", render_battle_screen(message, action_mode=action_data))
             
             if enemy.hp <= 0:
-                message,gained_exp,gained_gold,existLevel = win(message)
+                message, gained_exp, gained_gold, existLevel = win(message)
                 if not is_ajax:
                     message = apply_levelup_recovery_if_needed(message)
                     return render(request, "game/battle.html", render_battle_screen(message, enemy_override=None, gained_exp=gained_exp, existLevel=existLevel, gained_gold=gained_gold))
@@ -2288,714 +1529,3 @@ def battle(request, player_id, enemy_id=None):
     
     
     return render(request, "game/battle.html", render_battle_screen(message))
-
-
-def shop(request, player_id):
-    """ショップページ"""
-    import json
-    import random
-    player = Player.objects.get(id=player_id)
-    
-    # セッションからショップ在庫を取得
-    shop_inventory = request.session.get('shop_inventory', None)
-    
-    # ショップ在庫が存在しない場合、または強制リセットフラグがある場合は新規生成
-    if shop_inventory is None or request.session.get('reset_shop', False):
-        # プレイヤーが所持している装備を取得
-        owned_equipment_ids = player.owned_equipment.values_list('id', flat=True)
-        
-        # データベースから未所持の装備を取得（is_purchasedは使わない、appear_levelでフィルタ）
-        available_weapons = list(Equipment.objects.filter(
-            equipment_type='weapon',
-            appear_level__lte=player.level
-        ).exclude(id__in=owned_equipment_ids))
-        available_armors = list(Equipment.objects.filter(
-            equipment_type='armor',
-            appear_level__lte=player.level
-        ).exclude(id__in=owned_equipment_ids))
-        available_items = list(Item.objects.filter(
-            is_purchased=False,
-            appear_level__lte=player.level
-        ))
-        
-        # 全てのアイテムを結合
-        all_items = available_weapons + available_armors + available_items
-        
-        # ランダムに最大8個を選択
-        if len(all_items) > 8:
-            shop_items = random.sample(all_items, 8)
-        else:
-            shop_items = all_items
-        
-        # アイテム情報をセッションに保存(IDとタイプのみ)
-        shop_inventory = []
-        for item in shop_items:
-            if isinstance(item, Equipment):
-                shop_inventory.append({
-                    'id': item.id,
-                    'type': 'equipment',
-                    'equipment_type': item.equipment_type
-                })
-            else:  # Item
-                shop_inventory.append({
-                    'id': item.id,
-                    'type': 'item',
-                    'current_stock': item.max_stock  # 現在の在庫を最大在庫数で初期化
-                })
-        
-        request.session['shop_inventory'] = shop_inventory
-        request.session['reset_shop'] = False
-    
-    # セッションに保存されたIDからアイテムを取得
-    weapons = []
-    armors = []
-    items = []
-    
-    session_purchased = request.session.get('session_purchased_items', [])
-    
-    for item_data in shop_inventory:
-        if item_data['type'] == 'equipment':
-            equipment = Equipment.objects.filter(id=item_data['id']).first()
-            # 装備が存在する場合のみ表示（is_purchasedチェックは不要）
-            if equipment:
-                if equipment.equipment_type == 'weapon':
-                    weapons.append(equipment)
-                else:
-                    armors.append(equipment)
-        else:  # item
-            item = Item.objects.filter(id=item_data['id']).first()
-            # アイテムの現在在庫を取得
-            if item:
-                # 在庫数をアイテムオブジェクトに動的に追加
-                item.current_stock = item_data.get('current_stock', item.max_stock)
-                # 在庫が残っている場合のみ表示
-                if item.current_stock > 0:
-                    items.append(item)
-    
-    return render(request, 'game/shop.html', {
-        'player': player,
-        'weapons': weapons,
-        'armors': armors,
-        'items': items,
-        'session_purchased': json.dumps(session_purchased),
-    })
-
-
-def buy_item(request, player_id):
-    """アイテム購入処理"""
-    from .models import PlayerInventory
-    
-    if request.method == 'POST':
-        player = Player.objects.get(id=player_id)
-        item_name = request.POST.get('item_name')
-        item_price = int(request.POST.get('item_price'))
-        item_type = request.POST.get('item_type')  # 'weapon', 'armor', 'item'
-        item_quantity = int(request.POST.get('item_quantity', 1))  # 購入個数（デフォルト1）
-        
-        # 合計金額を計算
-        total_price = item_price * item_quantity
-        
-        # 所持金チェック
-        if player.gold >= total_price:
-            # お金を減らす
-            player.gold -= total_price
-            
-            # クエスト進捗更新（ゴールド消費）
-            gold_spend_quests = PlayerQuest.objects.filter(
-                player=player,
-                quest_template__condition_type='spend_gold',
-                is_completed=False
-            )
-            for player_quest in gold_spend_quests:
-                player_quest.update_progress(total_price)
-            
-            player.save()
-            
-            # Equipmentの場合はプレイヤーの所持装備に追加
-            if item_type == 'weapon' or item_type == 'armor':
-                equipment = Equipment.objects.filter(name=item_name, equipment_type=item_type).first()
-                if equipment:
-                    # プレイヤーの所持装備に追加（is_purchasedは更新しない）
-                    player.owned_equipment.add(equipment)
-            # Itemの場合は在庫を減らし、PlayerInventoryに追加
-            elif item_type == 'item':
-                # ショップ在庫を取得
-                shop_inventory = request.session.get('shop_inventory', [])
-                
-                # 該当アイテムの在庫を減らす
-                for item_data in shop_inventory:
-                    if item_data['type'] == 'item':
-                        item = Item.objects.filter(id=item_data['id']).first()
-                        if item and item.name == item_name:
-                            current_stock = item_data.get('current_stock', item.max_stock)
-                            item_data['current_stock'] = max(0, current_stock - item_quantity)
-                            
-                            # PlayerInventoryに追加
-                            inventory_item, created = PlayerInventory.objects.get_or_create(
-                                player=player,
-                                item=item
-                            )
-                            inventory_item.quantity += item_quantity
-                            inventory_item.save()
-                            break
-                
-                # セッションを更新
-                request.session['shop_inventory'] = shop_inventory
-            
-            # セッションに今回のショップで購入済みのアイテムを追加（装備のみ）
-            if item_type in ['weapon', 'armor']:
-                session_purchased = request.session.get('session_purchased_items', [])
-                if item_name not in session_purchased:
-                    session_purchased.append(item_name)
-                    request.session['session_purchased_items'] = session_purchased
-        
-        # ショップに戻る
-        return redirect('game:shop', player_id=player.id)
-    
-    return redirect('game:shop', player_id=player_id)
-
-
-def equipment_change(request, player_id):
-    """装備変更画面"""
-    player = Player.objects.get(id=player_id)
-    
-    # 初期装備がない場合は追加
-    if not player.owned_equipment.exists():
-        wooden_sword = Equipment.objects.get(name="木の剣")
-        leather_armor = Equipment.objects.get(name="皮の服")
-        player.owned_equipment.add(wooden_sword, leather_armor)
-        if not player.weapon:
-            player.weapon = wooden_sword
-        if not player.armor:
-            player.armor = leather_armor
-        player.save()
-    
-    # 所持している装備を取得
-    owned_weapons = player.owned_equipment.filter(equipment_type='weapon')
-    owned_armors = player.owned_equipment.filter(equipment_type='armor')
-    
-    return render(request, 'game/equipment_change.html', {
-        'player': player,
-        'owned_weapons': owned_weapons,
-        'owned_armors': owned_armors,
-    })
-
-
-def equip_item(request, player_id, equipment_id):
-    """装備を変更する"""
-    player = Player.objects.get(id=player_id)
-    equipment = Equipment.objects.get(id=equipment_id)
-    
-    # プレイヤーが所持している装備かチェック
-    if equipment in player.owned_equipment.all():
-        if equipment.equipment_type == 'weapon':
-            player.change_weapon(equipment)
-            # 武器タブに戻る
-            return redirect(f'{reverse("game:equipment_change", kwargs={"player_id": player.id})}?tab=weapons')
-        elif equipment.equipment_type == 'armor':
-            player.change_armor(equipment)
-            # 防具タブに戻る
-            return redirect(f'{reverse("game:equipment_change", kwargs={"player_id": player.id})}?tab=armors')
-    
-    # 装備変更画面に戻る（デフォルト）
-    return redirect('game:equipment_change', player_id=player.id)
-
-
-def inventory(request, player_id):
-    """持ち物画面"""
-    from .models import PlayerInventory
-    
-    player = Player.objects.get(id=player_id)
-    
-    # カテゴリーフィルター（デフォルトは'全て'）
-    category = request.GET.get('category', '全て')
-    
-    # 検索クエリ
-    search_query = request.GET.get('search', '').strip()
-    
-    # 使用メッセージを取得（あれば）
-    use_message = request.session.pop('use_item_message', None)
-    
-    # プレイヤーのインベントリを取得
-    inventory_items = PlayerInventory.objects.filter(player=player, quantity__gt=0).select_related('item')
-    
-    # カテゴリーでフィルタリング
-    if category == '回復':
-        inventory_items = inventory_items.filter(item__target='hp')
-    elif category == '魔法':
-        inventory_items = inventory_items.filter(item__target='mp')
-    
-    # 検索クエリでフィルタリング
-    if search_query:
-        inventory_items = inventory_items.filter(item__name__icontains=search_query)
-    
-    # 最初に選択されているアイテム（最初のアイテム）
-    selected_item = None
-    if inventory_items.exists():
-        selected_item_id = request.GET.get('selected_item')
-        if selected_item_id:
-            try:
-                selected_item = inventory_items.get(id=int(selected_item_id))
-            except (PlayerInventory.DoesNotExist, ValueError):
-                selected_item = inventory_items.first()
-        else:
-            selected_item = inventory_items.first()
-    
-    return render(request, 'game/inventory.html', {
-        'player': player,
-        'inventory_items': inventory_items,
-        'selected_item': selected_item,
-        'category': category,
-        'search_query': search_query,
-        'use_message': use_message,
-    })
-
-def use_inventory_item(request, player_id, inventory_item_id):
-    """インベントリーからアイテムを使用する"""
-    from .models import PlayerInventory
-    
-    if request.method == 'POST':
-        player = Player.objects.get(id=player_id)
-        
-        try:
-            inventory_item = PlayerInventory.objects.get(id=inventory_item_id, player=player, quantity__gt=0)
-            item = inventory_item.item
-            
-            # HP回復アイテムの場合
-            if item.target == 'hp':
-                old_hp = player.hp
-                player.hp = min(player.hp + item.effect_amount, player.max_hp)
-                actual_recovery = player.hp - old_hp
-                
-                # アイテムを1つ消費
-                inventory_item.quantity -= 1
-                inventory_item.save()
-                player.save()
-                
-                # 成功メッセージをセッションに保存
-                request.session['use_item_message'] = f"HPが{actual_recovery}回復した！"
-            
-            # SP回復アイテムの場合
-            elif item.target == 'mp':
-                old_mp = player.mp
-                player.mp = min(player.mp + item.effect_amount, player.max_mp)
-                actual_recovery = player.mp - old_mp
-                
-                # アイテムを1つ消費
-                inventory_item.quantity -= 1
-                inventory_item.save()
-                player.save()
-                
-                # 成功メッセージをセッションに保存
-                request.session['use_item_message'] = f"SPが{actual_recovery}回復した！"
-            
-        except PlayerInventory.DoesNotExist:
-            request.session['use_item_message'] = "アイテムが見つかりません"
-    
-    # インベントリー画面に戻る
-    category = request.GET.get('category', '全て')
-    search_query = request.GET.get('search', '')
-    return redirect(f"{reverse('game:inventory', kwargs={'player_id': player.id})}?category={category}&search={search_query}")
-
-def gameover(request):
-    # セッションからplayer_idを取得してスコア計算
-    player_id = request.session.get('gameover_player_id')
-    
-    # セッションに保存されたスコアがあればそれを使う
-    score = request.session.get('gameover_score', 0)
-    initial_point = request.session.get('gameover_initial_point', 0)
-    
-    # プレイヤーがまだ存在する場合のみ計算と削除を行う
-    if player_id and score == 0:
-        try:
-            player = Player.objects.get(id=player_id)
-            # プレイヤーのスコアを計算
-            score_data = calculate_score(player)
-            score = score_data['total_score']
-            initial_point = score // 10000  # スコアの1/10000を初期ポイントとする
-            
-            # スコアをセッションに保存（内訳から戻った時のため）
-            request.session['gameover_score'] = score
-            request.session['gameover_initial_point'] = initial_point
-            
-            # スコア内訳をセッションに保存
-            request.session['score_breakdown'] = {
-                'hp': player.max_hp,
-                'hp_score': score_data['hp_score'],
-                'atk': player.atk,
-                'atk_score': score_data['atk_score'],
-                'defense': player.defense,
-                'def_score': score_data['def_score'],
-                'spd': player.spd,
-                'spd_score': score_data['spd_score'],
-                'mp': player.max_mp,
-                'mp_score': score_data['mp_score'],
-                'equipment_list': [eq.name for eq in player.owned_equipment.all()],
-                'equipment_score': score_data['equipment_score'],
-                'defeats': player.defeats,
-                'defeat_score': score_data['defeat_score'],
-                'strong_defeats': player.strong_defeats,
-                'strong_defeat_score': score_data['strong_defeat_score'],
-                'level': player.level,
-                'level_score': score_data['level_score'],
-                'total_score': score
-            }
-            
-            # Playerを削除
-            player.delete()
-            del request.session['gameover_player_id']
-            
-            # ログインユーザーの場合、アカウントにスコアとポイントを保存
-            if request.user.is_authenticated:
-                user = request.user
-                
-                # 最高スコアの場合のみ更新
-                if score > user.best_score:
-                    user.best_score = score
-                
-                # スコアポイントを加算（永続）
-                user.score_points += initial_point
-                user.initial_points = user.score_points
-                user.total_plays += 1
-                user.save()
-                
-        except Player.DoesNotExist:
-            pass
-    
-    return render(request, 'game/gameover.html', {
-        'score': score,
-        'initial_point': initial_point,
-    })
-
-
-def score_breakdown(request):
-    """スコア内訳を表示"""
-    breakdown = request.session.get('score_breakdown', {})
-    
-    if not breakdown:
-        # 内訳データがない場合はゲームオーバー画面にリダイレクト
-        return redirect('game:gameover')
-    
-    return render(request, 'game/score_breakdown.html', {
-        'breakdown': breakdown,
-    })
-
-
-def score_points(request):
-    """スコアポイント振り分け画面（ステップ1: UIのみ）"""
-    if not request.user.is_authenticated:
-        return redirect('game:start')
-
-    user = request.user
-    default_jobs = ["戦士", "魔法使い", "忍者", "格闘家"]
-    unlocked = user.unlocked_jobs or []
-    job_list = [job for job in default_jobs if job in unlocked] or default_jobs
-
-    category_key = request.GET.get('category', 'all')
-    if category_key != 'all' and category_key not in job_list:
-        category_key = 'all'
-
-    if request.method == 'POST':
-        stat_key = request.POST.get('stat')
-        category_key = request.POST.get('category', 'all')
-        if category_key != 'all' and category_key not in job_list:
-            category_key = 'all'
-        if stat_key and user.score_points > 0:
-            valid_keys = {cfg["key"] for cfg in SCORE_POINT_CONFIG}
-            if stat_key in valid_keys:
-                bonus_dict = _get_score_bonus_dict(user, category_key)
-                bonus_dict[stat_key] = int(bonus_dict.get(stat_key, 0)) + 1
-                user.score_points -= 1
-                _set_score_bonus_dict(user, category_key, bonus_dict)
-                user.initial_points = user.score_points
-                user.save()
-        return redirect(f"{reverse('game:score_points')}?category={category_key}")
-
-    bonus_dict = _get_score_bonus_dict(user, category_key)
-    stat_items = []
-    for idx, cfg in enumerate(SCORE_POINT_CONFIG):
-        count = int(bonus_dict.get(cfg["key"], 0))
-        current_value = cfg["base"] + count * cfg["inc"]
-        next_value = cfg["base"] + (count + 1) * cfg["inc"]
-        if cfg.get("format"):
-            current_text = cfg["format"].format(current_value)
-            next_text = cfg["format"].format(next_value)
-        else:
-            current_text = str(int(current_value))
-            next_text = str(int(next_value))
-        card_class = "stat-card-bottom" if idx >= 6 else "stat-card"
-        stat_items.append({
-            "key": cfg["key"],
-            "label": cfg["label"],
-            "current": current_text,
-            "next": next_text,
-            "card_class": card_class,
-        })
-
-    categories = [{"key": "all", "label": "全て"}] + [
-        {"key": job, "label": job} for job in job_list
-    ]
-
-    return render(request, 'game/score_points.html', {
-        'categories': categories,
-        'category_key': category_key,
-        'stat_items': stat_items,
-        'score_points': user.score_points,
-    })
-
-
-def quest(request, player_id):
-    """クエスト画面"""
-    player = Player.objects.get(id=player_id)
-    
-    # プレイヤーのクエストを初期化
-    initialize_player_quests(player)
-    
-    # プレイヤーに適用可能なクエストテンプレートを取得（初期クエストのみ）
-    # 派生クエストはPlayerQuestから取得されるので、ここでは初期クエストのみ
-    life_templates = QuestTemplate.objects.filter(
-        quest_type='life',
-        is_active=True,
-        derivation_level=0  # 初期クエストのみ
-    ).filter(
-        models.Q(job='all') | models.Q(job=player.job)
-    ).order_by('order')[:8]
-    
-    account_templates = QuestTemplate.objects.filter(
-        quest_type='account',
-        is_active=True,
-        job='all',  # アカウントクエストは全職業共通
-        derivation_level=0  # 初期クエストのみ
-    ).order_by('order')[:8]
-    
-    # PlayerQuestを取得（派生クエストも含めて探す）
-    life_quests = []
-    for template in life_templates:
-        # このテンプレートまたはその派生チェーン内のPlayerQuestを探す
-        pq = find_quest_in_derivation_chain(player, template)
-        life_quests.append(pq)  # Noneの可能性もあるがそのまま追加
-    
-    account_quests = []
-    for template in account_templates:
-        # このテンプレートまたはその派生チェーン内のPlayerQuestを探す
-        pq = find_quest_in_derivation_chain(player, template)
-        account_quests.append(pq)  # Noneの可能性もあるがそのまま追加
-    
-    # 8つに満たない場合は空で埋める
-    while len(life_quests) < 8:
-        life_quests.append(None)
-    while len(account_quests) < 8:
-        account_quests.append(None)
-    
-    return render(request, 'game/quest.html', {
-        'player': player,
-        'life_quests': life_quests[:8],
-        'account_quests': account_quests[:8],
-        'is_guest': player.is_guest,
-    })
-
-
-def claim_quest_reward(request, quest_id):
-    """クエスト報酬を受け取る"""
-    player_quest = PlayerQuest.objects.get(id=quest_id)
-    player = player_quest.player
-    quest_type = player_quest.quest_template.quest_type  # クエストタイプを保存
-    
-    # 達成済みで未受け取りの場合のみ報酬を付与
-    if player_quest.is_completed and not player_quest.is_claimed:
-        # 報酬を付与
-        reward_exp = player_quest.quest_template.reward_exp
-        reward_gold = player_quest.quest_template.reward_gold
-        if player.user:
-            gold_rate, exp_rate = _get_score_rates(player.user, player.job)
-            reward_exp = int(reward_exp * exp_rate)
-            reward_gold = int(reward_gold * gold_rate)
-        player.exp += reward_exp
-        player.gold += reward_gold
-        
-        # レベルアップ処理
-        level_up_player(player)
-        
-        player.save()
-        
-        # 派生クエストがあるかチェック
-        current_template = player_quest.quest_template
-        derived_template = current_template.derived_quest
-        
-        if derived_template:
-            # 派生クエストに置き換える
-            print(f"派生クエスト発見: {current_template.title} -> {derived_template.title}")
-            
-            # 派生クエストのPlayerQuestが既に存在する場合は削除
-            # （unique_together制約を回避するため）
-            existing_derived = PlayerQuest.objects.filter(
-                player=player,
-                quest_template=derived_template
-            ).exclude(id=player_quest.id).first()
-            
-            if existing_derived:
-                print(f"既存の派生クエストを削除: {existing_derived.id}")
-                existing_derived.delete()
-            
-            # 現在のPlayerQuestを派生クエストに置き換える
-            player_quest.quest_template = derived_template
-            player_quest.progress_current = 0  # 進捗をリセット
-            player_quest.is_completed = False
-            player_quest.is_claimed = False
-            player_quest.save()
-            print(f"派生クエスト保存完了: PlayerQuest ID={player_quest.id}, Template={player_quest.quest_template.title}")
-        else:
-            print(f"派生クエストなし: {current_template.title}")
-            # 派生クエストがない場合は報酬受け取りフラグを立てる
-            player_quest.is_claimed = True
-            player_quest.save()
-    
-    # 元のタブに戻るためにクエストタイプをパラメータとして渡す
-    return redirect(f"{reverse('game:quest', kwargs={'player_id': player.id})}?tab={quest_type}")
-
-
-def action_skill_click(request, player_id, enemy_id):
-    """アクション特技のクリック時ダメージ処理"""
-    from django.http import JsonResponse
-    import random
-    
-    if request.method != 'POST':
-        return JsonResponse({'error': 'POST required'}, status=400)
-    
-    player = Player.objects.get(id=player_id)
-    enemy = Enemy.objects.get(id=enemy_id)
-    
-    # アクションモードのデータを取得
-    action_data = request.session.get('action_mode')
-    if not action_data:
-        return JsonResponse({'error': 'No action mode'}, status=400)
-    
-    # バフ・デバフを取得
-    buffs = request.session.get("buffs", {})
-    debuffs = request.session.get("debuffs", {})
-    
-    # ダメージ計算（通常攻撃と同じ計算式）
-    multiplier = action_data.get('multiplier', 1.0)
-    
-    # プレイヤーの攻撃力（バフ・デバフ適用）
-    player_atk_buff = buffs.get("player", {}).get("atk", {}).get("multiplier", 1.0)
-    player_atk_debuff = debuffs.get("player", {}).get("atk", {}).get("multiplier", 1.0)
-    effective_atk = player.total_atk_battle * player_atk_buff * player_atk_debuff
-    
-    # 敵の防御力（バフ・デバフ適用）
-    enemy_def_buff = buffs.get("enemy", {}).get("def", {}).get("multiplier", 1.0)
-    enemy_def_debuff = debuffs.get("enemy", {}).get("def", {}).get("multiplier", 1.0)
-    effective_def = enemy.defense * enemy_def_buff * enemy_def_debuff
-    
-    # ダメージ計算
-    base_damage = max(1, effective_atk - effective_def)
-    damage_variance = random.randint(0, 3)
-    damage = max(int(base_damage * multiplier) + damage_variance,1)
-    
-    # 敵のHPを減らす
-    enemy.hp = max(0, enemy.hp - damage)
-    enemy.save()
-    
-    # 累積ダメージをセッションに保存
-    total_damage = request.session.get('action_total_damage', 0)
-    total_damage += damage
-    request.session['action_total_damage'] = total_damage
-    
-    # 敵のHP割合を計算
-    enemy_hp_percent = int((enemy.hp / enemy.max_hp) * 100) if enemy.max_hp > 0 else 0
-    
-    return JsonResponse({
-        'damage': damage,
-        'enemy_hp': enemy.hp,
-        'enemy_max_hp': enemy.max_hp,
-        'enemy_hp_percent': enemy_hp_percent,
-        'enemy_defeated': enemy.hp <= 0
-    })
-
-
-def action_skill_end(request, player_id, enemy_id):
-    """アクション特技終了処理"""
-    if request.method != 'POST':
-        return redirect('game:battle', player_id=player_id, enemy_id=enemy_id)
-    
-    player = Player.objects.get(id=player_id)
-    enemy = Enemy.objects.get(id=enemy_id)
-    
-    # セッションからaction_modeを削除
-    action_data = request.session.pop('action_mode', None)
-    if not action_data:
-        return redirect('game:battle', player_id=player_id, enemy_id=enemy_id)
-    
-    # click_countと累積ダメージを取得
-    click_count = int(request.POST.get('click_count', 0))
-    total_damage = request.session.pop('action_total_damage', 0)
-    
-    # メッセージを作成
-    message = f"{player.name}の{action_data['skill_name']}！\n"
-    message += f"{click_count}回の連続攻撃！ 合計{total_damage}ダメージ！\n"
-    
-    buffs = request.session.get("buffs", {})
-    debuffs = request.session.get("debuffs", {})
-    message_history = request.session.get("message_history", [])
-    
-    # 敵のHPチェック（既に倒されている場合は勝利処理へ）
-    if enemy.hp <= 0:
-        # 敵が倒された場合、勝利処理のフラグを立てる
-        request.session['after_action_skill_win'] = True
-        request.session['action_skill_message'] = message
-        return redirect('game:battle', player_id=player_id, enemy_id=enemy_id)
-    
-    # 敵が生きている場合、敵のターンを実行
-    request.session['after_action_skill'] = True
-    request.session['action_skill_message'] = message
-    
-    return redirect('game:battle', player_id=player_id, enemy_id=enemy_id)
-
-
-def continue_battle(request, player_id):
-    """勝利後、続けて新しい敵と戦う"""
-    player = Player.objects.get(id=player_id)
-    
-    # ステージIDを取得
-    stage_id = request.session.get('stage_id')
-    if stage_id:
-        stage = Stage.objects.get(id=stage_id)
-    else:
-        stage = Stage.objects.first()
-        request.session['stage_id'] = stage.id if stage else None
-    
-    # 新しい敵を選択
-    enemy = select_new_enemy(player, stage, request)
-    
-    if not enemy:
-        # 敵が選択できない場合はホーム画面に戻る
-        return redirect('game:battle_start', player_id=player.id)
-    
-    # バフ・デバフをリセット
-    request.session["buffs"] = {}
-    request.session["debuffs"] = {}
-    request.session["special_states"] = {}
-    request.session["message_history"] = []
-    
-    # 戦闘用HPを素のHPに反映（回復は無し）
-    player.sync_hp_from_battle()
-    
-    # 戦闘画面にリダイレクト
-    return redirect('game:battle', player_id=player.id, enemy_id=enemy.id)
-
-
-def convert_guest_to_user(request, player_id):
-    """ゲストプレイヤーをログインユーザーに変換"""
-    player = Player.objects.get(id=player_id)
-    
-    # ゲストプレイヤーでない場合はエラー
-    if not player.is_guest:
-        return redirect('game:battle_start', player_id=player.id)
-    
-    # セッションにゲストプレイヤーIDを保存
-    request.session['converting_guest_player_id'] = player_id
-    
-    # サインアップページにリダイレクト
-    return redirect('accounts:signup')
-
-'''

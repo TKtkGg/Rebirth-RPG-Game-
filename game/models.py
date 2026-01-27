@@ -109,6 +109,8 @@ class Player(models.Model):
     
     # 所持金
     gold = models.IntegerField(default=100)
+    gold_rate = models.FloatField(default=1.0)
+    exp_rate = models.FloatField(default=1.0)
     
     # 戦闘用の総ステータス（装備ボーナス込み）
     total_max_hp_battle = models.IntegerField(default=100)

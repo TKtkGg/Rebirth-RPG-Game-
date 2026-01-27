@@ -1,382 +1,19 @@
 {% extends 'game/base.html' %}
 {% block title %}冒険開始 | RPG Game{% endblock %}
 
-{% block content %}
 {% load static %}
-<style>
-    /* base.htmlのデフォルトスタイルをリセット */
-    body {
-        margin: 0;
-        padding: 0;
-        overflow: hidden;
-    }
-    
-    .rpg-container {
-        position: fixed;
-        top: 0;
-        left: 0;
-        width: 100vw;
-        height: 100vh;
-        background-image: url("{% static 'game/img/背景/ホーム.jpg' %}");
-        background-size: cover;
-        background-position: center;
-        background-repeat: no-repeat;
-        background-attachment: fixed;
-        display: flex;
-        align-items: center;
-        justify-content: space-between;
-        padding: 0 60px;
-        box-sizing: border-box;
-        overflow: hidden;
-    }
-    
-    .status-panel {
-        background: rgba(0, 0, 0, 0.75);
-        border: 4px solid rgba(139, 105, 20, 0.9);
-        padding: 20px;
-        color: #fff;
-        font-family: 'Arial', sans-serif;
-        min-width: 450px;
-        max-height: 110vh;
-        overflow-y: auto;
-        box-shadow: 0 10px 40px rgba(0, 0, 0, 0.8);
-    }
-    
-    .status-title {
-        font-size: 28px;
-        margin-bottom: 30px;
-        color: #fff;
-        font-weight: bold;
-        text-shadow: 3px 3px 6px rgba(0, 0, 0, 1);
-    }
-    
-    .status-row {
-        display: flex;
-        align-items: center;
-        margin: 15px 0;
-        font-size: 24px;
-        font-weight: bold;
-        text-shadow: 2px 2px 4px rgba(0, 0, 0, 1);
-        flex-wrap: wrap;
-    }
-    
-    .status-label {
-        color: #fff;
-        min-width: 200px;
-    }
-    
-    .status-value {
-        color: #fff;
-        margin-left: 15px;
-    }
-    
-    .stat-plus {
-        background: rgba(74, 124, 89, 0.9);
-        color: white;
-        padding: 0;
-        width: 32px;
-        height:32px;
-        font-size: 20px;
-        font-weight: bold;
-        transition: all 0.3s;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-    }
-    
-    .stat-plus:hover {
-        background: rgba(90, 156, 105, 0.9);
-    }
-    
-    .stat-plus-form {
-        margin: 0;
-        display: inline;
-        width: auto;
-    }
-    
-    .equipment-section {
-        border-top: 3px solid rgba(139, 105, 20, 0.8);
-    }
-    
-    .quick-action-row {
-        gap: 20px;
-        margin-top: 5px;
-    }
-    
-    .quick-action-button {
-        background: rgba(234, 234, 234, 0.7);
-        padding: 10px;
-        border-radius: 10px;
-        display: inline-flex;
-        transition: all 0.3s;
-        border: none;
-        cursor: pointer;
-        box-shadow: 0 4px 15px rgba(0, 0, 0, 0.6);
-    }
-    
-    .quick-action-button img {
-        width: 40px;
-        height: 40px;
-        filter: drop-shadow(0 4px 8px rgba(0, 0, 0, 0.5));
-        transition: transform 0.3s;
-    }
-    
-    .quick-action-button:hover img {
-        transform: scale(1.1);
-    }
-    
-    .exp-bar-container {
-        margin: 20px 0;
-    }
-    
-    .exp-bar-label {
-        font-size: 24px;
-        font-weight: bold;
-        margin-bottom: 10px;
-        color: #fff;
-        text-shadow: 2px 2px 4px rgba(0, 0, 0, 1);
-    }
-    
-    .exp-bar {
-        width: 100%;
-        height: 20px;
-        background: rgba(255, 255, 255, 0.2);
-        border-radius: 10px;
-        overflow: hidden;
-    }
-    
-    .exp-bar-fill {
-        height: 100%;
-        background: rgba(74, 124, 89, 0.9);
-        transition: width 0.3s;
-    }
-    
-    .button-panel {
-        display: flex;
-        flex-direction: column;
-        gap: 25px;
-        min-width: 350px;
-        max-height: 80vh;
-        overflow-y: auto;
-    }
-    
-    .rpg-button {
-        padding: 30px 60px;
-        font-size: 32px;
-        font-weight: bold;
-        border: 4px solid rgba(255, 255, 255, 0.3);
-        border-radius: 20px;
-        cursor: pointer;
-        transition: all 0.3s;
-        text-shadow: 3px 3px 6px rgba(0, 0, 0, 0.9);
-        box-shadow: 0 8px 25px rgba(0, 0, 0, 0.6);
-        width: 100%;
-        text-align: center;
-    }
-    
-    .adventure-button {
-        background: rgba(220, 100, 120, 0.9);
-        color: white;
-    }
-    
-    .adventure-button:hover {
-        background: rgba(200, 80, 100, 0.95);
-        transform: translateY(-3px);
-        box-shadow: 0 12px 35px rgba(220, 53, 69, 0.7);
-    }
-    
-    .shop-button {
-        background: rgba(255, 220, 120, 0.9);
-        color: white;
-    }
-    
-    .shop-button:hover {
-        background: rgba(255, 200, 100, 0.95);
-        transform: translateY(-3px);
-        box-shadow: 0 12px 35px rgba(255, 193, 7, 0.7);
-    }
-    
-    .rest-button {
-        background: rgba(120, 180, 220, 0.9);
-        color: white;
-    }
-    
-    .rest-button:hover {
-        background: rgba(100, 160, 200, 0.95);
-        transform: translateY(-3px);
-        box-shadow: 0 12px 35px rgba(23, 162, 184, 0.7);
-    }
-    
-    /* サインインボタン */
-    .signin-button {
-        position: fixed;
-        top: 20px;
-        right: 20px;
-        padding: 15px 30px;
-        font-size: 22px;
-        font-weight: bold;
-        background: linear-gradient(135deg, rgba(255, 140, 0, 0.9), rgba(255, 100, 0, 0.9));
-        border: 3px solid rgba(255, 255, 255, 0.7);
-        border-radius: 12px;
-        color: white;
-        cursor: pointer;
-        transition: all 0.3s;
-        text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.9);
-        box-shadow: 0 6px 20px rgba(255, 140, 0, 0.6);
-        text-decoration: none;
-        display: inline-block;
-        z-index: 1000;
-    }
-    
-    .signin-button:hover {
-        background: linear-gradient(135deg, rgba(255, 160, 0, 0.95), rgba(255, 120, 0, 0.95));
-        transform: translateY(-3px);
-        box-shadow: 0 8px 25px rgba(255, 140, 0, 0.8);
-    }
-    
-    /* スクロールバーのスタイリング（オプション） */
-    .status-panel::-webkit-scrollbar,
-    .button-panel::-webkit-scrollbar {
-        width: 8px;
-    }
-    
-    .status-panel::-webkit-scrollbar-track,
-    .button-panel::-webkit-scrollbar-track {
-        background: rgba(0, 0, 0, 0.3);
-        border-radius: 4px;
-    }
-    
-    .status-panel::-webkit-scrollbar-thumb,
-    .button-panel::-webkit-scrollbar-thumb {
-        background: rgba(139, 105, 20, 0.8);
-        border-radius: 4px;
-    }
-    
-    .status-panel::-webkit-scrollbar-thumb:hover,
-    .button-panel::-webkit-scrollbar-thumb:hover {
-        background: rgba(139, 105, 20, 1);
-    }
-    
-    .settings-overlay {
-        position: fixed;
-        top: 0;
-        left: 0;
-        width: 100vw;
-        height: 100vh;
-        background: rgba(0, 0, 0, 0.75);
-        display: none;
-        align-items: center;
-        justify-content: center;
-        z-index: 20;
-        padding: 20px;
-        box-sizing: border-box;
-    }
-    
-    .settings-overlay.active {
-        display: flex;
-    }
-    
-    .settings-modal {
-        position: relative;
-        width: min(500px, 90vw);
-        background: rgba(15, 15, 15, 0.9);
-        border: 3px solid rgba(139, 105, 20, 0.9);
-        border-radius: 20px;
-        padding: 40px 30px;
-        color: #fff;
-        text-align: center;
-        box-shadow: 0 20px 40px rgba(0, 0, 0, 0.8);
-    }
-    
-    .modal-title {
-        font-size: 28px;
-        font-weight: bold;
-        margin-bottom: 30px;
-        text-shadow: 0 4px 12px rgba(0, 0, 0, 0.7);
-    }
-    
-    .modal-close {
-        position: absolute;
-        top: 15px;
-        right: 15px;
-        background: transparent;
-        color: #fff;
-        border: none;
-        font-size: 28px;
-        cursor: pointer;
-    }
-    
-    .modal-options {
-        display: flex;
-        flex-direction: column;
-        gap: 20px;
-    }
-    
-    .modal-option,
-    .modal-option-link {
-        display: block;
-        width: 100%;
-        padding: 18px 20px;
-        border-radius: 14px;
-        font-size: 20px;
-        font-weight: bold;
-        color: #fff;
-        border: none;
-        cursor: pointer;
-        text-decoration: none;
-        box-shadow: inset 0 0 0 2px rgba(255, 255, 255, 0.2);
-        transition: transform 0.2s, box-shadow 0.2s;
-        background-size: cover;
-        background-blend-mode: multiply;
-    }
-    
-    .modal-option:hover,
-    .modal-option-link:hover {
-        transform: translateY(-2px);
-        box-shadow: inset 0 0 0 2px rgba(255, 255, 255, 0.4);
-    }
-    
-    .option-red {
-        background-image: linear-gradient(rgba(120, 20, 20, 0.8), rgba(200, 40, 40, 0.7)), url("{% static 'game/img/背景/ホーム.jpg' %}");
-    }
-    
-    .option-blue {
-        background-image: linear-gradient(rgba(20, 40, 120, 0.8), rgba(40, 160, 200, 0.7)), url("{% static 'game/img/背景/ホーム.jpg' %}");
-    }
-    
-    .option-orange {
-        background-image: linear-gradient(rgba(139, 90, 20, 0.85), rgba(255, 140, 0, 0.75)), url("{% static 'game/img/背景/ホーム.jpg' %}");
-    }
-    
-    @media (max-width: 1200px) {
-        .rpg-container {
-            flex-direction: column;
-            justify-content: center;
-            padding: 40px 20px;
-            gap: 30px;
-            overflow-y: auto;
-        }
-        
-        .status-panel {
-            min-width: auto;
-            width: 90%;
-            max-width: 500px;
-            max-height: none;
-        }
-        
-        .button-panel {
-            width: 90%;
-            max-width: 400px;
-            max-height: none;
-        }
-    }
-</style>
+{% block extra_css %}
+<link rel="stylesheet" href="{% static 'game/css/battle_start.css' %}">
+<link rel="stylesheet" href="{% static 'game/css/tutorial.css' %}">
+{% endblock %}
+
+{% block content %}
 
 {% if player.is_guest %}
 <a href="{% url 'game:convert_guest_to_user' player.id %}" class="signin-button">サインイン</a>
 {% endif %}
 
-<div class="rpg-container">
+<div class="rpg-container" style="--home-bg: url('{% static 'game/img/背景/ホーム.jpg' %}');" data-is-guest="{{ is_guest|lower }}">
     <div class="status-panel">
         <div class="status-title">名前：{{ player.name }} 職業：{{ player.job }}</div>
         
@@ -452,15 +89,15 @@
         <div class="equipment-section">
             <div class="status-row">
                 <span class="status-label">武器：{{ player.weapon.name|default:"なし" }}</span>
-                <a href="{% url 'game:equipment_change' player.id %}?tab=weapons" style="text-decoration: none; margin-left: 10px;">
-                    <button type="button" class="stat-plus" style="width: 80px; height: 35px; font-size: 16px;">変更</button>
+                <a href="{% url 'game:equipment_change' player.id %}?tab=weapons" class="equipment-link">
+                    <button type="button" class="stat-plus equipment-change-button">変更</button>
                 </a>
             </div>
             
             <div class="status-row">
                 <span class="status-label">防具：{{ player.armor.name|default:"なし" }}</span>
-                <a href="{% url 'game:equipment_change' player.id %}?tab=armors" style="text-decoration: none; margin-left: 10px;">
-                    <button type="button" class="stat-plus" style="width: 80px; height: 35px; font-size: 16px;">変更</button>
+                <a href="{% url 'game:equipment_change' player.id %}?tab=armors" class="equipment-link">
+                    <button type="button" class="stat-plus equipment-change-button">変更</button>
                 </a>
             </div>
             
@@ -479,18 +116,18 @@
     </div>
     
     <div class="button-panel">
-        <a href="{% url 'game:stage_select' player.id %}" style="text-decoration: none;">
-            <button class="rpg-button adventure-button" style="position: relative;">
+        <a href="{% url 'game:stage_select' player.id %}" class="button-link">
+            <button class="rpg-button adventure-button adventure-button-with-note">
                 冒険
-                <div style="position: absolute; left: 0; right: 0; bottom: 8px; font-size: 14px; text-align: center;">残り復活回数 : {{ continue_count }}回</div>
+                <div class="adventure-note">残り復活回数 : {{ continue_count }}回</div>
             </button>
         </a>
         
-        <a href="{% url 'game:shop' player.id %}" style="text-decoration: none;">
+        <a href="{% url 'game:shop' player.id %}" class="button-link">
             <button class="rpg-button shop-button">ショップ</button>
         </a>
         
-        <form method="POST" style="margin: 0;">
+        <form method="POST" class="rest-form">
             {% csrf_token %}
             <button type="submit" name="action" value="rest" class="rpg-button rest-button">休む</button>
         </form>
@@ -512,78 +149,35 @@
     </div>
 </div>
 
-<script>
-    document.addEventListener('DOMContentLoaded', function () {
-        const settingsTrigger = document.getElementById('settingsTrigger');
-        const settingsOverlay = document.getElementById('settingsOverlay');
-        const settingsClose = document.getElementById('settingsClose');
-        const settingsResume = document.getElementById('settingsResume');
-        const logoutForm = document.getElementById('logoutForm');
-        const isGuest = {{ is_guest|lower }};
-        
-        const openSettings = function () {
-            settingsOverlay.classList.add('active');
-            settingsOverlay.setAttribute('aria-hidden', 'false');
-        };
-        const closeSettings = function () {
-            settingsOverlay.classList.remove('active');
-            settingsOverlay.setAttribute('aria-hidden', 'true');
-        };
-        if (settingsTrigger) {
-            settingsTrigger.addEventListener('click', openSettings);
-        }
-        if (settingsClose) {
-            settingsClose.addEventListener('click', closeSettings);
-        }
-        if (settingsResume) {
-            settingsResume.addEventListener('click', closeSettings);
-        }
-        settingsOverlay.addEventListener('click', function (event) {
-            if (event.target === settingsOverlay) {
-                closeSettings();
-            }
-        });
-        
-        // ゲストモードの場合、ログアウト時に確認ダイアログを表示
-        if (logoutForm && isGuest) {
-            logoutForm.addEventListener('submit', function (event) {
-                const confirmed = confirm(
-                    'ゲストモードでプレイしているため、ログアウトするとデータは完全に削除され、二度と戻ることはできません。\n\n本当にログアウトしますか？'
-                );
-                if (!confirmed) {
-                    event.preventDefault();
-                }
-            });
-        }
-    });
-</script>
-
-<script>
-    // ホーム画面用のチュートリアルスライドデータを定義
-    window.tutorialSlides = [
-        {
-            image: '{% static "game/img/チュートリアル/1-1.png" %}',
-            description: 'ここはホーム画面です。ここから冒険に出発したり、ショップで装備を購入したり、\n休んでHPを回復したりすることができます。'
-        },
-        {
-            image: '{% static "game/img/チュートリアル/1-2.png" %}',
-            description: '左側のステータスパネルでは、今のレベルや能力値の確認、装備の変更などができます。\nポイントがあれば、+ボタンでステータスポイントを振り分けることができます。\nまた、持ち物やクエストの確認、設定画面の呼び出しもここから行えます。'
-        },
-        {
-            image: '{% static "game/img/チュートリアル/1-3.png" %}',
-            description: '冒険ボタンを押すとステージ選択画面に移動します。\n各ステージで敵と戦い、勝利すると経験値やゴールドを獲得できます。'
-        },
-        {
-            image: '{% static "game/img/チュートリアル/1-4.png" %}',
-            description: 'ショップでは武器や防具、回復アイテムなどを購入できます。\n休むとHPとSPを全回復できますが、経験値を少し失うので、使うときには注意が必要です。'
-        },
-        {
-            image: '{% static "game/img/チュートリアル/1-5.png" %}',
-            description: '画面右下の?ボタンからいつでもこのチュートリアルを見ることができます。\nあなたの良き冒険ライフを、心から祈っております！'
-        }
-    ];
-</script>
-
 {% include 'game/includes/tutorial.html' %}
 
+{% endblock %}
+
+{% block extra_js %}
+<script type="application/json" id="tutorial-slides">
+[
+    {
+        "image": "{% static 'game/img/チュートリアル/1-1.png' %}",
+        "description": "ここはホーム画面です。ここから冒険に出発したり、ショップで装備を購入したり、\\n休んでHPを回復したりすることができます。"
+    },
+    {
+        "image": "{% static 'game/img/チュートリアル/1-2.png' %}",
+        "description": "左側のステータスパネルでは、今のレベルや能力値の確認、装備の変更などができます。\\nポイントがあれば、+ボタンでステータスポイントを振り分けることができます。\\nまた、持ち物やクエストの確認、設定画面の呼び出しもここから行えます。"
+    },
+    {
+        "image": "{% static 'game/img/チュートリアル/1-3.png' %}",
+        "description": "冒険ボタンを押すとステージ選択画面に移動します。\\n各ステージで敵と戦い、勝利すると経験値やゴールドを獲得できます。"
+    },
+    {
+        "image": "{% static 'game/img/チュートリアル/1-4.png' %}",
+        "description": "ショップでは武器や防具、回復アイテムなどを購入できます。\\n休むとHPとSPを全回復できますが、経験値を少し失うので、使うときには注意が必要です。"
+    },
+    {
+        "image": "{% static 'game/img/チュートリアル/1-5.png' %}",
+        "description": "画面右下の?ボタンからいつでもこのチュートリアルを見ることができます。\\nあなたの良き冒険ライフを、心から祈っております！"
+    }
+]
+</script>
+<script src="{% static 'game/js/tutorial.js' %}"></script>
+<script src="{% static 'game/js/battle_start.js' %}"></script>
 {% endblock %}

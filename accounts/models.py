@@ -10,6 +10,11 @@ class CustomUser(AbstractUser):
     
     # 初期ポイント（引き継ぎ用）
     initial_points = models.IntegerField(default=0, verbose_name="初期ポイント")
+
+    # スコアポイント（振り分け用）
+    score_points = models.IntegerField(default=0, verbose_name="スコアポイント")
+    score_bonus_all = models.JSONField(default=dict, verbose_name="スコアボーナス(全体)")
+    score_bonus_jobs = models.JSONField(default=dict, verbose_name="スコアボーナス(職業別)")
     
     # プレイ統計
     total_plays = models.IntegerField(default=0, verbose_name="総プレイ回数")
