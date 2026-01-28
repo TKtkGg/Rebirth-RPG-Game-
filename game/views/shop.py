@@ -6,7 +6,7 @@
 import json
 import random
 from django.shortcuts import render, redirect
-from ..models import Player, Equipment, Item, PlayerQuest
+from ..models import Player, Equipment, Item, PlayerQuest, PlayerInventory
 from .utils import get_player_from_request
 
 
@@ -121,6 +121,7 @@ def buy_item(request, player_id):
         return redirect('game:start')
     
     item_name = request.POST.get('item_name')
+    item_id = request.POST.get('item_id')
     item_price = int(request.POST.get('item_price'))
     item_type = request.POST.get('item_type')  # 'weapon', 'armor', 'item'
     item_quantity = int(request.POST.get('item_quantity', 1))  # 購入個数（デフォルト1）
@@ -146,10 +147,24 @@ def buy_item(request, player_id):
         
         # Equipmentの場合はプレイヤーの所持装備に追加
         if item_type == 'weapon' or item_type == 'armor':
-            equipment = Equipment.objects.filter(name=item_name, equipment_type=item_type).first()
+            equipment = None
+            if item_id:
+                equipment = Equipment.objects.filter(id=item_id, equipment_type=item_type).first()
+            if not equipment:
+                equipment = Equipment.objects.filter(name=item_name, equipment_type=item_type).first()
             if equipment:
                 # プレイヤーの所持装備に追加（is_purchasedは更新しない）
                 player.owned_equipment.add(equipment)
+                # ショップ在庫から削除（売り切れ扱い）
+                shop_inventory = request.session.get('shop_inventory', [])
+                shop_inventory = [
+                    item_data for item_data in shop_inventory
+                    if not (
+                        item_data.get('type') == 'equipment' and
+                        item_data.get('id') == equipment.id
+                    )
+                ]
+                request.session['shop_inventory'] = shop_inventory
         # Itemの場合は在庫を減らし、PlayerInventoryに追加
         elif item_type == 'item':
             # ショップ在庫を取得
@@ -159,7 +174,10 @@ def buy_item(request, player_id):
             for item_data in shop_inventory:
                 if item_data['type'] == 'item':
                     item = Item.objects.filter(id=item_data['id']).first()
-                    if item and item.name == item_name:
+                    if item and (
+                        (item_id and str(item.id) == str(item_id)) or
+                        (item_name and item.name == item_name)
+                    ):
                         current_stock = item_data.get('current_stock', item.max_stock)
                         item_data['current_stock'] = max(0, current_stock - item_quantity)
                         
@@ -170,10 +188,15 @@ def buy_item(request, player_id):
                         )
                         inventory_item.quantity += item_quantity
                         inventory_item.save()
+                        # 在庫が0になったらショップから削除
+                        if item_data['current_stock'] <= 0:
+                            item_data['remove'] = True
                         break
             
             # セッションを更新
-            request.session['shop_inventory'] = shop_inventory
+            request.session['shop_inventory'] = [
+                data for data in shop_inventory if not data.get('remove')
+            ]
         
         # セッションに今回のショップで購入済みのアイテムを追加（装備のみ）
         if item_type in ['weapon', 'armor']:

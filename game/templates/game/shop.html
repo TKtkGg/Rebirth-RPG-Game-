@@ -16,6 +16,7 @@
     <form id="purchaseForm" method="POST" action="{% url 'game:buy_item' player.id %}">
         {% csrf_token %}
         <input type="hidden" name="item_name" id="itemNameInput">
+        <input type="hidden" name="item_id" id="itemIdInput">
         <input type="hidden" name="item_price" id="itemPriceInput">
         <input type="hidden" name="item_type" id="itemTypeInput">
         
@@ -23,6 +24,7 @@
             <!-- 武器 -->
             {% for weapon in weapons %}
             <div class="shop-item" 
+                 data-item-id="{{ weapon.id }}"
                  data-item-name="{{ weapon.name }}" 
                  data-item-price="{{ weapon.price }}" 
                  data-item-type="weapon"
@@ -40,6 +42,7 @@
             <!-- 防具 -->
             {% for armor in armors %}
             <div class="shop-item" 
+                 data-item-id="{{ armor.id }}"
                  data-item-name="{{ armor.name }}" 
                  data-item-price="{{ armor.price }}" 
                  data-item-type="armor"
@@ -57,6 +60,7 @@
             <!-- アイテム -->
             {% for item in items %}
             <div class="shop-item" 
+                 data-item-id="{{ item.id }}"
                  data-item-name="{{ item.name }}" 
                  data-item-price="{{ item.price }}" 
                  data-item-type="item" 

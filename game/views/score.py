@@ -39,7 +39,8 @@ def score_points(request):
     user = request.user
     default_jobs = ["戦士", "魔法使い", "忍者", "格闘家"]
     unlocked = user.unlocked_jobs or []
-    job_list = [job for job in default_jobs if job in unlocked] or default_jobs
+    # 基本職業 + 追加職業の順で表示（重複は除外）
+    job_list = list(dict.fromkeys(default_jobs + unlocked))
 
     category_key = request.GET.get('category', 'all')
     if category_key != 'all' and category_key not in job_list:
