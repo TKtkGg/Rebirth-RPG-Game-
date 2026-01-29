@@ -26,7 +26,7 @@ from .inventory import inventory, use_inventory_item
 from .quest import quest, claim_quest_reward
 
 # スコア関連
-from .score import score_breakdown, score_points
+from .score import score_breakdown, score_points, ranking
 
 # ゲームフロー関連
 from .gameflow import home, start_game, stage_select, gameover, convert_guest_to_user, continue_battle
@@ -62,6 +62,7 @@ __all__ = [
     # スコア関連
     "score_breakdown",
     "score_points",
+    "ranking",
     # ゲームフロー関連
     "home",
     "start_game",

@@ -108,6 +108,9 @@
                 <a href="{% url 'game:quest' player.id %}" class="quick-action-button" aria-label="クエスト">
                     <img src="{% static 'game/img/アイコン/クエスト_アイコン.png' %}" alt="クエスト">
                 </a>
+                <a href="{% url 'game:ranking' %}?player_id={{ player.id }}" class="quick-action-button" aria-label="ランキング">
+                    <img src="{% static 'game/img/アイコン/ランキング_アイコン.png' %}" alt="ランキング">
+                </a>
                 <button type="button" class="quick-action-button" id="settingsTrigger" aria-label="設定を開く">
                     <img src="{% static 'game/img/アイコン/設定_アイコン.png' %}" alt="設定">
                 </button>

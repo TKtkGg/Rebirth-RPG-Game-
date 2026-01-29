@@ -26,4 +26,5 @@ urlpatterns = [
     path('gameover/', views.gameover, name='gameover'),  # ゲームオーバー画面
     path('score_breakdown/', views.score_breakdown, name='score_breakdown'),  # スコア内訳画面
     path('score_points/', views.score_points, name='score_points'),  # スコアポイント振り分け画面
+    path('ranking/', views.ranking, name='ranking'),  # ランキング画面
 ]

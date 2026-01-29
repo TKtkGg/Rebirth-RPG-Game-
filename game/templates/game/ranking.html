@@ -1,0 +1,50 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ランキング</title>
+    <link rel="stylesheet" href="{% static 'game/css/ranking.css' %}">
+</head>
+<body>
+    <div class="ranking-layout">
+        <aside class="ranking-sidebar">
+            <div class="sidebar-title">ランキング</div>
+            {% for item in categories %}
+                <form method="get" class="sidebar-form">
+                    <button class="sidebar-item{% if item.key == category %} active{% endif %}" type="submit" name="category" value="{{ item.key }}">
+                        {{ item.label }}
+                    </button>
+                </form>
+            {% endfor %}
+            {% if player_id %}
+                <a href="{% url 'game:battle_start' player_id %}" class="sidebar-back">戻る</a>
+            {% else %}
+                <a href="{% url 'game:home' %}" class="sidebar-back">戻る</a>
+            {% endif %}
+        </aside>
+        <main class="ranking-main">
+            <div class="ranking-title">{{ label }}</div>
+            <div class="ranking-board">
+                <img src="{% static 'game/img/アイコン/ランキング台.png' %}" alt="ランキング台" class="podium-image">
+                <div class="podium-entry first">
+                    <div class="entry-value">{{ entries.0.value }}</div>
+                    <div class="entry-name">{{ entries.0.name }}</div>
+                    <img src="{% static entries.0.job_icon %}" alt="{{ entries.0.job }}" class="entry-icon">
+                </div>
+                <div class="podium-entry second">
+                    <div class="entry-value">{{ entries.1.value }}</div>
+                    <div class="entry-name">{{ entries.1.name }}</div>
+                    <img src="{% static entries.1.job_icon %}" alt="{{ entries.1.job }}" class="entry-icon">
+                </div>
+                <div class="podium-entry third">
+                    <div class="entry-value">{{ entries.2.value }}</div>
+                    <div class="entry-name">{{ entries.2.name }}</div>
+                    <img src="{% static entries.2.job_icon %}" alt="{{ entries.2.job }}" class="entry-icon">
+                </div>
+            </div>
+        </main>
+    </div>
+</body>
+</html>

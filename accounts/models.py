@@ -7,6 +7,11 @@ class CustomUser(AbstractUser):
     # スコア関連
     best_score = models.IntegerField(default=0, verbose_name="最高スコア")
     total_score = models.IntegerField(default=0, verbose_name="累計スコア")
+    best_score_job = models.CharField(max_length=20, default="", verbose_name="最高スコア時の職業")
+    best_strong_defeats = models.IntegerField(default=0, verbose_name="最高強敵討伐数")
+    best_strong_defeats_job = models.CharField(max_length=20, default="", verbose_name="強敵討伐数記録時の職業")
+    best_victories = models.IntegerField(default=0, verbose_name="最高勝利回数")
+    best_victories_job = models.CharField(max_length=20, default="", verbose_name="勝利回数記録時の職業")
     
     # 初期ポイント（引き継ぎ用）
     initial_points = models.IntegerField(default=0, verbose_name="初期ポイント")

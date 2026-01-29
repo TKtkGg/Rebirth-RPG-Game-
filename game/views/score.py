@@ -3,6 +3,7 @@
 
 スコア内訳画面とスコアポイント振り分け画面を担当します。
 """
+from django.contrib.auth import get_user_model
 from django.shortcuts import render, redirect
 from django.urls import reverse
 from .utils import SCORE_POINT_CONFIG, _get_score_bonus_dict, _set_score_bonus_dict
@@ -92,4 +93,74 @@ def score_points(request):
         'category_key': category_key,
         'stat_items': stat_items,
         'score_points': user.score_points,
+    })
+
+
+def ranking(request):
+    """
+    ランキング画面
+
+    スコア / 強敵討伐数 / 勝利回数の上位3名を表示します。
+    """
+    User = get_user_model()
+    category = request.GET.get('category', 'score')
+    if category not in ['score', 'strong', 'victories']:
+        category = 'score'
+    player_id = request.GET.get('player_id')
+
+    job_icon_map = {
+        "戦士": "game/img/アイコン/武器_アイコン.png",
+        "魔法使い": "game/img/アイコン/魔法の杖_アイコン.png",
+        "忍者": "game/img/アイコン/忍者_アイコン.png",
+        "格闘家": "game/img/アイコン/格闘_アイコン.png",
+    }
+    default_icon = "game/img/アイコン/はてな_アイコン.png"
+
+    if category == 'score':
+        queryset = User.objects.order_by('-best_score', 'username')
+        value_key = 'best_score'
+        job_key = 'best_score_job'
+        label = 'スコア'
+    elif category == 'strong':
+        queryset = User.objects.order_by('-best_strong_defeats', 'username')
+        value_key = 'best_strong_defeats'
+        job_key = 'best_strong_defeats_job'
+        label = '強敵討伐数'
+    else:
+        queryset = User.objects.order_by('-best_victories', 'username')
+        value_key = 'best_victories'
+        job_key = 'best_victories_job'
+        label = '勝利回数'
+
+    entries = []
+    for user in queryset[:3]:
+        value = getattr(user, value_key, 0)
+        job = getattr(user, job_key, "") or ""
+        entries.append({
+            "name": user.username,
+            "value": value,
+            "job": job,
+            "job_icon": job_icon_map.get(job, default_icon),
+        })
+
+    while len(entries) < 3:
+        entries.append({
+            "name": "---",
+            "value": 0,
+            "job": "",
+            "job_icon": default_icon,
+        })
+
+    categories = [
+        {"key": "score", "label": "スコア"},
+        {"key": "strong", "label": "強敵討伐数"},
+        {"key": "victories", "label": "勝利回数"},
+    ]
+
+    return render(request, 'game/ranking.html', {
+        "categories": categories,
+        "category": category,
+        "entries": entries,
+        "label": label,
+        "player_id": player_id,
     })

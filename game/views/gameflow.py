@@ -292,11 +292,22 @@ def gameover(request):
                 # 最高スコアの場合のみ更新
                 if score > user.best_score:
                     user.best_score = score
+                    user.best_score_job = player.job
                 
                 # スコアポイントを加算（永続）
                 user.score_points += initial_point
                 user.initial_points = user.score_points
                 user.total_plays += 1
+
+                # 強敵討伐数の最高記録を更新
+                if player.strong_defeats > user.best_strong_defeats:
+                    user.best_strong_defeats = player.strong_defeats
+                    user.best_strong_defeats_job = player.job
+
+                # 勝利回数の最高記録を更新（戦闘勝利数）
+                if player.defeats > user.best_victories:
+                    user.best_victories = player.defeats
+                    user.best_victories_job = player.job
                 user.save()
                 
         except Player.DoesNotExist:
@@ -305,6 +316,7 @@ def gameover(request):
     return render(request, 'game/gameover.html', {
         'score': score,
         'initial_point': initial_point,
+        'is_guest': not request.user.is_authenticated,
     })
 
 

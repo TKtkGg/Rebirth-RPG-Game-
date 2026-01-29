@@ -20,12 +20,18 @@
             <button class="gameover-btn" id="breakdown-btn" type="button">内訳を確認する</button>
         </a>
         <div class="gameover-actions">
-            <form action="/" method="get" class="gameover-form">
-                <button class="gameover-btn" type="submit">タイトルに戻る</button>
-            </form>
-            <form action="{% url 'game:score_points' %}" method="get" class="gameover-form">
-                <button class="gameover-btn" type="submit">ポイント分けへ</button>
-            </form>
+            {% if is_guest %}
+                <form action="/" method="get" class="gameover-form">
+                    <button class="gameover-btn" type="submit">タイトルに戻る</button>
+                </form>
+            {% else %}
+                <form action="/" method="get" class="gameover-form">
+                    <button class="gameover-btn" type="submit">タイトルに戻る</button>
+                </form>
+                <form action="{% url 'game:score_points' %}" method="get" class="gameover-form">
+                    <button class="gameover-btn" type="submit">ポイント分けへ</button>
+                </form>
+            {% endif %}
         </div>
     </div>
     <script src="{% static 'game/js/gameover.js' %}"></script>
