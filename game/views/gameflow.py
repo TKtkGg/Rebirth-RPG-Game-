@@ -53,9 +53,17 @@ def start_game(request):
         except Player.DoesNotExist:
             pass  # Playerが存在しない場合は職業選択へ進む
     
+    default_jobs = ["戦士", "魔法使い", "忍者", "格闘家"]
+    unlocked_jobs = []
+    if request.user.is_authenticated:
+        unlocked_jobs = request.user.unlocked_jobs or []
+    available_jobs = list(dict.fromkeys(default_jobs + unlocked_jobs))
+
     if request.method == 'POST':
         name = request.POST.get('name')
         job = request.POST.get('job', '戦士')  # デフォルトは戦士
+        if job not in available_jobs:
+            job = '戦士'
 
         request.session['session_purchased_items'] = []
         request.session['reset_shop'] = True
@@ -171,7 +179,56 @@ def start_game(request):
     # ログインユーザーの場合はデフォルト名をユーザー名にする（ゲスト強制時は空にする）
     default_name = request.user.username if request.user.is_authenticated and not force_guest else ""
     
-    return render(request, 'game/start.html', {'default_name': default_name})
+    job_definitions = [
+        {
+            "key": "戦士",
+            "icon": "game/img/アイコン/武器_アイコン.png",
+            "description": "体力、攻撃力、防御力が高いが、スピードは遅め。",
+            "bonus": "HP +10, ATK +3, DEF +3, SPD -3",
+        },
+        {
+            "key": "魔法使い",
+            "icon": "game/img/アイコン/魔法の杖_アイコン.png",
+            "description": "高い攻撃力を持つが、打たれ弱い。",
+            "bonus": "HP -5, ATK +7, DEF -2",
+        },
+        {
+            "key": "忍者",
+            "icon": "game/img/アイコン/忍者_アイコン.png",
+            "description": "攻撃力、スピードのあるジョブ。他はフツー。",
+            "bonus": "HP -5, ATK +3, SPD +5",
+        },
+        {
+            "key": "格闘家",
+            "icon": "game/img/アイコン/格闘_アイコン.png",
+            "description": "攻撃力に特に優れたジョブ。体力と気力が少し低め。",
+            "bonus": "HP -20, ATK +8, DEF +3, SPD +5, SP -10",
+        },
+    ]
+
+    job_slots = []
+    for job_def in job_definitions:
+        job_slots.append({
+            "name": job_def["key"],
+            "icon": job_def["icon"],
+            "description": job_def["description"],
+            "bonus": job_def["bonus"],
+            "unlocked": job_def["key"] in available_jobs,
+        })
+
+    while len(job_slots) < 8:
+        job_slots.append({
+            "name": "",
+            "icon": "game/img/アイコン/はてな_アイコン.png",
+            "description": "",
+            "bonus": "",
+            "unlocked": False,
+        })
+
+    return render(request, 'game/start.html', {
+        'default_name': default_name,
+        'job_slots': job_slots,
+    })
 
 
 def gameover(request):

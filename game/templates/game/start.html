@@ -8,33 +8,39 @@
 {% endblock %}
 
 {% block content %}
-
-<div class="character-creation">
-    <h2>キャラクター作成</h2>
-    <form method="POST">
+<div class="start-screen">
+    <div class="start-title">職業選択</div>
+    <form method="POST" class="job-form">
         {% csrf_token %}
-        <div class="form-group">
-            <label for="name" class="form-label">あなたの名前</label>
-            <input type="text" name="name" id="name" class="form-control" placeholder="冒険者の名前を入力" value="{{ default_name }}" required>
+        <div class="name-row">
+            <label for="name" class="name-label">名前</label>
+            <input type="text" name="name" id="name" class="name-input" placeholder="冒険者の名前を入力" value="{{ default_name }}" required>
         </div>
-        
-        <div class="form-group">
-            <label for="job" class="form-label">職業を選択</label>
-            <select name="job" id="job" class="job-select" required>
-                <option value="戦士">戦士</option>
-                <option value="魔法使い">魔法使い</option>
-                <option value="忍者">忍者</option>
-                <option value="格闘家">格闘家</option>
-            </select>
-            
-            <div class="job-description" id="job-desc">
-                <strong>戦士：</strong>体力、攻撃力、防御力が高いが、スピードは遅め。<br>
-                <strong>ジョブボーナス：</strong>HP +10, ATK +3, DEF +3, SPD -3
-            </div>
+
+        <input type="hidden" name="job" id="jobInput" value="">
+
+        <div class="job-grid">
+            {% for slot in job_slots %}
+                <button type="button"
+                        class="job-card{% if not slot.unlocked %} locked{% endif %}"
+                        data-job="{{ slot.name }}"
+                        data-description="{{ slot.description }}"
+                        data-bonus="{{ slot.bonus }}"
+                        {% if not slot.unlocked %}disabled{% endif %}>
+                    <img src="{% static slot.icon %}" alt="{{ slot.name|default:'未開放' }}" class="job-icon{% if not slot.unlocked %} job-icon-locked{% endif %}">
+                    {% if slot.unlocked %}
+                        <div class="job-name">{{ slot.name }}</div>
+                    {% endif %}
+                </button>
+            {% endfor %}
         </div>
-        
+
         <button type="submit" class="start-button">冒険を始める</button>
     </form>
+</div>
+
+<div class="job-tooltip" id="jobTooltip">
+    <div id="jobTooltipContent"></div>
 </div>
 
 {% endblock %}
