@@ -52,96 +52,61 @@
     
     <!-- プレイヤーのエリア -->
     <div class="player-area">
+        {% if not escaped and not gained_exp and not gained_gold and not recovering %}
         <div class="player-status-box">
-            {% if not escaped and not gained_exp and not gained_gold and not recovering %}
-                <div style="display: flex; align-items: center; gap: 8px; width: 100%;">
-                    <div style="width: 120px;">{{ player.name }}</div>
-                    <div class="status-gauge">
-                        <span>HP:</span>
-                        <div class="status-gauge-bar">
-                            <div class="status-gauge-fill hp" style="width: {{ player_hp_percent }}%;"></div>
-                            <span class="status-gauge-value hp-value">{{ player.total_hp_battle }}</span>
-                        </div>
-                    </div>
-                    <div class="status-gauge">
-                        <span>SP:</span>
-                        <div class="status-gauge-bar">
-                            <div class="status-gauge-fill sp" style="width: {{ player_sp_percent }}%;"></div>
-                            <span class="status-gauge-value sp-value">{{ player.mp }}</span>
-                        </div>
+            <div style="display: flex; align-items: center; gap: 8px; width: 100%;">
+                <div style="width: 120px;">{{ player.name }}</div>
+                <div class="status-gauge">
+                    <span>HP:</span>
+                    <div class="status-gauge-bar">
+                        <div class="status-gauge-fill hp" style="width: {{ player_hp_percent }}%;"></div>
+                        <span class="status-gauge-value hp-value">{{ player.total_hp_battle }}</span>
                     </div>
                 </div>
-                
-                <div id="player-stats" style="display: flex; align-items: center; gap: 8px; width: 100%;">
-                    <div style="width: 120px;"></div>
-                    <div>ATK:{{ showplayer_atk }} DEF:{{ showplayer_def }} SPD:{{ showplayer_spd }}</div>
-                </div>
-                
-                <!-- プレイヤーの状態異常 -->
-                <div style="display: flex; align-items: center; gap: 3px; width: 100%;">
-                    <div style="width: 120px;"></div>
-                    <div class="status-effects">
-                        {% if buffs.player %}
-                            {% if buffs.player.atk %}
-                                <img src="{% static 'game/img/アイコン/ATKバフ.png' %}" alt="ATKバフ" class="status-effect-icon">
-                            {% endif %}
-                            {% if buffs.player.def %}
-                                <img src="{% static 'game/img/アイコン/DEFバフ.png' %}" alt="DEFバフ" class="status-effect-icon">
-                            {% endif %}
-                            {% if buffs.player.spd %}
-                                <img src="{% static 'game/img/アイコン/SPDバフ.png' %}" alt="SPDバフ" class="status-effect-icon">
-                            {% endif %}
-                        {% endif %}
-                        {% if debuffs.player %}
-                            {% if debuffs.player.atk %}
-                                <img src="{% static 'game/img/アイコン/ATKデバフ.png' %}" alt="ATKデバフ" class="status-effect-icon">
-                            {% endif %}
-                            {% if debuffs.player.def %}
-                                <img src="{% static 'game/img/アイコン/DEFデバフ.png' %}" alt="DEFデバフ" class="status-effect-icon">
-                            {% endif %}
-                            {% if debuffs.player.spd %}
-                                <img src="{% static 'game/img/アイコン/SPDデバフ.png' %}" alt="SPDデバフ" class="status-effect-icon">
-                            {% endif %}
-                        {% endif %}
+                <div class="status-gauge">
+                    <span>SP:</span>
+                    <div class="status-gauge-bar">
+                        <div class="status-gauge-fill sp" style="width: {{ player_sp_percent }}%;"></div>
+                        <span class="status-gauge-value sp-value">{{ player.mp }}</span>
                     </div>
                 </div>
-            {% endif %}
+            </div>
             
-            <!-- ボタンエリア -->
-            {% if escaped %}
-                <div class="reward-info">
-                    <div style="font-size: 24px; font-weight: bold; color: #333; margin-top: 10px; text-align: center;">
-                        <h3 style="font-weight: bold;">にげた！</h3>
-                        <p>経験値 : -{{ exp_penalty }}</p>
-                        <p>ゴールド : -{{ gold_penalty }}</p>
-                    </div>
-                </div>
-                <div class="button-area">
-                    <a href="{% url 'game:battle_start' player.id %}" style="text-decoration: none;">
-                        <button type="button" class="battle-button return-button">戻る</button>
-                    </a>
-                </div>
-            {% elif gained_exp or gained_gold or "を倒した" in message %}
-                <div class="reward-info">
-                    <div style="font-size: 24px; font-weight: bold; color: #333; margin-top: 10px; text-align: center;">
-                        <h3>勝利！</h3>
-                        <p>経験値 : {{ gained_exp }}</p>
-                        <p>ゴールド : {{ gained_gold }}</p>
-                        {% if existLevel and existLevel < player.level %}
-                            <p>レベルアップ！</p>
-                            <p>LV : {{ existLevel }} → {{ player.level }}</p>
+            <div id="player-stats" style="display: flex; align-items: center; gap: 8px; width: 100%;">
+                <div style="width: 120px;"></div>
+                <div>ATK:{{ showplayer_atk }} DEF:{{ showplayer_def }} SPD:{{ showplayer_spd }}</div>
+            </div>
+            
+            <!-- プレイヤーの状態異常 -->
+            <div style="display: flex; align-items: center; gap: 3px; width: 100%;">
+                <div style="width: 120px;"></div>
+                <div class="status-effects">
+                    {% if buffs.player %}
+                        {% if buffs.player.atk %}
+                            <img src="{% static 'game/img/アイコン/ATKバフ.png' %}" alt="ATKバフ" class="status-effect-icon">
                         {% endif %}
-                    </div>
+                        {% if buffs.player.def %}
+                            <img src="{% static 'game/img/アイコン/DEFバフ.png' %}" alt="DEFバフ" class="status-effect-icon">
+                        {% endif %}
+                        {% if buffs.player.spd %}
+                            <img src="{% static 'game/img/アイコン/SPDバフ.png' %}" alt="SPDバフ" class="status-effect-icon">
+                        {% endif %}
+                    {% endif %}
+                    {% if debuffs.player %}
+                        {% if debuffs.player.atk %}
+                            <img src="{% static 'game/img/アイコン/ATKデバフ.png' %}" alt="ATKデバフ" class="status-effect-icon">
+                        {% endif %}
+                        {% if debuffs.player.def %}
+                            <img src="{% static 'game/img/アイコン/DEFデバフ.png' %}" alt="DEFデバフ" class="status-effect-icon">
+                        {% endif %}
+                        {% if debuffs.player.spd %}
+                            <img src="{% static 'game/img/アイコン/SPDデバフ.png' %}" alt="SPDデバフ" class="status-effect-icon">
+                        {% endif %}
+                    {% endif %}
                 </div>
-                <div class="button-area" style="flex-direction: column; gap: 15px;">
-                    <a href="{% url 'game:continue_battle' player.id %}" style="text-decoration: none; width: 100%;">
-                        <button type="button" class="battle-button attack-button" style="width: 100%; font-size: 24px;">続けて戦う</button>
-                    </a>
-                    <a href="{% url 'game:battle_start' player.id %}" style="text-decoration: none; width: 100%;">
-                        <button type="button" class="battle-button return-button" style="width: 100%;">戻る</button>
-                    </a>
-                </div>
-            {% elif player.total_hp_battle > 0 and enemy and not recovering %}
+            </div>   
+            <!-- ボタンエリア -->
+            {% if player.total_hp_battle > 0 and enemy and not recovering %}
                 <div class="button-area" id="action-buttons">
                     <form method="POST" style="display: contents;">
                         {% csrf_token %}
@@ -195,6 +160,52 @@
                 </div>
             {% endif %}
         </div>
+        {% endif %}
+        
+        {% if escaped %}
+            <div class="reward-info">
+                <div style="font-size: 24px; font-weight: bold; color: #333; margin-top: 10px; text-align: center;">
+                    <h3 style="font-weight: bold;">にげた！</h3>
+                    <p>経験値 : -{{ exp_penalty }}</p>
+                    <p>ゴールド : -{{ gold_penalty }}</p>
+                </div>
+            </div>
+            <div class="button-area">
+                <a href="{% url 'game:battle_start' player.id %}" style="text-decoration: none;">
+                    <button type="button" class="battle-button return-button">戻る</button>
+                </a>
+            </div>
+        {% elif gained_exp or gained_gold or "を倒した" in message %}
+            <div class="victory-panel">
+                <div class="victory-title">勝利</div>
+                <div class="victory-content{% if existLevel and existLevel < player.level %} levelup{% else %} no-levelup{% endif %}">
+                    <div class="victory-left">
+                        <div class="victory-stat">
+                            <span class="victory-label exp-label">EXP</span>
+                            <span class="victory-value">{{ gained_exp }}</span>
+                        </div>
+                        <div class="victory-stat">
+                            <span class="victory-label gold-label">GOLD</span>
+                            <span class="victory-value">{{ gained_gold }}</span>
+                        </div>
+                    </div>
+                    {% if existLevel and existLevel < player.level %}
+                        <div class="victory-right">
+                            <div class="victory-levelup">レベルアップ！</div>
+                            <div class="victory-level">LV : {{ existLevel }} → {{ player.level }}</div>
+                        </div>
+                    {% endif %}
+                </div>
+                <div class="victory-buttons">
+                    <a href="{% url 'game:battle_start' player.id %}" class="victory-link">
+                        <button type="button" class="victory-btn back-btn">戻る　　　</button>
+                    </a>
+                    <a href="{% url 'game:continue_battle' player.id %}" class="victory-link">
+                        <button type="button" class="victory-btn continue-btn">続けて戦う</button>
+                    </a>
+                </div>
+            </div>
+        {% endif %}
 </div>
 
 <!-- アクションモード用オーバーレイ -->
@@ -203,6 +214,7 @@
     <div id="action-instruction" style="display: none; font-size: 80px; font-weight: bold; color: rgba(255, 255, 255, 0.3); text-shadow: 3px 3px 6px rgba(0, 0, 0, 1);">連打！！</div>
 </div>
 
+{% if not gained_exp or not gained_gold  %}
 <!-- メッセージエリア（左下に固定配置） -->
 <div class="message-area" id="message-area">
     {% for msg in message_history %}
@@ -212,6 +224,7 @@
         <div class="message-item">{{ message }}</div>
     {% endif %}
 </div>
+{% endif %}
 
 
 {% if redirect_after %}

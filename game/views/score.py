@@ -107,6 +107,17 @@ def ranking(request):
     if category not in ['score', 'strong', 'victories']:
         category = 'score'
     player_id = request.GET.get('player_id')
+    if not player_id or player_id == "None":
+        player_id = None
+        if request.user.is_authenticated:
+            try:
+                player_id = request.user.player.id
+            except Exception:
+                player_id = None
+        if not player_id:
+            player_id = request.session.get('guest_player_id') or request.session.get('gameover_player_id')
+    if not player_id:
+        return redirect('game:start')
 
     job_icon_map = {
         "戦士": "game/img/アイコン/武器_アイコン.png",

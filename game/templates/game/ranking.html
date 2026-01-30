@@ -18,11 +18,7 @@
                     </button>
                 </form>
             {% endfor %}
-            {% if player_id %}
-                <a href="{% url 'game:battle_start' player_id %}" class="sidebar-back">戻る</a>
-            {% else %}
-                <a href="{% url 'game:home' %}" class="sidebar-back">戻る</a>
-            {% endif %}
+            <a href="{% url 'game:battle_start' player_id=player_id %}" class="sidebar-back">戻る</a>
         </aside>
         <main class="ranking-main">
             <div class="ranking-title">{{ label }}</div>

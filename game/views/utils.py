@@ -438,29 +438,29 @@ def decrease_buff_debuff_turns(buffs, debuffs, special_states):
     Returns:
         tuple: (更新されたbuffs, debuffs, special_states)
     """
+    def _decrease_turn(container):
+        for target in list(container.keys()):
+            for key in list(container[target].keys()):
+                effect = container[target][key]
+                if 'turn' in effect:
+                    effect['turn'] -= 1
+                    if effect['turn'] <= 0:
+                        del container[target][key]
+                elif 'turns' in effect:
+                    effect['turns'] -= 1
+                    if effect['turns'] <= 0:
+                        del container[target][key]
+            if not container[target]:
+                del container[target]
+
     # バフの減少
-    for target in buffs:
-        for stat in list(buffs[target].keys()):
-            if 'turns' in buffs[target][stat]:
-                buffs[target][stat]['turns'] -= 1
-                if buffs[target][stat]['turns'] <= 0:
-                    del buffs[target][stat]
-    
+    _decrease_turn(buffs)
+
     # デバフの減少
-    for target in debuffs:
-        for stat in list(debuffs[target].keys()):
-            if 'turns' in debuffs[target][stat]:
-                debuffs[target][stat]['turns'] -= 1
-                if debuffs[target][stat]['turns'] <= 0:
-                    del debuffs[target][stat]
-    
+    _decrease_turn(debuffs)
+
     # 特殊状態の減少
-    for target in special_states:
-        for state in list(special_states[target].keys()):
-            if 'turns' in special_states[target][state]:
-                special_states[target][state]['turns'] -= 1
-                if special_states[target][state]['turns'] <= 0:
-                    del special_states[target][state]
+    _decrease_turn(special_states)
     
     return buffs, debuffs, special_states
 

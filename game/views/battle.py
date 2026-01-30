@@ -750,13 +750,13 @@ def battle(request, player_id, enemy_id=None):
                 if not debuffs.get("player") and has_debuff_effect:
                     priority *= 2
                 elif debuffs.get("player") and has_debuff_effect:
-                    priority *= 0.2
+                    priority *= 0.05
                 
                 # 2. 自身（enemy）にバフがかかっていない場合、自身の技にバフがあれば
                 if not buffs.get("enemy") and has_buff_effect:
                     priority *= 2
                 elif buffs.get("enemy") and has_buff_effect:
-                    priority *= 0.2
+                    priority *= 0.05
                 
                 # 3. 敵（player）のHPが20%以下の場合
                 if player_hp_ratio <= 0.2 and has_attack_effect:
@@ -778,10 +778,10 @@ def battle(request, player_id, enemy_id=None):
                         priority *= 1.5  # 優先度を少し上げる
                 
                 # 4. 自身（enemy）のHPが50%以下の場合
-                if enemy_hp_ratio <= 0.5 and has_defense_effect:
-                    priority *= 1.3
+                if enemy_hp_ratio <= 0.35 and has_defense_effect:
+                    priority -= 1
                 else:
-                    priority *= 0.3  # HPが高い場合、防御スキルの優先度を下げる
+                    priority -= 1  # HPが高い場合、防御スキルの優先度を下げる
             
             skill_copy["priority"] = priority
             adjusted_skills.append(skill_copy)
@@ -1030,6 +1030,21 @@ def battle(request, player_id, enemy_id=None):
         actionp = request.POST.get('action')
         special = request.POST.get('special')
         use_item_id = request.POST.get('use_item')
+
+        if special:
+            player_skills_local = PLAYER_SKILLS.get(player.job, [])
+            try:
+                skill_index = int(special.replace('skill', '')) - 1
+            except ValueError:
+                skill_index = -1
+
+            if 0 <= skill_index < len(player_skills_local):
+                skill_cost = player_skills_local[skill_index].get("cost", 0)
+                if player.mp < skill_cost:
+                    message = "しかしSPが足りない！"
+                    if is_ajax:
+                        return JsonResponse({'error': message}, status=200)
+                    return render(request, "game/battle.html", render_battle_screen(message))
         
         # デバッグ用：kキーでゲームオーバー
         if actionp == 'debug_gameover':
@@ -1098,6 +1113,12 @@ def battle(request, player_id, enemy_id=None):
                     else:
                         message = tohome(message)
                         return render(request, "game/battle.html", render_battle_screen(message, redirect_after=True))
+                
+                # ターン経過でバフ・デバフを減少
+                buffs, debuffs, special_states = decrease_buff_debuff_turns(buffs, debuffs, special_states)
+                request.session["buffs"] = buffs
+                request.session["debuffs"] = debuffs
+                request.session["special_states"] = special_states
                 
                 # 通常の戦闘画面に戻る
                 if is_ajax:
