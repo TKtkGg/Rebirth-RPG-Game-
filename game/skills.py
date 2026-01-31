@@ -366,11 +366,54 @@ PLAYER_SKILLS = {
             "cost": 30,
             "description": "怒涛のパンチを繰り出し、ダメージを与える。(ACTION)",
             "is_action": True,
+            "action_type": "spam",
             "effects": [
                 {
                     "type": "action",
                     "target": "enemy",
                     "multiplier": random.uniform(0.08, 0.1)
+                }
+            ]
+        }
+    ],
+    "侍": [
+        {
+            "name": "居合斬り",
+            "cost": 20,
+            "description": "素早く踏み込み、鋭い一撃を放つ",
+            "effects": [
+                {
+                    "type": "attack",
+                    "target": "enemy",
+                    "multiplier": 2.0
+                }
+            ]
+        },
+        {
+            "name": "瞑想",
+            "cost": 20,
+            "description": "心を澄ませ、攻撃を一時的に高める",
+            "effects": [
+                {
+                    "type": "buf",
+                    "target": "player",
+                    "stat": "atk",
+                    "multiplier": 1.8,
+                    "turn": 3
+                }
+            ]
+        },
+        {
+            "name": "刹那の見切り",
+            "cost": 30,
+            "description": "一瞬の見切りで勝機を掴む。(ACTION)",
+            "is_action": True,
+            "action_type": "timing",
+            "effects": [
+                {
+                    "type": "action",
+                    "target": "enemy",
+                    "multiplier": 1.0
                 }
             ]
         }

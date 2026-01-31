@@ -3,6 +3,7 @@
 
 戦闘画面の表示と戦闘ロジックの処理を担当します。
 """
+import json
 import random
 from django.shortcuts import render, redirect
 from django.urls import reverse
@@ -17,6 +18,51 @@ from .utils import (
     decrease_buff_debuff_turns,
     _get_score_rates,
 )
+
+
+def _get_stat_multiplier(buffs, debuffs, target, stat):
+    buff = buffs.get(target, {}).get(stat, {}).get("multiplier", 1.0)
+    debuff = debuffs.get(target, {}).get(stat, {}).get("multiplier", 1.0)
+    return buff * debuff
+
+
+def _get_effective_stat(base_value, buffs, debuffs, target, stat):
+    return base_value * _get_stat_multiplier(buffs, debuffs, target, stat)
+
+
+def _get_stage_or_first(stage_id):
+    try:
+        return Stage.objects.get(id=stage_id) if stage_id else Stage.objects.first()
+    except Stage.DoesNotExist:
+        return Stage.objects.first()
+
+
+def _resolve_stage_from_request(request):
+    stage_id = request.GET.get('stage_id') or request.session.get('stage_id')
+    stage = _get_stage_or_first(stage_id)
+    request.session['stage_id'] = stage.id if stage else None
+    return stage
+
+
+def _reset_battle_session(request, clear_enemy_id=False):
+    if clear_enemy_id:
+        request.session.pop('enemy_id', None)
+    request.session["message_history"] = []
+    request.session["buffs"] = {}
+    request.session["debuffs"] = {}
+    request.session["special_states"] = {}
+
+
+def _get_player_skills_and_items(player):
+    player_skills = PLAYER_SKILLS.get(player.job, [])
+    for skill in player_skills:
+        if 'is_action' not in skill:
+            skill['is_action'] = False
+    player_items = PlayerInventory.objects.filter(
+        player=player,
+        quantity__gt=0
+    ).select_related('item')
+    return player_skills, player_items
 
 
 def battle_start(request, player_id, enemy_id=None):
@@ -131,16 +177,25 @@ def action_skill_click(request, player_id, enemy_id):
     
     # ダメージ計算（通常攻撃と同じ計算式）
     multiplier = action_data.get('multiplier', 1.0)
+    if request.body:
+        try:
+            body = json.loads(request.body.decode('utf-8'))
+        except (ValueError, json.JSONDecodeError):
+            body = {}
+        timing_multiplier = body.get('timing_multiplier')
+        if timing_multiplier is not None:
+            try:
+                multiplier = float(timing_multiplier)
+            except (TypeError, ValueError):
+                pass
     
     # プレイヤーの攻撃力（バフ・デバフ適用）
-    player_atk_buff = buffs.get("player", {}).get("atk", {}).get("multiplier", 1.0)
-    player_atk_debuff = debuffs.get("player", {}).get("atk", {}).get("multiplier", 1.0)
-    effective_atk = player.total_atk_battle * player_atk_buff * player_atk_debuff
+    effective_atk = _get_effective_stat(player.total_atk_battle, buffs, debuffs, "player", "atk")
     
     # 敵の防御力（バフ・デバフ適用）
-    enemy_def_buff = buffs.get("enemy", {}).get("def", {}).get("multiplier", 1.0)
-    enemy_def_debuff = debuffs.get("enemy", {}).get("def", {}).get("multiplier", 1.0)
-    effective_def = enemy.defense * enemy_def_buff * enemy_def_debuff
+    effective_def = _get_effective_stat(enemy.defense, buffs, debuffs, "enemy", "def")
+    # 通常攻撃と同じ軽減
+    effective_def = effective_def // 3
     
     # ダメージ計算
     base_damage = max(1, effective_atk - effective_def)
@@ -191,13 +246,19 @@ def action_skill_end(request, player_id, enemy_id):
     if not action_data:
         return redirect('game:battle', player_id=player_id, enemy_id=enemy_id)
     
+    action_type = action_data.get('action_type', 'spam')
+    timing_result = request.POST.get('timing_result')
+    
     # click_countと累積ダメージを取得
     click_count = int(request.POST.get('click_count', 0))
     total_damage = request.session.pop('action_total_damage', 0)
     
     # メッセージを作成
     message = f"{player.name}の{action_data['skill_name']}！\n"
-    message += f"{click_count}回の連続攻撃！ 合計{total_damage}ダメージ！\n"
+    if action_type == 'timing' and timing_result == 'fail':
+        message += "失敗してしまった！\n"
+    else:
+        message += f"{click_count}回の連続攻撃！ 合計{total_damage}ダメージ！\n"
     
     # 敵のHPチェック（既に倒されている場合は勝利処理へ）
     if enemy.hp <= 0:
@@ -251,22 +312,13 @@ def battle(request, player_id, enemy_id=None):
         request.session.pop('battle_won')
         
         # セッションをクリア
-        request.session.pop('enemy_id', None)
-        request.session["message_history"] = []
-        request.session["buffs"] = {}
-        request.session["debuffs"] = {}
-        request.session["special_states"] = {}
+        _reset_battle_session(request, clear_enemy_id=True)
         
         # ステージを取得
-        stage_id = request.session.get('stage_id')
-        try:
-            stage = Stage.objects.get(id=stage_id) if stage_id else Stage.objects.first()
-        except Stage.DoesNotExist:
-            stage = Stage.objects.first()
+        stage = _get_stage_or_first(request.session.get('stage_id'))
         
         # 勝利画面を表示
-        player_skills = PLAYER_SKILLS.get(player.job, [])
-        player_items = PlayerInventory.objects.filter(player=player, quantity__gt=0).select_related('item')
+        player_skills, player_items = _get_player_skills_and_items(player)
         
         victory_message = f"勝利！\n経験値を{gained_exp}ゲットした！\n{gained_gold}Gゲットした！\n"
         victory_message = apply_levelup_recovery_if_needed(victory_message)
@@ -287,18 +339,7 @@ def battle(request, player_id, enemy_id=None):
         })
     
     # ステージIDを取得（GETパラメータまたはセッション）
-    stage_id = request.GET.get('stage_id') or request.session.get('stage_id')
-    if stage_id:
-        try:
-            request.session['stage_id'] = stage_id
-            stage = Stage.objects.get(id=stage_id)
-        except Stage.DoesNotExist:
-            stage = Stage.objects.first()
-            request.session['stage_id'] = stage.id if stage else None
-    else:
-        # デフォルトステージ（草原）
-        stage = Stage.objects.first()
-        request.session['stage_id'] = stage.id if stage else None
+    stage = _resolve_stage_from_request(request)
     
     enemy_id = request.session.get("enemy_id")
     
@@ -328,10 +369,7 @@ def battle(request, player_id, enemy_id=None):
         player.save()
         
         # 新しい戦闘開始時にメッセージ履歴をクリア
-        request.session["message_history"] = []
-        request.session["buffs"] = {}
-        request.session["debuffs"] = {}
-        request.session["special_states"] = {}
+        _reset_battle_session(request)
     else:
         try:
             enemy = Enemy.objects.get(id=enemy_id)
@@ -347,42 +385,23 @@ def battle(request, player_id, enemy_id=None):
     debuffs = request.session.get("debuffs", {})
     special_states = request.session.get("special_states", {})  # 特殊状態（確定回避など）
     
-    # プレイヤーのスキルを取得
-    player_skills = PLAYER_SKILLS.get(player.job, [])
-    # スキルにis_actionフラグがない場合はFalseを設定
-    for skill in player_skills:
-        if 'is_action' not in skill:
-            skill['is_action'] = False
-    
-    # プレイヤーのアイテムを取得
-    player_items = PlayerInventory.objects.filter(player=player, quantity__gt=0).select_related('item')
+    # プレイヤーのスキル/アイテムを取得
+    player_skills, player_items = _get_player_skills_and_items(player)
     
     # 【表示用ステータス】戦闘用ステータス + バフ×デバフ適用
     # プレイヤー（total_*_battleフィールドを使用）
-    player_atk_buff = buffs.get("player", {}).get("atk", {}).get("multiplier", 1.0)
-    player_atk_debuff = debuffs.get("player", {}).get("atk", {}).get("multiplier", 1.0)
-    showplayer_atk = int(player.total_atk_battle * player_atk_buff * player_atk_debuff)
+    showplayer_atk = int(_get_effective_stat(player.total_atk_battle, buffs, debuffs, "player", "atk"))
     
-    player_def_buff = buffs.get("player", {}).get("def", {}).get("multiplier", 1.0)
-    player_def_debuff = debuffs.get("player", {}).get("def", {}).get("multiplier", 1.0)
-    showplayer_def = int(player.total_def_battle * player_def_buff * player_def_debuff)
+    showplayer_def = int(_get_effective_stat(player.total_def_battle, buffs, debuffs, "player", "def"))
     
-    player_spd_buff = buffs.get("player", {}).get("spd", {}).get("multiplier", 1.0)
-    player_spd_debuff = debuffs.get("player", {}).get("spd", {}).get("multiplier", 1.0)
-    showplayer_spd = int(player.total_spd_battle * player_spd_buff * player_spd_debuff)
+    showplayer_spd = int(_get_effective_stat(player.total_spd_battle, buffs, debuffs, "player", "spd"))
     
     # 敵（装備なし）
-    enemy_atk_buff = buffs.get("enemy", {}).get("atk", {}).get("multiplier", 1.0)
-    enemy_atk_debuff = debuffs.get("enemy", {}).get("atk", {}).get("multiplier", 1.0)
-    showenemy_atk = int(enemy.atk * enemy_atk_buff * enemy_atk_debuff)
+    showenemy_atk = int(_get_effective_stat(enemy.atk, buffs, debuffs, "enemy", "atk"))
     
-    enemy_def_buff = buffs.get("enemy", {}).get("def", {}).get("multiplier", 1.0)
-    enemy_def_debuff = debuffs.get("enemy", {}).get("def", {}).get("multiplier", 1.0)
-    showenemy_def = int(enemy.defense * enemy_def_buff * enemy_def_debuff)
+    showenemy_def = int(_get_effective_stat(enemy.defense, buffs, debuffs, "enemy", "def"))
     
-    enemy_spd_buff = buffs.get("enemy", {}).get("spd", {}).get("multiplier", 1.0)
-    enemy_spd_debuff = debuffs.get("enemy", {}).get("spd", {}).get("multiplier", 1.0)
-    showenemy_spd = int(enemy.spd * enemy_spd_buff * enemy_spd_debuff)
+    showenemy_spd = int(_get_effective_stat(enemy.spd, buffs, debuffs, "enemy", "spd"))
 
     # センチネル値（引数が渡されたかどうかを判定するため）
     _ENEMY_DEFAULT = object()
@@ -533,14 +552,12 @@ def battle(request, player_id, enemy_id=None):
             damage: 計算されたダメージ値
         """
         # プレイヤーの攻撃力【戦闘用ステータス】にバフとデバフを適用
-        player_atk_buff = buffs.get("player", {}).get("atk", {}).get("multiplier", 1.0)
-        player_atk_debuff = debuffs.get("player", {}).get("atk", {}).get("multiplier", 1.0)
-        atk = int(player.total_atk_battle * multiplier * player_atk_buff * player_atk_debuff)
+        atk = int(
+            _get_effective_stat(player.total_atk_battle, buffs, debuffs, "player", "atk") * multiplier
+        )
         
         # 敵の防御力にバフとデバフを適用
-        enemy_def_buff = buffs.get("enemy", {}).get("def", {}).get("multiplier", 1.0)
-        enemy_def_debuff = debuffs.get("enemy", {}).get("def", {}).get("multiplier", 1.0)
-        enemy_def = int(enemy.defense * enemy_def_buff * enemy_def_debuff)
+        enemy_def = int(_get_effective_stat(enemy.defense, buffs, debuffs, "enemy", "def"))
         
         # 敵が防御アクション中か確認
         effective_def = enemy_def // 1.5 if is_defense_action(actione) else enemy_def // 3
@@ -593,9 +610,7 @@ def battle(request, player_id, enemy_id=None):
                 message = f"{player.name}の攻撃！ {enemy.name}は回避した！\n"
                 action_result["evaded"] = True
             else:
-                enemy_spd_buff = buffs.get("enemy", {}).get("spd", {}).get("multiplier", 1.0)
-                enemy_spd_debuff = debuffs.get("enemy", {}).get("spd", {}).get("multiplier", 1.0)
-                enemy_effective_spd = enemy.spd * enemy_spd_buff * enemy_spd_debuff
+                enemy_effective_spd = _get_effective_stat(enemy.spd, buffs, debuffs, "enemy", "spd")
                 evasion_rate = calculate_evasion_rate(enemy_effective_spd)
                 
                 if random.random() < evasion_rate:
@@ -641,10 +656,13 @@ def battle(request, player_id, enemy_id=None):
                 player.mp -= skill_cost
                 player.save()
                 # アクションモードであることをセッションに保存
+                base_multiplier = skill_data["effects"][0].get("multiplier", 1.0)
                 request.session['action_mode'] = {
                     'skill_name': skill_name,
                     'skill_data': skill_data,
-                    'multiplier': skill_data["effects"][0].get("multiplier", 1.0)
+                    'action_type': skill_data.get("action_type", "spam"),
+                    'base_multiplier': base_multiplier,
+                    'multiplier': base_multiplier,
                 }
                 # アクションモード用の特別なレンダリングを返す
                 return message, True, action_result
@@ -673,9 +691,7 @@ def battle(request, player_id, enemy_id=None):
                         message += f"{enemy.name}は回避した！\n"
                         action_result["evaded"] = True
                     else:
-                        enemy_spd_buff = buffs.get("enemy", {}).get("spd", {}).get("multiplier", 1.0)
-                        enemy_spd_debuff = debuffs.get("enemy", {}).get("spd", {}).get("multiplier", 1.0)
-                        enemy_effective_spd = enemy.spd * enemy_spd_buff * enemy_spd_debuff
+                        enemy_effective_spd = _get_effective_stat(enemy.spd, buffs, debuffs, "enemy", "spd")
                         evasion_rate = calculate_evasion_rate(enemy_effective_spd)
                         
                         if random.random() < evasion_rate:
@@ -833,9 +849,13 @@ def battle(request, player_id, enemy_id=None):
                     if has_guaranteed_evasion:
                         should_evade = True
                     else:
-                        player_spd_buff = buffs.get("player", {}).get("spd", {}).get("multiplier", 1.0)
-                        player_spd_debuff = debuffs.get("player", {}).get("spd", {}).get("multiplier", 1.0)
-                        player_effective_spd = player.total_spd_battle * player_spd_buff * player_spd_debuff
+                        player_effective_spd = _get_effective_stat(
+                            player.total_spd_battle,
+                            buffs,
+                            debuffs,
+                            "player",
+                            "spd",
+                        )
                         evasion_rate = calculate_evasion_rate(player_effective_spd)
                         should_evade = random.random() < evasion_rate
                 
@@ -843,14 +863,20 @@ def battle(request, player_id, enemy_id=None):
                     message += f"{target_obj.name}は回避した！\n"
                 else:
                     # 敵の攻撃力にバフとデバフの両方を適用
-                    enemy_atk_buff = buffs.get("enemy", {}).get("atk", {}).get("multiplier", 1.0)
-                    enemy_atk_debuff = debuffs.get("enemy", {}).get("atk", {}).get("multiplier", 1.0)
-                    atk = int(me_obj.atk * multiplier * enemy_atk_buff * enemy_atk_debuff)
+                    atk = int(
+                        _get_effective_stat(me_obj.atk, buffs, debuffs, "enemy", "atk") * multiplier
+                    )
                     
                     # プレイヤーの防御力にバフとデバフを適用【戦闘用ステータス】
-                    player_def_buff = buffs.get("player", {}).get("def", {}).get("multiplier", 1.0)
-                    player_def_debuff = debuffs.get("player", {}).get("def", {}).get("multiplier", 1.0)
-                    player_def = int(target_obj.total_def_battle * player_def_buff * player_def_debuff)
+                    player_def = int(
+                        _get_effective_stat(
+                            target_obj.total_def_battle,
+                            buffs,
+                            debuffs,
+                            "player",
+                            "def",
+                        )
+                    )
                     
                     # 防御アクションを考慮してダメージ計算
                     damage_base = int(atk - (player_def // 1.5 if actionp == "defend" else player_def // 3))                
@@ -897,15 +923,15 @@ def battle(request, player_id, enemy_id=None):
         elif is_defense_action(actione):
             return False
         else:
-            # プレイヤーの素早さにバフとデバフを適用（戦闘用ステータス）
-            player_spd_buff = buffs.get("player", {}).get("spd", {}).get("multiplier", 1.0)
-            player_spd_debuff = debuffs.get("player", {}).get("spd", {}).get("multiplier", 1.0)
-            effective_player_spd = player.total_spd_battle * player_spd_buff * player_spd_debuff
-            
-            # 敵の素早さにバフとデバフを適用
-            enemy_spd_buff = buffs.get("enemy", {}).get("spd", {}).get("multiplier", 1.0)
-            enemy_spd_debuff = debuffs.get("enemy", {}).get("spd", {}).get("multiplier", 1.0)
-            effective_enemy_spd = enemy.spd * enemy_spd_buff * enemy_spd_debuff
+            # プレイヤー/敵の素早さにバフとデバフを適用
+            effective_player_spd = _get_effective_stat(
+                player.total_spd_battle,
+                buffs,
+                debuffs,
+                "player",
+                "spd",
+            )
+            effective_enemy_spd = _get_effective_stat(enemy.spd, buffs, debuffs, "enemy", "spd")
             
             return effective_player_spd >= effective_enemy_spd
 
@@ -1220,8 +1246,18 @@ def battle(request, player_id, enemy_id=None):
                 return render(request, "game/battle.html", render_battle_screen(message))
         
         actione = choose_enemyAction(enemy, player, buffs, debuffs)
+        
+        special_action_skill = False
+        if special:
+            player_skills_local = PLAYER_SKILLS.get(player.job, [])
+            try:
+                skill_index = int(special.replace('skill', '')) - 1
+            except ValueError:
+                skill_index = -1
+            if 0 <= skill_index < len(player_skills_local):
+                special_action_skill = player_skills_local[skill_index].get("is_action", False)
 
-        is_player_first = spdcheck(actionp, actione)
+        is_player_first = True if special_action_skill else spdcheck(actionp, actione)
         player_action_result = {"damage": 0, "evaded": False}
         if is_player_first:
             ex_message = ""
@@ -1369,30 +1405,18 @@ def battle(request, player_id, enemy_id=None):
         
         # 表示用ステータスを再計算【装備ボーナス込み + バフ×デバフ適用】
         # プレイヤーのステータス（total_atk, total_def, total_spdは装備込み）
-        player_atk_buff = buffs.get("player", {}).get("atk", {}).get("multiplier", 1.0)
-        player_atk_debuff = debuffs.get("player", {}).get("atk", {}).get("multiplier", 1.0)
-        showplayer_atk = int(player.total_atk_battle * player_atk_buff * player_atk_debuff)
+        showplayer_atk = int(_get_effective_stat(player.total_atk_battle, buffs, debuffs, "player", "atk"))
         
-        player_def_buff = buffs.get("player", {}).get("def", {}).get("multiplier", 1.0)
-        player_def_debuff = debuffs.get("player", {}).get("def", {}).get("multiplier", 1.0)
-        showplayer_def = int(player.total_def_battle * player_def_buff * player_def_debuff)
+        showplayer_def = int(_get_effective_stat(player.total_def_battle, buffs, debuffs, "player", "def"))
         
-        player_spd_buff = buffs.get("player", {}).get("spd", {}).get("multiplier", 1.0)
-        player_spd_debuff = debuffs.get("player", {}).get("spd", {}).get("multiplier", 1.0)
-        showplayer_spd = int(player.total_spd_battle * player_spd_buff * player_spd_debuff)
+        showplayer_spd = int(_get_effective_stat(player.total_spd_battle, buffs, debuffs, "player", "spd"))
         
         # 敵のステータス（装備なし）
-        enemy_atk_buff = buffs.get("enemy", {}).get("atk", {}).get("multiplier", 1.0)
-        enemy_atk_debuff = debuffs.get("enemy", {}).get("atk", {}).get("multiplier", 1.0)
-        showenemy_atk = int(enemy.atk * enemy_atk_buff * enemy_atk_debuff)
+        showenemy_atk = int(_get_effective_stat(enemy.atk, buffs, debuffs, "enemy", "atk"))
         
-        enemy_def_buff = buffs.get("enemy", {}).get("def", {}).get("multiplier", 1.0)
-        enemy_def_debuff = debuffs.get("enemy", {}).get("def", {}).get("multiplier", 1.0)
-        showenemy_def = int(enemy.defense * enemy_def_buff * enemy_def_debuff)
+        showenemy_def = int(_get_effective_stat(enemy.defense, buffs, debuffs, "enemy", "def"))
         
-        enemy_spd_buff = buffs.get("enemy", {}).get("spd", {}).get("multiplier", 1.0)
-        enemy_spd_debuff = debuffs.get("enemy", {}).get("spd", {}).get("multiplier", 1.0)
-        showenemy_spd = int(enemy.spd * enemy_spd_buff * enemy_spd_debuff)
+        showenemy_spd = int(_get_effective_stat(enemy.spd, buffs, debuffs, "enemy", "spd"))
 
         # メッセージを履歴に追加
         if message:

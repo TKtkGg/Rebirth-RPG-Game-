@@ -53,7 +53,7 @@ def start_game(request):
         except Player.DoesNotExist:
             pass  # Playerが存在しない場合は職業選択へ進む
     
-    default_jobs = ["戦士", "魔法使い", "忍者", "格闘家"]
+    default_jobs = ["戦士", "魔法使い", "忍者", "格闘家", "侍"]
     unlocked_jobs = []
     if request.user.is_authenticated:
         unlocked_jobs = request.user.unlocked_jobs or []
@@ -92,6 +92,10 @@ def start_game(request):
         elif job == "格闘家":
             base_hp, base_atk, base_def, base_spd, base_mp = 100, 5, 5, 5, 50
             job_bonus_hp, job_bonus_atk, job_bonus_def, job_bonus_spd, job_bonus_mp = -20, 8, 3, 5, -10
+            stat_points = 0
+        elif job == "侍":
+            base_hp, base_atk, base_def, base_spd, base_mp = 100, 5, 5, 5, 50
+            job_bonus_hp, job_bonus_atk, job_bonus_def, job_bonus_spd, job_bonus_mp = -10, 10, 0, 5, -10
             stat_points = 0
         else:
             base_hp, base_atk, base_def, base_spd, base_mp = 100, 5, 5, 5, 50
@@ -203,6 +207,12 @@ def start_game(request):
             "icon": "game/img/アイコン/格闘_アイコン.png",
             "description": "攻撃力に特に優れたジョブ。体力と気力が少し低め。",
             "bonus": "HP -20, ATK +8, DEF +3, SPD +5, SP -10",
+        },
+        {
+            "key": "侍",
+            "icon": "game/img/アイコン/武器_アイコン.png",
+            "description": "一瞬の見切りで勝機を掴む剣士。",
+            "bonus": "HP -10, ATK +10, SPD +5, SP -10",
         },
     ]
 

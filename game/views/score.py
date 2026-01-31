@@ -38,7 +38,7 @@ def score_points(request):
         return redirect('game:start')
 
     user = request.user
-    default_jobs = ["戦士", "魔法使い", "忍者", "格闘家"]
+    default_jobs = ["戦士", "魔法使い", "忍者", "格闘家", "侍"]
     unlocked = user.unlocked_jobs or []
     # 基本職業 + 追加職業の順で表示（重複は除外）
     job_list = list(dict.fromkeys(default_jobs + unlocked))
@@ -124,6 +124,7 @@ def ranking(request):
         "魔法使い": "game/img/アイコン/魔法の杖_アイコン.png",
         "忍者": "game/img/アイコン/忍者_アイコン.png",
         "格闘家": "game/img/アイコン/格闘_アイコン.png",
+        "侍": "game/img/アイコン/武器_アイコン.png",
     }
     default_icon = "game/img/アイコン/はてな_アイコン.png"
 
