@@ -238,6 +238,7 @@
      data-csrf-token="{{ csrf_token }}"
      data-action-mode="{% if action_mode %}true{% else %}false{% endif %}"
      data-action-skill-type="{% if action_mode %}{{ action_mode.action_type }}{% endif %}"
+     data-action-skill-index="{% if action_mode %}{{ action_mode.skill_index }}{% endif %}"
      data-player-id="{{ player.id }}"
      data-enemy-id="{% if enemy %}{{ enemy.id }}{% endif %}"
      data-action-skill-click-url="{% if action_mode %}{% url 'game:action_skill_click' player.id enemy.id %}{% endif %}"

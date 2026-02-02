@@ -646,13 +646,44 @@ def battle(request, player_id, enemy_id=None):
             skill_cost = skill_data["cost"]
             is_action_skill = skill_data.get("is_action", False)
             
-            # SP不足チェック
-            if player.mp < skill_cost:
-                message = "しかしSPが足りない！"
-                return message, False, action_result
+            timing_result = request.POST.get('timing_result')
+            
+            # SP不足チェック（タイミング特技の結果処理では再チェックしない）
+            if not (is_action_skill and skill_data.get("action_type") == "timing" and timing_result is not None):
+                if player.mp < skill_cost:
+                    message = "しかしSPが足りない！"
+                    return message, False, action_result
             
             # アクション特技の場合は特別な処理
             if is_action_skill:
+                timing_result = request.POST.get('timing_result')
+                if skill_data.get("action_type") == "timing" and timing_result is not None:
+                    action_data = request.session.pop('action_mode', None)
+                    skill_name = action_data.get('skill_name', skill_name) if action_data else skill_name
+                    try:
+                        timing_multiplier = float(request.POST.get('timing_multiplier', 0))
+                    except (TypeError, ValueError):
+                        timing_multiplier = 0
+                    
+                    message = f"{player.name}の{skill_name}！\n"
+                    
+                    if timing_result != 'success':
+                        message += "失敗してしまった！\n"
+                        return message, True, action_result
+                    
+                    effective_atk = _get_effective_stat(player.total_atk_battle, buffs, debuffs, "player", "atk")
+                    enemy_def = _get_effective_stat(enemy.defense, buffs, debuffs, "enemy", "def")
+                    effective_def = enemy_def // 3
+                    base_damage = max(1, effective_atk - effective_def)
+                    damage_variance = random.randint(0, 3)
+                    damage = max(int(base_damage * timing_multiplier) + damage_variance, 1)
+                    
+                    enemy.hp = max(0, enemy.hp - damage)
+                    enemy.save()
+                    action_result["damage"] = damage
+                    message += f"{enemy.name}に{damage}ダメージ！\n"
+                    return message, True, action_result
+
                 player.mp -= skill_cost
                 player.save()
                 # アクションモードであることをセッションに保存
@@ -660,7 +691,8 @@ def battle(request, player_id, enemy_id=None):
                 request.session['action_mode'] = {
                     'skill_name': skill_name,
                     'skill_data': skill_data,
-                    'action_type': skill_data.get("action_type", "spam"),
+                    'action_type': skill_data.get("action_type"),
+                    'skill_index': skill_index,
                     'base_multiplier': base_multiplier,
                     'multiplier': base_multiplier,
                 }
@@ -970,6 +1002,11 @@ def battle(request, player_id, enemy_id=None):
             message += f"逃げようとした、しかし失敗した！\n"
             return message, False, 0, 0
     
+    # アクションモード中ならその画面を優先表示
+    if request.method == 'GET' and request.session.get('action_mode'):
+        action_data = request.session['action_mode']
+        return render(request, "game/battle.html", render_battle_screen(message, action_mode=action_data))
+
     # アクション特技終了後の勝利処理
     if request.method == 'GET' and request.session.get('after_action_skill_win'):
         message = request.session.pop('action_skill_message', '')
@@ -1056,6 +1093,13 @@ def battle(request, player_id, enemy_id=None):
         actionp = request.POST.get('action')
         special = request.POST.get('special')
         use_item_id = request.POST.get('use_item')
+        timing_result = request.POST.get('timing_result')
+        
+        if not special and timing_result and request.session.get('action_mode'):
+            action_mode = request.session.get('action_mode') or {}
+            skill_index = action_mode.get('skill_index')
+            if isinstance(skill_index, int):
+                special = f"skill{skill_index + 1}"
 
         if special:
             player_skills_local = PLAYER_SKILLS.get(player.job, [])
@@ -1065,8 +1109,11 @@ def battle(request, player_id, enemy_id=None):
                 skill_index = -1
 
             if 0 <= skill_index < len(player_skills_local):
-                skill_cost = player_skills_local[skill_index].get("cost", 0)
-                if player.mp < skill_cost:
+                skill_data = player_skills_local[skill_index]
+                skill_cost = skill_data.get("cost", 0)
+                timing_result = request.POST.get('timing_result')
+                is_timing_result = skill_data.get("action_type") == "timing" and timing_result is not None
+                if not is_timing_result and player.mp < skill_cost:
                     message = "しかしSPが足りない！"
                     if is_ajax:
                         return JsonResponse({'error': message}, status=200)
@@ -1450,17 +1497,23 @@ def battle(request, player_id, enemy_id=None):
                     if 0 <= skill_index < len(player_skills):
                         skill_data = player_skills[skill_index]
                         effect_type, target = summarize_effects(skill_data.get("effects", []))
-                        if effect_type == "attack":
-                            player_effect_type = "damage"
-                        elif effect_type == "buf":
-                            player_effect_type = "buff"
-                        elif effect_type == "debuf":
-                            player_effect_type = "debuff"
-                        elif effect_type == "guaranteed_evasion":
-                            player_effect_type = "evade"
-                        elif effect_type == "defense":
-                            player_effect_type = "guard"
-                        player_action_target = target
+                        timing_result = request.POST.get('timing_result')
+                        if skill_data.get("action_type") == "timing" and timing_result is not None:
+                            player_action_type = "timing"
+                            player_action_target = "enemy"
+                            player_effect_type = "damage" if timing_result == "success" else "none"
+                        else:
+                            if effect_type == "attack":
+                                player_effect_type = "damage"
+                            elif effect_type == "buf":
+                                player_effect_type = "buff"
+                            elif effect_type == "debuf":
+                                player_effect_type = "debuff"
+                            elif effect_type == "guaranteed_evasion":
+                                player_effect_type = "evade"
+                            elif effect_type == "defense":
+                                player_effect_type = "guard"
+                            player_action_target = target
                 except ValueError:
                     pass
             else:
