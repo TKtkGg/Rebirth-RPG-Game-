@@ -102,6 +102,8 @@ def ranking(request):
 
     スコア / 強敵討伐数 / 勝利回数の上位3名を表示します。
     """
+    if not request.user.is_authenticated and request.session.get('guest_player_id'):
+        return redirect('game:battle_start', player_id=request.session.get('guest_player_id'))
     User = get_user_model()
     category = request.GET.get('category', 'score')
     if category not in ['score', 'strong', 'victories']:

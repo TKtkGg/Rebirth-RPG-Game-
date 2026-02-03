@@ -83,7 +83,7 @@ def start_game(request):
             stat_points = 0
         elif job == "魔法使い":
             base_hp, base_atk, base_def, base_spd, base_mp = 100, 5, 5, 5, 50
-            job_bonus_hp, job_bonus_atk, job_bonus_def, job_bonus_spd, job_bonus_mp = -5, 7, -2, 0, +10
+            job_bonus_hp, job_bonus_atk, job_bonus_def, job_bonus_spd, job_bonus_mp = -5, 10, -2, 0, +10
             stat_points = 0
         elif job == "忍者":
             base_hp, base_atk, base_def, base_spd, base_mp = 100, 5, 5, 5, 50
@@ -95,7 +95,7 @@ def start_game(request):
             stat_points = 0
         elif job == "侍":
             base_hp, base_atk, base_def, base_spd, base_mp = 100, 5, 5, 5, 50
-            job_bonus_hp, job_bonus_atk, job_bonus_def, job_bonus_spd, job_bonus_mp = -10, 10, 0, 5, -10
+            job_bonus_hp, job_bonus_atk, job_bonus_def, job_bonus_spd, job_bonus_mp = -10, 10, 0, 5, -20
             stat_points = 0
         else:
             base_hp, base_atk, base_def, base_spd, base_mp = 100, 5, 5, 5, 50
@@ -262,7 +262,7 @@ def gameover(request):
             # プレイヤーのスコアを計算
             score_data = calculate_score(player)
             score = score_data['total_score']
-            initial_point = score // 10000  # スコアの1/10000を初期ポイントとする
+            initial_point = score // 5000  # スコアの1/5000を初期ポイントとする
             
             # スコアをセッションに保存（内訳から戻った時のため）
             request.session['gameover_score'] = score

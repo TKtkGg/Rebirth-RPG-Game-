@@ -42,9 +42,15 @@
             <button type="submit" class="btn-submit">アカウント作成</button>
         </form>
         
+        {% if request.session.converting_guest_player_id %}
+        <div class="back-link auth-back-link">
+            <a href="{% url 'game:battle_start' request.session.converting_guest_player_id %}">← ゲストプレイに戻る</a>
+        </div>
+        {% else %}
         <div class="back-link auth-back-link">
             <a href="{% url 'accounts:home' %}">← ホームに戻る</a>
         </div>
+        {% endif %}
     </div>
 </div>
 {% endblock %}

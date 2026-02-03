@@ -295,15 +295,6 @@ def battle(request, player_id, enemy_id=None):
             return redirect('game:gameover')
         return redirect('game:start')
     
-    def apply_levelup_recovery_if_needed(message=""):
-        if request.session.pop('pending_levelup_recovery', False):
-            player.hp = player.max_hp
-            player.mp = player.max_mp
-            player.update_battle_stats()
-            player.save()
-            message += "HPとSPが全回復した！\n"
-        return message
-
     # AJAXで勝利した後のリロード時の処理
     if request.session.get('battle_won'):
         gained_exp = request.session.pop('gained_exp', 0)
@@ -321,7 +312,6 @@ def battle(request, player_id, enemy_id=None):
         player_skills, player_items = _get_player_skills_and_items(player)
         
         victory_message = f"勝利！\n経験値を{gained_exp}ゲットした！\n{gained_gold}Gゲットした！\n"
-        victory_message = apply_levelup_recovery_if_needed(victory_message)
         return render(request, "game/battle.html", {
             "player": player,
             "enemy": None,
@@ -520,9 +510,7 @@ def battle(request, player_id, enemy_id=None):
                     player_quest.update_progress(1)
 
         # レベルアップ処理
-        message, leveled_up = level_up_player(player, message)
-        if leveled_up:
-            request.session['pending_levelup_recovery'] = True
+        message, _ = level_up_player(player, message)
 
         # 戦闘回数をカウントアップ
         battle_count = request.session.get('battle_count', 0)
@@ -1014,7 +1002,6 @@ def battle(request, player_id, enemy_id=None):
         
         # 勝利処理
         message, gained_exp, gained_gold, existLevel = win(message)
-        message = apply_levelup_recovery_if_needed(message)
         return render(request, "game/battle.html", render_battle_screen(message, enemy_override=None, gained_exp=gained_exp, existLevel=existLevel, gained_gold=gained_gold))
     
     # アクション特技終了後の処理（敵が生きている場合）
@@ -1055,7 +1042,6 @@ def battle(request, player_id, enemy_id=None):
         # 敵が倒されたかチェック
         if enemy.hp <= 0:
             message, gained_exp, gained_gold, existLevel = win(message)
-            message = apply_levelup_recovery_if_needed(message)
             return render(request, "game/battle.html", render_battle_screen(message, enemy_override=None, gained_exp=gained_exp, existLevel=existLevel, gained_gold=gained_gold))
         
         # 戦闘を続行
@@ -1118,6 +1104,175 @@ def battle(request, player_id, enemy_id=None):
                     if is_ajax:
                         return JsonResponse({'error': message}, status=200)
                     return render(request, "game/battle.html", render_battle_screen(message))
+
+        def handle_action_mode_end():
+            action_mode_end = request.POST.get('action_mode_end')
+            if not action_mode_end or not request.session.get('action_mode'):
+                return None
+
+            local_buffs = buffs
+            local_debuffs = debuffs
+            local_special_states = special_states
+
+            action_data = request.session.pop('action_mode', None)
+            action_type = action_data.get('action_type', 'spam') if action_data else 'spam'
+            click_count = int(request.POST.get('click_count', 0))
+            total_damage = request.session.pop('action_total_damage', 0)
+            skill_name = action_data.get('skill_name', '') if action_data else ''
+
+            message = f"{player.name}の{skill_name}！\n"
+            if action_type == 'timing' and timing_result == 'fail':
+                message += "失敗してしまった！\n"
+            else:
+                message += f"{click_count}回の連続攻撃！ 合計{total_damage}ダメージ！\n"
+
+            player_action_message = message
+            player_action_damage = total_damage
+            player_action_type = "skill"
+            player_effect_type = "damage" if total_damage > 0 else "none"
+            player_action_target = "enemy"
+            player_action_value = 0
+            actione = None
+            did_enemy_act = False
+            enemy_action_message = ""
+
+            if enemy.hp <= 0:
+                message, gained_exp, gained_gold, existLevel = win(message)
+            else:
+                actione = choose_enemyAction(enemy, player, local_buffs, local_debuffs)
+                ex_message, local_buffs, local_debuffs = enemyAction(
+                    message,
+                    enemy,
+                    player,
+                    local_buffs,
+                    local_debuffs,
+                    None,
+                    actione,
+                )
+                message += ex_message
+                enemy_action_message = ex_message
+                did_enemy_act = True
+
+                if player.total_hp_battle <= 0:
+                    player.death_count += 1
+                    if player.death_count >= 3:
+                        request.session['gameover_player_id'] = player.id
+                    else:
+                        message = tohome(message)
+
+            # ターン経過でバフ・デバフを減少
+            local_buffs, local_debuffs, local_special_states = decrease_buff_debuff_turns(
+                local_buffs,
+                local_debuffs,
+                local_special_states,
+            )
+            request.session["buffs"] = local_buffs
+            request.session["debuffs"] = local_debuffs
+            request.session["special_states"] = local_special_states
+
+            if message:
+                message_history.append(message)
+                request.session["message_history"] = message_history
+
+            player.save()
+
+            if is_ajax:
+                enemy_action_damage = max(0, start_player_hp - player.total_hp_battle)
+                enemy_action_type = "skill"
+                enemy_effect_type = "none"
+                enemy_action_target = None
+                if actione:
+                    effect_type, target = summarize_effects(actione.get("effects", []))
+                    if effect_type == "attack":
+                        enemy_effect_type = "damage"
+                    elif effect_type == "buf":
+                        enemy_effect_type = "buff"
+                    elif effect_type == "debuf":
+                        enemy_effect_type = "debuff"
+                    elif effect_type == "guaranteed_evasion":
+                        enemy_effect_type = "evade"
+                    elif effect_type == "defense":
+                        enemy_effect_type = "guard"
+                    enemy_action_target = target
+                if enemy_action_message and "回避" in enemy_action_message and enemy_effect_type == "damage":
+                    enemy_effect_type = "evade"
+                    enemy_action_damage = 0
+
+                battle_result = {
+                    'player_first': True,
+                    'player_hp': player.total_hp_battle,
+                    'player_max_hp': player.total_max_hp_battle,
+                    'player_mp': player.mp,
+                    'player_max_mp': player.max_mp,
+                    'enemy_hp': enemy.hp if enemy.hp > 0 else 0,
+                    'enemy_max_hp': enemy.max_hp,
+                    'battle_ended': False,
+                    'player_won': False,
+                    'player_died': False,
+                    'message': message,
+                    'buffs': local_buffs,
+                    'debuffs': local_debuffs,
+                    'skip_player_animation': True,
+                    'player_action': {
+                        'damage': player_action_damage,
+                        'message': player_action_message,
+                        'action_type': player_action_type,
+                        'effect_type': player_effect_type,
+                        'target': player_action_target,
+                        'value': player_action_value,
+                        'is_finisher': False,
+                        'attack_sound': player_attack_sound,
+                        'attack_effect': player_attack_effect,
+                        'target_guarded': False,
+                    },
+                    'enemy_action': None if not did_enemy_act else {
+                        'damage': enemy_action_damage,
+                        'message': enemy_action_message,
+                        'action_type': enemy_action_type,
+                        'effect_type': enemy_effect_type,
+                        'target': enemy_action_target,
+                        'value': 0,
+                        'is_finisher': False,
+                        'attack_sound': enemy_attack_sound,
+                        'attack_effect': enemy_attack_effect,
+                        'target_guarded': enemy_effect_type == "damage" and actionp == "defend",
+                    },
+                }
+
+                if enemy.hp <= 0:
+                    battle_result['battle_ended'] = True
+                    battle_result['player_won'] = True
+                    battle_result['enemy_hp'] = 0
+                    battle_result['player_action']['is_finisher'] = True
+
+                    gained_exp = request.session.get('gained_exp', 0)
+                    gained_gold = request.session.get('gained_gold', 0)
+                    old_level = request.session.get('old_level', player.level)
+
+                    request.session['battle_won'] = True
+                    battle_result['gained_exp'] = gained_exp
+                    battle_result['gained_gold'] = gained_gold
+                    battle_result['leveled_up'] = (player.level > old_level)
+                    battle_result['new_level'] = player.level if player.level > old_level else None
+
+                elif player.total_hp_battle <= 0:
+                    battle_result['battle_ended'] = True
+                    battle_result['player_died'] = True
+                    battle_result['player_hp'] = 0
+                    if player.death_count >= 3:
+                        battle_result['redirect_url'] = reverse('game:gameover')
+                    else:
+                        battle_result['redirect_url'] = reverse('game:battle_start', kwargs={'player_id': player.id})
+
+                return JsonResponse(battle_result)
+
+            if enemy.hp <= 0:
+                return render(request, "game/battle.html", render_battle_screen(message, enemy_override=None, gained_exp=gained_exp, existLevel=existLevel, gained_gold=gained_gold))
+            return render(request, "game/battle.html", render_battle_screen(message))
+
+        action_mode_response = handle_action_mode_end()
+        if action_mode_response:
+            return action_mode_response
         
         # デバッグ用：kキーでゲームオーバー
         if actionp == 'debug_gameover':
@@ -1323,7 +1478,6 @@ def battle(request, player_id, enemy_id=None):
             if enemy.hp <= 0:
                 message, gained_exp, gained_gold, existLevel = win(message)
                 if not is_ajax:
-                    message = apply_levelup_recovery_if_needed(message)
                     return render(request, "game/battle.html", render_battle_screen(message, enemy_override=None, gained_exp=gained_exp, existLevel=existLevel, gained_gold=gained_gold))
             else:
                 ex_message, buffs, debuffs = enemyAction(message, enemy, player, buffs, debuffs, actionp, actione)
@@ -1439,7 +1593,6 @@ def battle(request, player_id, enemy_id=None):
             if enemy.hp <= 0:
                 message, gained_exp, gained_gold, existLevel = win(message)
                 if not is_ajax:
-                    message = apply_levelup_recovery_if_needed(message)
                     return render(request, "game/battle.html", render_battle_screen(message, enemy_override=None, gained_exp=gained_exp, existLevel=existLevel, gained_gold=gained_gold))
           
 

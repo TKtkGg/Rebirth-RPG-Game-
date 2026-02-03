@@ -240,6 +240,13 @@ def level_up_player(player, message=""):
         leveled_up = True
         
         message += f"レベルアップ！ レベル{player.level}になった！ ステータスポイント+3\n"
+
+    if leveled_up:
+        player.hp = player.max_hp
+        player.mp = player.max_mp
+        player.update_battle_stats()
+        player.save()
+        message += "HPとSPが全回復した！\n"
     
     return message, leveled_up
 

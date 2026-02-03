@@ -10,7 +10,7 @@
 {% block content %}
 
 {% if player.is_guest %}
-<a href="{% url 'game:convert_guest_to_user' player.id %}" class="signin-button">サインイン</a>
+<a href="{% url 'game:convert_guest_to_user' player.id %}" class="signin-button">サインアップ</a>
 {% endif %}
 
 <div class="rpg-container" style="--home-bg: url('{% static 'game/img/背景/ホーム.jpg' %}');" data-is-guest="{{ is_guest|lower }}">
@@ -108,9 +108,15 @@
                 <a href="{% url 'game:quest' player.id %}" class="quick-action-button" aria-label="クエスト">
                     <img src="{% static 'game/img/アイコン/クエスト_アイコン.png' %}" alt="クエスト">
                 </a>
-                <a href="{% url 'game:ranking' %}?player_id={{ player.id }}" class="quick-action-button" aria-label="ランキング">
-                    <img src="{% static 'game/img/アイコン/ランキング_アイコン.png' %}" alt="ランキング">
-                </a>
+                {% if is_guest %}
+                    <button type="button" class="quick-action-button is-disabled" aria-label="ランキング（ゲストは利用不可）" aria-disabled="true">
+                        <img src="{% static 'game/img/アイコン/ランキング_アイコン.png' %}" alt="ランキング">
+                    </button>
+                {% else %}
+                    <a href="{% url 'game:ranking' %}?player_id={{ player.id }}" class="quick-action-button" aria-label="ランキング">
+                        <img src="{% static 'game/img/アイコン/ランキング_アイコン.png' %}" alt="ランキング">
+                    </a>
+                {% endif %}
                 <button type="button" class="quick-action-button" id="settingsTrigger" aria-label="設定を開く">
                     <img src="{% static 'game/img/アイコン/設定_アイコン.png' %}" alt="設定">
                 </button>
