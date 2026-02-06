@@ -123,11 +123,17 @@
                         {% csrf_token %}
                         {% for skill in player_skills %}
                             {% if skill.is_action %}
-                                <button type="submit" name="special" value="skill{{ forloop.counter }}" class="battle-button action-skill-button">
+                                <button type="submit" name="special" value="skill{{ forloop.counter }}" class="battle-button action-skill-button"
+                                        data-skill-name="{{ skill.name }}"
+                                        data-skill-cost="{{ skill.cost }}"
+                                        data-skill-description="{{ skill.description }}">
                                     {{ skill.name }} (SP:{{ skill.cost }})
                                 </button>
                             {% else %}
-                                <button type="submit" name="special" value="skill{{ forloop.counter }}" class="battle-button special-button">
+                                <button type="submit" name="special" value="skill{{ forloop.counter }}" class="battle-button special-button"
+                                        data-skill-name="{{ skill.name }}"
+                                        data-skill-cost="{{ skill.cost }}"
+                                        data-skill-description="{{ skill.description }}">
                                     {{ skill.name }} (SP:{{ skill.cost }})
                                 </button>
                             {% endif %}
@@ -148,7 +154,12 @@
                         {% for inv_item in player_items %}
                         <form method="POST" style="margin: 0;" class="item-form" data-item-target="{{ inv_item.item.target }}">
                             {% csrf_token %}
-                            <button type="submit" name="use_item" value="{{ inv_item.item.id }}" data-item-id="{{ inv_item.item.id }}" data-item-name="{{ inv_item.item.name }}" class="battle-button special-button" style="width: 100%; text-align: center; padding: 8px; font-size: 16px;">
+                            <button type="submit" name="use_item" value="{{ inv_item.item.id }}" data-item-id="{{ inv_item.item.id }}" data-item-name="{{ inv_item.item.name }}"
+                                    data-item-target="{{ inv_item.item.target }}"
+                                    data-item-effect-amount="{{ inv_item.item.effect_amount }}"
+                                    data-item-description="{{ inv_item.item.description }}"
+                                    data-item-quantity="{{ inv_item.quantity }}"
+                                    class="battle-button special-button" style="width: 100%; text-align: center; padding: 8px; font-size: 16px;">
                                 {{ inv_item.item.name }}<br>(×{{ inv_item.quantity }})
                             </button>
                         </form>
@@ -230,6 +241,11 @@
 {% if redirect_after %}
     <div id="battle-redirect" data-url="{% url 'game:battle_start' player.id %}" data-delay="1500"></div>
 {% endif %}
+
+<!-- ツールチップ -->
+<div class="item-tooltip" id="itemTooltip">
+    <div id="tooltipContent"></div>
+</div>
 
 {% endblock %}
 
