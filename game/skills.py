@@ -371,7 +371,7 @@ PLAYER_SKILLS = {
                 {
                     "type": "action",
                     "target": "enemy",
-                    "multiplier": random.uniform(0.08, 0.1)
+                    "multiplier": 0.09
                 }
             ]
         }

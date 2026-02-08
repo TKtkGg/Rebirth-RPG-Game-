@@ -6,7 +6,14 @@
 from django.shortcuts import render, redirect
 from django.contrib.auth import logout
 from ..models import Player, Stage, Equipment
-from .utils import get_player_from_request, initialize_player_quests, calculate_score, _combine_score_bonus, select_new_enemy
+from ..scorepoints_content import SCORE_POINT_CONFIG, JOB_CONFIG_KEY_MAP
+from .utils import (
+    get_player_from_request,
+    initialize_player_quests,
+    calculate_score,
+    select_new_enemy,
+    get_job_bonus_values,
+)
 
 
 def home(request):
@@ -102,16 +109,32 @@ def start_game(request):
             job_bonus_hp, job_bonus_atk, job_bonus_def, job_bonus_spd, job_bonus_mp = 0, 0, 0, 0, 0
             stat_points = 0
 
-        score_bonus_counts = {}
-        bonus_hp = bonus_atk = bonus_def = bonus_spd = bonus_mp = bonus_gold = 0
+        job_bonus_values = {}
         if request.user.is_authenticated:
-            score_bonus_counts = _combine_score_bonus(request.user, job)
-            bonus_hp = score_bonus_counts.get("hp", 0) * 5 + request.user.bonus_hp
-            bonus_atk = score_bonus_counts.get("atk", 0) * 1 + request.user.bonus_atk
-            bonus_def = score_bonus_counts.get("def", 0) * 1 + request.user.bonus_def
-            bonus_spd = score_bonus_counts.get("spd", 0) * 1 + request.user.bonus_spd
-            bonus_mp = score_bonus_counts.get("mp", 0) * 5
-            bonus_gold = score_bonus_counts.get("gold", 0) * 50
+            job_bonus_values = get_job_bonus_values(request.user, job)
+            job_bonus_hp = int(job_bonus_values.get("job_bonus_hp", job_bonus_hp))
+            job_bonus_atk = int(job_bonus_values.get("job_bonus_atk", job_bonus_atk))
+            job_bonus_def = int(job_bonus_values.get("job_bonus_def", job_bonus_def))
+            job_bonus_spd = int(job_bonus_values.get("job_bonus_spd", job_bonus_spd))
+            job_bonus_mp = int(job_bonus_values.get("job_bonus_mp", job_bonus_mp))
+
+        all_defaults = {cfg["key"]: cfg["base"] for cfg in SCORE_POINT_CONFIG.get("all", [])}
+        base_gold = int(all_defaults.get("gold", 100))
+        if request.user.is_authenticated:
+            all_bonus = request.user.score_bonus_all or {}
+            base_hp = int(all_bonus.get("hp", all_defaults.get("hp", base_hp)))
+            base_atk = int(all_bonus.get("atk", all_defaults.get("atk", base_atk)))
+            base_def = int(all_bonus.get("def", all_defaults.get("def", base_def)))
+            base_spd = int(all_bonus.get("spd", all_defaults.get("spd", base_spd)))
+            base_mp = int(all_bonus.get("mp", all_defaults.get("mp", base_mp)))
+            base_gold = int(all_bonus.get("gold", all_defaults.get("gold", base_gold)))
+
+        bonus_hp = bonus_atk = bonus_def = bonus_spd = bonus_mp = 0
+        if request.user.is_authenticated:
+            bonus_hp = request.user.bonus_hp
+            bonus_atk = request.user.bonus_atk
+            bonus_def = request.user.bonus_def
+            bonus_spd = request.user.bonus_spd
         
         # 初期装備をデータベースから取得
         try:
@@ -145,7 +168,7 @@ def start_game(request):
                 job=job,
                 weapon=wooden_sword,
                 armor=leather_armor,
-                gold=100 + bonus_gold,
+                gold=base_gold,
             )
         else:
             # ゲストプレイヤー: user=Noneで作成
@@ -183,36 +206,74 @@ def start_game(request):
     # ログインユーザーの場合はデフォルト名をユーザー名にする（ゲスト強制時は空にする）
     default_name = request.user.username if request.user.is_authenticated and not force_guest else ""
     
+    def _format_job_bonus(job_name, user=None):
+        config_key = JOB_CONFIG_KEY_MAP.get(job_name)
+        if not config_key:
+            return ""
+        config_list = SCORE_POINT_CONFIG.get(config_key, [])
+        if not config_list:
+            return ""
+        bonus_values = {}
+        if user and user.is_authenticated:
+            bonus_values = get_job_bonus_values(user, job_name)
+        key_label_map = {
+            "job_bonus_hp": "HP",
+            "job_bonus_atk": "ATK",
+            "job_bonus_def": "DEF",
+            "job_bonus_spd": "SPD",
+            "job_bonus_mp": "SP",
+        }
+        parts = []
+        for cfg in config_list:
+            if not cfg.get("key", "").startswith("job_bonus_"):
+                continue
+            value = cfg.get("base")
+            if value is None:
+                continue
+            if cfg["key"] in bonus_values:
+                value = bonus_values.get(cfg["key"], value)
+            if value == 0:
+                continue
+            label = key_label_map.get(cfg.get("key"), "")
+            if not label:
+                continue
+            if isinstance(value, (int, float)) and float(value).is_integer():
+                value_text = f"{int(value):+d}"
+            else:
+                value_text = f"{value:+.1f}"
+            parts.append(f"{label} {value_text}")
+        return " , ".join(parts)
+
     job_definitions = [
         {
             "key": "戦士",
             "icon": "game/img/アイコン/武器_アイコン.png",
             "description": "体力、攻撃力、防御力が高いが、スピードは遅め。",
-            "bonus": "HP +10, ATK +3, DEF +3, SPD -3",
+            "bonus": _format_job_bonus("戦士", request.user),
         },
         {
             "key": "魔法使い",
             "icon": "game/img/アイコン/魔法の杖_アイコン.png",
             "description": "高い攻撃力を持つが、打たれ弱い。",
-            "bonus": "HP -5, ATK +7, DEF -2",
+            "bonus": _format_job_bonus("魔法使い", request.user),
         },
         {
             "key": "忍者",
             "icon": "game/img/アイコン/忍者_アイコン.png",
             "description": "攻撃力、スピードのあるジョブ。他はフツー。",
-            "bonus": "HP -5, ATK +3, SPD +5",
+            "bonus": _format_job_bonus("忍者", request.user),
         },
         {
             "key": "格闘家",
             "icon": "game/img/アイコン/格闘_アイコン.png",
             "description": "攻撃力に特に優れたジョブ。体力と気力が少し低め。",
-            "bonus": "HP -20, ATK +8, DEF +3, SPD +5, SP -10",
+            "bonus": _format_job_bonus("格闘家", request.user),
         },
         {
             "key": "侍",
             "icon": "game/img/アイコン/武器_アイコン.png",
             "description": "一瞬の見切りで勝機を掴む剣士。",
-            "bonus": "HP -10, ATK +10, SPD +5, SP -10",
+            "bonus": _format_job_bonus("侍", request.user),
         },
     ]
 

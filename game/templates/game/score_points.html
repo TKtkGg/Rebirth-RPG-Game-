@@ -21,13 +21,15 @@
             <div class="stats-grid">
                 {% for item in stat_items %}
                     <div class="{{ item.card_class }}">
-                        <div class="stat-label">{{ item.label }}</div>
+                        <div class="stat-label">{{ item.label|safe }}</div>
                         <div class="stat-value">{{ item.current }} <span class="arrow">→</span> {{ item.next }}</div>
-                        <form method="post">
-                            {% csrf_token %}
-                            <input type="hidden" name="category" value="{{ category_key }}">
-                            <button class="plus-btn" type="submit" name="stat" value="{{ item.key }}"{% if score_points|default:0 <= 0 %} disabled{% endif %}>＋</button>
-                        </form>
+                        {% if score_points|default:0 > 0 %}
+                            <form method="post">
+                                {% csrf_token %}
+                                <input type="hidden" name="category" value="{{ category_key }}">
+                                <button class="plus-btn" type="submit" name="stat" value="{{ item.key }}">＋</button>
+                            </form>
+                        {% endif %}
                     </div>
                 {% endfor %}
                 <div class="points-row">

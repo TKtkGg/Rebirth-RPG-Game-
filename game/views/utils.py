@@ -7,19 +7,7 @@
 import random
 from django.db import models
 from ..models import Player, Enemy, Stage, QuestTemplate, PlayerQuest
-
-
-# スコアポイント設定（複数の関数で使用されるため、ここに定義）
-SCORE_POINT_CONFIG = [
-    {"key": "hp", "label": "HP", "base": 100, "inc": 5},
-    {"key": "atk", "label": "ATK", "base": 5, "inc": 1},
-    {"key": "def", "label": "DEF", "base": 5, "inc": 1},
-    {"key": "spd", "label": "SPD", "base": 5, "inc": 1},
-    {"key": "mp", "label": "SP", "base": 50, "inc": 5},
-    {"key": "gold", "label": "初期G", "base": 100, "inc": 50},
-    {"key": "gold_rate", "label": "G獲得倍率", "base": 1.0, "inc": 0.05, "format": "{:.2f}"},
-    {"key": "exp_rate", "label": "EXP獲得倍率", "base": 1.0, "inc": 0.05, "format": "{:.2f}"},
-]
+from ..scorepoints_content import SCORE_POINT_CONFIG, JOB_CONFIG_KEY_MAP
 
 
 def _get_score_bonus_dict(user, category_key):
@@ -45,21 +33,83 @@ def _set_score_bonus_dict(user, category_key, bonus_dict):
 def _combine_score_bonus(user, job):
     """全職業共通ボーナスと職業別ボーナスを結合（内部関数）"""
     all_bonus = user.score_bonus_all or {}
-    job_bonus = (user.score_bonus_jobs or {}).get(job, {})
     combined = {}
-    for cfg in SCORE_POINT_CONFIG:
+    for cfg in SCORE_POINT_CONFIG["all"]:
         key = cfg["key"]
-        combined[key] = int(all_bonus.get(key, 0)) + int(job_bonus.get(key, 0))
+        combined[key] = all_bonus.get(key, cfg["base"])
     return combined
+
+
+def _get_job_config_list(job):
+    config_key = JOB_CONFIG_KEY_MAP.get(job)
+    if not config_key:
+        return []
+    return SCORE_POINT_CONFIG.get(config_key, [])
+
+
+def _normalize_bonus_value(cfg, raw_value):
+    if raw_value is None:
+        return cfg.get("base")
+    if not isinstance(raw_value, (int, float)):
+        return raw_value
+    base = cfg.get("base", 0)
+    inc = cfg.get("inc", 0)
+    if inc == 0:
+        return raw_value
+    looks_like_count = False
+    if inc > 0 and raw_value < base:
+        looks_like_count = True
+    elif inc < 0 and raw_value > base:
+        looks_like_count = True
+    elif base < 0 and raw_value >= 0:
+        looks_like_count = True
+    if looks_like_count:
+        return base + raw_value * inc
+    return raw_value
+
+
+def get_job_bonus_values(user, job):
+    if not user:
+        return {}
+    bonus_dict = (user.score_bonus_jobs or {}).get(job, {})
+    values = {}
+    for cfg in _get_job_config_list(job):
+        key = cfg.get("key", "")
+        if not key.startswith("job_bonus_"):
+            continue
+        values[key] = _normalize_bonus_value(cfg, bonus_dict.get(key))
+    return values
+
+
+def get_skill_multiplier(user, job, skill_name, effect_type, stat, fallback_multiplier):
+    if not user:
+        return fallback_multiplier
+    bonus_dict = (user.score_bonus_jobs or {}).get(job, {})
+    for cfg in _get_job_config_list(job):
+        if cfg.get("skill_name") != skill_name:
+            continue
+        if cfg.get("effect_type") != effect_type:
+            continue
+        if cfg.get("stat") != stat:
+            continue
+        value = _normalize_bonus_value(cfg, bonus_dict.get(cfg["key"]))
+        min_value = cfg.get("min")
+        max_value = cfg.get("max")
+        if min_value is not None:
+            value = max(min_value, value)
+        if max_value is not None:
+            value = min(max_value, value)
+        return value
+    return fallback_multiplier
 
 
 def _get_score_rates(user, job):
     """ゴールド獲得倍率と経験値獲得倍率を取得（内部関数）"""
     if not user:
         return 1.0, 1.0
-    combined = _combine_score_bonus(user, job)
-    gold_rate = 1.0 + combined.get("gold_rate", 0) * 0.05
-    exp_rate = 1.0 + combined.get("exp_rate", 0) * 0.05
+    all_bonus = user.score_bonus_all or {}
+    gold_rate = float(all_bonus.get("gold_rate", 1.0))
+    exp_rate = float(all_bonus.get("exp_rate", 1.0))
     return gold_rate, exp_rate
 
 
@@ -480,6 +530,8 @@ __all__ = [
     'initialize_player_quests',
     'level_up_player',
     'get_player_from_request',
+    'get_job_bonus_values',
+    'get_skill_multiplier',
     'select_new_enemy',
     'decrease_buff_debuff_turns',
     '_get_score_rates',  # 内部関数だが、他のモジュールで使用される可能性があるためエクスポート

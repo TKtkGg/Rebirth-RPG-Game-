@@ -12,6 +12,7 @@ from .utils import (
     initialize_player_quests,
     decrease_buff_debuff_turns,
     _get_score_rates,
+    get_skill_multiplier,
 )
 from .battle_helpers import _get_effective_stat
 
@@ -298,6 +299,21 @@ def playerAction(message, action, special, actione, player, enemy, buffs, debuff
                     timing_multiplier = float(request.POST.get('timing_multiplier', 0))
                 except (TypeError, ValueError):
                     timing_multiplier = 0
+                base_effect = skill_data["effects"][0]
+                base_multiplier = base_effect.get("multiplier", 1.0)
+                adjusted_base = get_skill_multiplier(
+                    player.user,
+                    player.job,
+                    skill_name,
+                    base_effect.get("type"),
+                    base_effect.get("stat"),
+                    base_multiplier,
+                )
+                if base_multiplier:
+                    timing_multiplier *= adjusted_base / base_multiplier
+                else:
+                    timing_multiplier = adjusted_base
+                timing_multiplier = min(10.0, timing_multiplier)
                 
                 message = f"{player.name}の{skill_name}！\n"
                 
@@ -321,14 +337,23 @@ def playerAction(message, action, special, actione, player, enemy, buffs, debuff
             player.mp -= skill_cost
             player.save()
             # アクションモードであることをセッションに保存
-            base_multiplier = skill_data["effects"][0].get("multiplier", 1.0)
+            base_effect = skill_data["effects"][0]
+            base_multiplier = base_effect.get("multiplier", 1.0)
+            adjusted_multiplier = get_skill_multiplier(
+                player.user,
+                player.job,
+                skill_name,
+                base_effect.get("type"),
+                base_effect.get("stat"),
+                base_multiplier,
+            )
             request.session['action_mode'] = {
                 'skill_name': skill_name,
                 'skill_data': skill_data,
                 'action_type': skill_data.get("action_type"),
                 'skill_index': skill_index,
-                'base_multiplier': base_multiplier,
-                'multiplier': base_multiplier,
+                'base_multiplier': adjusted_multiplier,
+                'multiplier': adjusted_multiplier,
             }
             # アクションモード用の特別なレンダリングを返す
             return message, True, action_result
@@ -341,8 +366,16 @@ def playerAction(message, action, special, actione, player, enemy, buffs, debuff
         for effect in skill_data["effects"]:
             etype = effect["type"]
             target = effect["target"]
-            multiplier = effect.get("multiplier", 1.0)
             stat = effect.get("stat", None)
+            multiplier = effect.get("multiplier", 1.0)
+            multiplier = get_skill_multiplier(
+                player.user,
+                player.job,
+                skill_name,
+                etype,
+                stat,
+                multiplier,
+            )
             turn = effect.get("turn", 0)
             
             target_obj = player if target == "player" else enemy

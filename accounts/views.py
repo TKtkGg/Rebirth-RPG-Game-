@@ -3,6 +3,7 @@ from django.contrib.auth import login, logout, get_user_model
 from django.urls import reverse_lazy
 from django.views.generic import CreateView
 from .forms import SignupForm
+from game.scorepoints_content import build_score_bonus_defaults
 
 User = get_user_model()
 
@@ -51,22 +52,33 @@ class SignupView(CreateView):
         response = super().form_valid(form)
         
         # 作成したユーザーでログイン
-        user = form.save()
+        user = self.object
         login(self.request, user)
+
+        if not user.score_bonus_all and not user.score_bonus_jobs:
+            score_bonus_all, score_bonus_jobs = build_score_bonus_defaults()
+            user.score_bonus_all = score_bonus_all
+            user.score_bonus_jobs = score_bonus_jobs
+            user.save()
         
         # ゲストプレイヤーからの変換処理
         converting_guest_player_id = self.request.session.get('converting_guest_player_id')
-        if converting_guest_player_id:
+        fallback_guest_player_id = self.request.session.get('guest_player_id')
+        guest_player_id = converting_guest_player_id or fallback_guest_player_id
+        if guest_player_id:
             from game.models import Player
             try:
-                guest_player = Player.objects.get(id=converting_guest_player_id, is_guest=True)
+                guest_player = Player.objects.get(id=guest_player_id, is_guest=True)
                 # ゲストプレイヤーをこのユーザーに関連付け
                 guest_player.user = user
                 guest_player.is_guest = False
                 guest_player.save()
                 
                 # セッションから削除
-                del self.request.session['converting_guest_player_id']
+                if 'converting_guest_player_id' in self.request.session:
+                    del self.request.session['converting_guest_player_id']
+                if 'guest_player_id' in self.request.session:
+                    del self.request.session['guest_player_id']
                 
                 # ゲストプレイヤーのホーム画面にリダイレクト
                 self.success_url = reverse_lazy('game:battle_start', kwargs={'player_id': guest_player.id})

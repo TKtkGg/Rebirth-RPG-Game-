@@ -6,7 +6,14 @@
 from django.contrib.auth import get_user_model
 from django.shortcuts import render, redirect
 from django.urls import reverse
-from .utils import SCORE_POINT_CONFIG, _get_score_bonus_dict, _set_score_bonus_dict
+from .utils import _get_score_bonus_dict, _set_score_bonus_dict, _normalize_bonus_value
+from ..scorepoints_content import SCORE_POINT_CONFIG, JOB_CONFIG_KEY_MAP
+
+
+def _resolve_config_key(category_key):
+    if category_key == "all":
+        return "all"
+    return JOB_CONFIG_KEY_MAP.get(category_key, "all")
 
 
 def score_breakdown(request):
@@ -53,29 +60,51 @@ def score_points(request):
         if category_key != 'all' and category_key not in job_list:
             category_key = 'all'
         if stat_key and user.score_points > 0:
-            valid_keys = {cfg["key"] for cfg in SCORE_POINT_CONFIG}
+            config_key = _resolve_config_key(category_key)
+            config_list = SCORE_POINT_CONFIG.get(config_key, SCORE_POINT_CONFIG["all"])
+            valid_keys = {cfg["key"] for cfg in config_list}
             if stat_key in valid_keys:
                 bonus_dict = _get_score_bonus_dict(user, category_key)
-                bonus_dict[stat_key] = int(bonus_dict.get(stat_key, 0)) + 1
-                user.score_points -= 1
-                _set_score_bonus_dict(user, category_key, bonus_dict)
-                user.initial_points = user.score_points
-                user.save()
+                cfg = next((item for item in config_list if item["key"] == stat_key), None)
+                if cfg:
+                    current_value = _normalize_bonus_value(cfg, bonus_dict.get(stat_key))
+                    next_value = current_value + cfg["inc"]
+                    min_value = cfg.get("min")
+                    max_value = cfg.get("max")
+                    if min_value is not None:
+                        next_value = max(min_value, next_value)
+                    if max_value is not None:
+                        next_value = min(max_value, next_value)
+                    if next_value != current_value:
+                        bonus_dict[stat_key] = next_value
+                        user.score_points -= 1
+                        _set_score_bonus_dict(user, category_key, bonus_dict)
+                        user.initial_points = user.score_points
+                        user.save()
         return redirect(f"{reverse('game:score_points')}?category={category_key}")
 
     bonus_dict = _get_score_bonus_dict(user, category_key)
+    config_key = _resolve_config_key(category_key)
+    config_list = SCORE_POINT_CONFIG.get(config_key, SCORE_POINT_CONFIG["all"])
     stat_items = []
-    for idx, cfg in enumerate(SCORE_POINT_CONFIG):
-        count = int(bonus_dict.get(cfg["key"], 0))
-        current_value = cfg["base"] + count * cfg["inc"]
-        next_value = cfg["base"] + (count + 1) * cfg["inc"]
+    for idx, cfg in enumerate(config_list):
+        current_value = _normalize_bonus_value(cfg, bonus_dict.get(cfg["key"]))
+        next_value = current_value + cfg["inc"]
+        min_value = cfg.get("min")
+        max_value = cfg.get("max")
+        if min_value is not None:
+            current_value = max(min_value, current_value)
+            next_value = max(min_value, next_value)
+        if max_value is not None:
+            current_value = min(max_value, current_value)
+            next_value = min(max_value, next_value)
         if cfg.get("format"):
             current_text = cfg["format"].format(current_value)
             next_text = cfg["format"].format(next_value)
         else:
             current_text = str(int(current_value))
             next_text = str(int(next_value))
-        card_class = "stat-card-bottom" if idx >= 6 else "stat-card"
+        card_class = "stat-card"
         stat_items.append({
             "key": cfg["key"],
             "label": cfg["label"],
