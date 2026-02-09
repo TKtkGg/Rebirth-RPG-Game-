@@ -448,6 +448,7 @@ def battle(request, player_id, enemy_id=None):
         did_enemy_act = False
         player_action_message = ""
         enemy_action_message = ""
+        enemy_action_damage = 0
         used_item = None
         item_effect_type = None
         item_effect_value = 0
@@ -554,7 +555,9 @@ def battle(request, player_id, enemy_id=None):
                 
                 # アイテム使用後は敵のターン（必ず先手だがターン経過）
                 actione = choose_enemyAction(enemy, player, buffs, debuffs)
+                player_hp_before_enemy = player.total_hp_battle
                 ex_message, buffs, debuffs = enemyAction(message, enemy, player, buffs, debuffs, 'item', actione, special_states)
+                enemy_action_damage = max(0, player_hp_before_enemy - player.total_hp_battle)
                 request.session["buffs"] = buffs
                 request.session["debuffs"] = debuffs
                 render_kwargs["buffs"] = buffs
@@ -590,9 +593,22 @@ def battle(request, player_id, enemy_id=None):
                     # アイテム使用は必ず先攻
                     player_first = True
                     player_action_damage = 0
-                    enemy_action_damage = max(0, start_player_hp - player.total_hp_battle)
-                    enemy_effect_type = "damage"
-                    if enemy_action_message and "回避" in enemy_action_message:
+                    enemy_effect_type = "none"
+                    enemy_action_target = None
+                    if actione:
+                        effect_type, target = summarize_effects(actione.get("effects", []))
+                        if effect_type == "attack":
+                            enemy_effect_type = "damage"
+                        elif effect_type == "buf":
+                            enemy_effect_type = "buff"
+                        elif effect_type == "debuf":
+                            enemy_effect_type = "debuff"
+                        elif effect_type == "guaranteed_evasion":
+                            enemy_effect_type = "evade"
+                        elif effect_type == "defense":
+                            enemy_effect_type = "guard"
+                        enemy_action_target = target
+                    if enemy_action_message and "回避" in enemy_action_message and enemy_effect_type == "damage":
                         enemy_effect_type = "evade"
                         enemy_action_damage = 0
                     battle_result = {
@@ -626,12 +642,12 @@ def battle(request, player_id, enemy_id=None):
                             'message': enemy_action_message,
                             'action_type': 'skill',
                             'effect_type': enemy_effect_type,
-                            'target': 'player',
+                            'target': enemy_action_target,
                             'value': 0,
                             'is_finisher': False,
                             'attack_sound': enemy_attack_sound,
                             'attack_effect': enemy_attack_effect,
-                            'target_guarded': False,
+                            'target_guarded': enemy_effect_type == "damage" and actionp == "defend",
                         },
                         'item_update': {
                             'item_id': item.id,
@@ -730,7 +746,9 @@ def battle(request, player_id, enemy_id=None):
                 if not is_ajax:
                     return render(request, "game/battle.html", render_battle_screen(message, **render_kwargs, enemy_override=None, gained_exp=gained_exp, existLevel=existLevel, gained_gold=gained_gold))
             else:
+                player_hp_before_enemy = player.total_hp_battle
                 ex_message, buffs, debuffs = enemyAction(message, enemy, player, buffs, debuffs, actionp, actione, special_states)
+                enemy_action_damage = max(0, player_hp_before_enemy - player.total_hp_battle)
                 did_enemy_act = True
                 enemy_action_message = ex_message
             # セッションに保存
@@ -754,7 +772,9 @@ def battle(request, player_id, enemy_id=None):
                     if not is_ajax:
                         return render(request, "game/battle.html", render_battle_screen(message, **render_kwargs, redirect_after=True, redirect_url="battle_start", recovering=True))          
         else:
+            player_hp_before_enemy = player.total_hp_battle
             message, buffs, debuffs = enemyAction(message, enemy, player, buffs, debuffs, actionp, actione, special_states)
+            enemy_action_damage = max(0, player_hp_before_enemy - player.total_hp_battle)
             enemy_action_message = message
             did_enemy_act = True
             # セッションに保存
@@ -779,7 +799,6 @@ def battle(request, player_id, enemy_id=None):
 
                 if is_ajax:
                     player.save()
-                    enemy_action_damage = max(0, start_player_hp - player.total_hp_battle)
                     enemy_action_type = "skill"
                     enemy_effect_type = "none"
                     enemy_action_target = None
@@ -901,8 +920,6 @@ def battle(request, player_id, enemy_id=None):
             # 先攻判定
             player_first = is_player_first
             player_action_damage = max(player_action_result.get("damage", 0), 0)
-            enemy_action_damage = max(0, start_player_hp - player.total_hp_battle)
-
             # プレイヤー行動の種別・効果
             player_action_type = None
             player_effect_type = "none"
