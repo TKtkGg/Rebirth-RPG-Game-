@@ -4,7 +4,7 @@ import sys
 import django
 
 # Django設定を読み込み
-os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'mysite.settings')
+os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'config.settings')
 django.setup()
 
 from game.models import Enemy

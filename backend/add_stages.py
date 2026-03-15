@@ -2,7 +2,7 @@ import os
 import django
 
 # Djangoの設定を読み込む
-os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'mysite.settings')
+os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'config.settings')
 django.setup()
 
 from game.models import Stage, Enemy
