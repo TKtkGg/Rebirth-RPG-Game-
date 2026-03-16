@@ -31,6 +31,12 @@ def player_detail(request, player_id):
         "total_spd_battle": player.total_spd_battle,
     })
 
+def stage_list(request):
+    stages = Stage.objects.all()
+    return JsonResponse({
+        "stages": list(stages.values('id', 'name', 'unlock_level', 'background_image', 'min_enemy_level', 'max_enemy_level', 'order'))
+    })
+
 def stage_detail(request, stage_id):
     stage = get_object_or_404(Stage, id=stage_id)
     return JsonResponse({
