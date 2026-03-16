@@ -7,6 +7,7 @@ urlpatterns = [
     path('admin/', admin.site.urls),
     path('', include('accounts.urls')),  # ルートURL（/ を削除）
     path('game/', include('game.urls')),
+    path('api/', include('config.api_urls')),
 ]
 
 # 開発環境でメディアファイルを配信
