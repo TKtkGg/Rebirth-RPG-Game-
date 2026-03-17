@@ -1,5 +1,7 @@
+from json import JSONDecodeError
 from django.http import JsonResponse
 from django.contrib.auth import authenticate, login, logout
+from .forms import SignupForm
 
 def session_view(request):
     is_authenticated = request.user.is_authenticated
@@ -37,8 +39,31 @@ def logout_view(request):
         return JsonResponse({
             "error": "Method not allowed"
         }, status=405)
-        
+
     logout(request)
     return JsonResponse({
         "ok": True
     })
+
+def signup_view(request):
+    if request.method != 'POST':
+        return JsonResponse({
+            "error": "Method not allowed"
+        }, status=405)
+        
+    form = SignupForm(request.POST)
+    if form.is_valid():
+        user = form.save()
+        login(request, user)
+        return JsonResponse({
+            "ok": True,
+            "user": {
+                "id": user.id,
+                "username": user.username,
+            }
+        })
+    else:
+        return JsonResponse({
+            "ok": False,
+            "errors": form.errors
+        }, status=400)
