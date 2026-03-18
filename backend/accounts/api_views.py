@@ -2,6 +2,8 @@ from json import JSONDecodeError
 from django.http import JsonResponse
 from django.contrib.auth import authenticate, login, logout
 from .forms import SignupForm
+from django.views.decorators.csrf import ensure_csrf_cookie
+from django.middleware.csrf import get_token
 
 def session_view(request):
     is_authenticated = request.user.is_authenticated
@@ -50,7 +52,7 @@ def signup_view(request):
         return JsonResponse({
             "error": "Method not allowed"
         }, status=405)
-        
+
     form = SignupForm(request.POST)
     if form.is_valid():
         user = form.save()
@@ -67,3 +69,9 @@ def signup_view(request):
             "ok": False,
             "errors": form.errors
         }, status=400)
+
+@ensure_csrf_cookie
+def csrf_view(request):
+    return JsonResponse({
+        "csrf_token": get_token(request)
+    })
