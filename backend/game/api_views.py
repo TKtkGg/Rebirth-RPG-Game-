@@ -1,6 +1,8 @@
 from . models import Player, Stage
 from django.http import JsonResponse
 from django.shortcuts import get_object_or_404
+from django.contrib.auth import logout
+from .views.gameflow import build_job_slots
 
 def player_detail(request, player_id):
     player = get_object_or_404(Player, id=player_id)
@@ -47,4 +49,23 @@ def stage_detail(request, stage_id):
         "min_enemy_level": stage.min_enemy_level,
         "max_enemy_level": stage.max_enemy_level,
         "order": stage.order,
+    })
+
+def start_get(request):
+    force_guest = request.GET.get('guest') == "1"
+    user_real = request.user.is_authenticated and not force_guest
+    if force_guest and request.user.is_authenticated:
+        logout(request)
+    
+    default_name = request.user.username if user_real else ""
+
+    default_jobs = ["戦士", "魔法使い", "忍者", "格闘家", "侍"]
+    unlocked_jobs = (request.user.unlocked_jobs or []) if user_real else []
+    available_jobs = list(dict.fromkeys(default_jobs + unlocked_jobs))
+
+    job_slots = build_job_slots(request.user, available_jobs)
+
+    return JsonResponse({
+        "default_name": default_name,
+        "job_slots": job_slots,
     })

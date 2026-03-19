@@ -38,6 +38,91 @@ def stage_select(request, player_id):
         'stages': stages,
     })
 
+def format_job_bonus(user, job_key):
+    config_key = JOB_CONFIG_KEY_MAP.get(job_key)
+    if not config_key:
+        return ""
+    config_list = SCORE_POINT_CONFIG.get(config_key, [])
+    if not config_list:
+        return ""
+    bonus_values = {}
+    if user and user.is_authenticated:
+        bonus_values = get_job_bonus_values(user, job_key)
+    key_label_map = {
+        "job_bonus_hp": "HP",
+        "job_bonus_atk": "ATK",
+        "job_bonus_def": "DEF",
+        "job_bonus_spd": "SPD",
+        "job_bonus_mp": "SP",
+    }
+    parts = []
+    for cfg in config_list:
+        if not cfg.get("key", "").startswith("job_bonus_"):
+            continue
+        value = cfg.get("base")
+        if value is None:
+            continue
+        if cfg["key"] in bonus_values:
+            value = bonus_values.get(cfg["key"], value)
+        if value == 0:
+            continue
+        label = key_label_map.get(cfg.get("key"), "")
+        if not label:
+            continue
+        if isinstance(value, (int, float)) and float(value).is_integer():
+            value_text = f"{int(value):+d}"
+        else:
+            value_text = f"{value:+.1f}"
+        parts.append(f"{label} {value_text}")
+    return " , ".join(parts)
+
+
+def build_job_slots(user, available_jobs):
+    job_definitions_base = [
+        {
+            "key": "戦士",
+            "icon": "game/img/アイコン/武器_アイコン.png",
+            "description": "体力、攻撃力、防御力が高いが、スピードは遅め。",
+        },
+        {
+            "key": "魔法使い",
+            "icon": "game/img/アイコン/魔法の杖_アイコン.png",
+            "description": "高い攻撃力を持つが、打たれ弱い。",
+        },
+        {
+            "key": "忍者",
+            "icon": "game/img/アイコン/忍者_アイコン.png",
+            "description": "攻撃力、スピードのあるジョブ。他はフツー。",
+        },
+        {
+            "key": "格闘家",
+            "icon": "game/img/アイコン/格闘_アイコン.png",
+            "description": "攻撃力に特に優れたジョブ。体力と気力が少し低め。",
+        },
+        {
+            "key": "侍",
+            "icon": "game/img/アイコン/武器_アイコン.png",
+            "description": "一瞬の見切りで勝機を掴む剣士。",
+        },
+    ]
+    job_slots = []
+    for jd in job_definitions_base:
+        job_slots.append({
+            "name": jd["key"],
+            "icon": jd["icon"],
+            "description": jd["description"],
+            "bonus": format_job_bonus(user, jd["key"]),
+            "unlocked": jd["key"] in available_jobs,
+        })
+    while len(job_slots) < 8:
+        job_slots.append({
+            "name": "",
+            "icon": "game/img/アイコン/はてな_アイコン.png",
+            "description": "",
+            "bonus": "",
+            "unlocked": False,
+        })
+    return job_slots
 
 def start_game(request):
     """
@@ -206,95 +291,7 @@ def start_game(request):
     # ログインユーザーの場合はデフォルト名をユーザー名にする（ゲスト強制時は空にする）
     default_name = request.user.username if request.user.is_authenticated and not force_guest else ""
     
-    def _format_job_bonus(job_name, user=None):
-        config_key = JOB_CONFIG_KEY_MAP.get(job_name)
-        if not config_key:
-            return ""
-        config_list = SCORE_POINT_CONFIG.get(config_key, [])
-        if not config_list:
-            return ""
-        bonus_values = {}
-        if user and user.is_authenticated:
-            bonus_values = get_job_bonus_values(user, job_name)
-        key_label_map = {
-            "job_bonus_hp": "HP",
-            "job_bonus_atk": "ATK",
-            "job_bonus_def": "DEF",
-            "job_bonus_spd": "SPD",
-            "job_bonus_mp": "SP",
-        }
-        parts = []
-        for cfg in config_list:
-            if not cfg.get("key", "").startswith("job_bonus_"):
-                continue
-            value = cfg.get("base")
-            if value is None:
-                continue
-            if cfg["key"] in bonus_values:
-                value = bonus_values.get(cfg["key"], value)
-            if value == 0:
-                continue
-            label = key_label_map.get(cfg.get("key"), "")
-            if not label:
-                continue
-            if isinstance(value, (int, float)) and float(value).is_integer():
-                value_text = f"{int(value):+d}"
-            else:
-                value_text = f"{value:+.1f}"
-            parts.append(f"{label} {value_text}")
-        return " , ".join(parts)
-
-    job_definitions = [
-        {
-            "key": "戦士",
-            "icon": "game/img/アイコン/武器_アイコン.png",
-            "description": "体力、攻撃力、防御力が高いが、スピードは遅め。",
-            "bonus": _format_job_bonus("戦士", request.user),
-        },
-        {
-            "key": "魔法使い",
-            "icon": "game/img/アイコン/魔法の杖_アイコン.png",
-            "description": "高い攻撃力を持つが、打たれ弱い。",
-            "bonus": _format_job_bonus("魔法使い", request.user),
-        },
-        {
-            "key": "忍者",
-            "icon": "game/img/アイコン/忍者_アイコン.png",
-            "description": "攻撃力、スピードのあるジョブ。他はフツー。",
-            "bonus": _format_job_bonus("忍者", request.user),
-        },
-        {
-            "key": "格闘家",
-            "icon": "game/img/アイコン/格闘_アイコン.png",
-            "description": "攻撃力に特に優れたジョブ。体力と気力が少し低め。",
-            "bonus": _format_job_bonus("格闘家", request.user),
-        },
-        {
-            "key": "侍",
-            "icon": "game/img/アイコン/武器_アイコン.png",
-            "description": "一瞬の見切りで勝機を掴む剣士。",
-            "bonus": _format_job_bonus("侍", request.user),
-        },
-    ]
-
-    job_slots = []
-    for job_def in job_definitions:
-        job_slots.append({
-            "name": job_def["key"],
-            "icon": job_def["icon"],
-            "description": job_def["description"],
-            "bonus": job_def["bonus"],
-            "unlocked": job_def["key"] in available_jobs,
-        })
-
-    while len(job_slots) < 8:
-        job_slots.append({
-            "name": "",
-            "icon": "game/img/アイコン/はてな_アイコン.png",
-            "description": "",
-            "bonus": "",
-            "unlocked": False,
-        })
+    job_slots = build_job_slots(request.user, available_jobs)
 
     return render(request, 'game/start.html', {
         'default_name': default_name,
