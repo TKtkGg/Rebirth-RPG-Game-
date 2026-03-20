@@ -13,6 +13,7 @@ from .utils import (
     calculate_score,
     select_new_enemy,
     get_job_bonus_values,
+    create_player_from_start,
 )
 
 
@@ -152,141 +153,10 @@ def start_game(request):
     available_jobs = list(dict.fromkeys(default_jobs + unlocked_jobs))
 
     if request.method == 'POST':
-        name = request.POST.get('name')
-        job = request.POST.get('job', '戦士')  # デフォルトは戦士
-        if job not in available_jobs:
-            job = '戦士'
-
-        request.session['session_purchased_items'] = []
-        request.session['reset_shop'] = True
-        
-        # 前回のゲームオーバーのスコア情報を削除
-        if 'gameover_score' in request.session:
-            del request.session['gameover_score']
-        if 'gameover_initial_point' in request.session:
-            del request.session['gameover_initial_point']
-        if 'score_breakdown' in request.session:
-            del request.session['score_breakdown']
-        
-        # ジョブに応じたステータス設定
-        if job == "戦士":
-            base_hp, base_atk, base_def, base_spd, base_mp = 100, 5, 5, 5, 50
-            job_bonus_hp, job_bonus_atk, job_bonus_def, job_bonus_spd, job_bonus_mp = 10, 3, 3, -3, -5
-            stat_points = 0
-        elif job == "魔法使い":
-            base_hp, base_atk, base_def, base_spd, base_mp = 100, 5, 5, 5, 50
-            job_bonus_hp, job_bonus_atk, job_bonus_def, job_bonus_spd, job_bonus_mp = -5, 10, -2, 0, +10
-            stat_points = 0
-        elif job == "忍者":
-            base_hp, base_atk, base_def, base_spd, base_mp = 100, 5, 5, 5, 50
-            job_bonus_hp, job_bonus_atk, job_bonus_def, job_bonus_spd, job_bonus_mp = -5, 3, 0, 5, 0
-            stat_points = 0
-        elif job == "格闘家":
-            base_hp, base_atk, base_def, base_spd, base_mp = 100, 5, 5, 5, 50
-            job_bonus_hp, job_bonus_atk, job_bonus_def, job_bonus_spd, job_bonus_mp = -20, 8, 3, 5, -10
-            stat_points = 0
-        elif job == "侍":
-            base_hp, base_atk, base_def, base_spd, base_mp = 100, 5, 5, 5, 50
-            job_bonus_hp, job_bonus_atk, job_bonus_def, job_bonus_spd, job_bonus_mp = -10, 10, 0, 5, -20
-            stat_points = 0
-        else:
-            base_hp, base_atk, base_def, base_spd, base_mp = 100, 5, 5, 5, 50
-            job_bonus_hp, job_bonus_atk, job_bonus_def, job_bonus_spd, job_bonus_mp = 0, 0, 0, 0, 0
-            stat_points = 0
-
-        job_bonus_values = {}
-        if request.user.is_authenticated:
-            job_bonus_values = get_job_bonus_values(request.user, job)
-            job_bonus_hp = int(job_bonus_values.get("job_bonus_hp", job_bonus_hp))
-            job_bonus_atk = int(job_bonus_values.get("job_bonus_atk", job_bonus_atk))
-            job_bonus_def = int(job_bonus_values.get("job_bonus_def", job_bonus_def))
-            job_bonus_spd = int(job_bonus_values.get("job_bonus_spd", job_bonus_spd))
-            job_bonus_mp = int(job_bonus_values.get("job_bonus_mp", job_bonus_mp))
-
-        all_defaults = {cfg["key"]: cfg["base"] for cfg in SCORE_POINT_CONFIG.get("all", [])}
-        base_gold = int(all_defaults.get("gold", 100))
-        if request.user.is_authenticated:
-            all_bonus = request.user.score_bonus_all or {}
-            base_hp = int(all_bonus.get("hp", all_defaults.get("hp", base_hp)))
-            base_atk = int(all_bonus.get("atk", all_defaults.get("atk", base_atk)))
-            base_def = int(all_bonus.get("def", all_defaults.get("def", base_def)))
-            base_spd = int(all_bonus.get("spd", all_defaults.get("spd", base_spd)))
-            base_mp = int(all_bonus.get("mp", all_defaults.get("mp", base_mp)))
-            base_gold = int(all_bonus.get("gold", all_defaults.get("gold", base_gold)))
-
-        bonus_hp = bonus_atk = bonus_def = bonus_spd = bonus_mp = 0
-        if request.user.is_authenticated:
-            bonus_hp = request.user.bonus_hp
-            bonus_atk = request.user.bonus_atk
-            bonus_def = request.user.bonus_def
-            bonus_spd = request.user.bonus_spd
-        
-        # 初期装備をデータベースから取得
-        try:
-            wooden_sword = Equipment.objects.get(name="木の剣")
-            leather_armor = Equipment.objects.get(name="革の服")
-        except Equipment.DoesNotExist:
-            # 初期装備が存在しない場合はエラー
-            return render(request, 'game/start.html', {
-                'default_name': request.user.username if request.user.is_authenticated and not force_guest else "",
-                'error': '初期装備が見つかりません。データベースを確認してください。'
-            })
-        
-        # ログインユーザーかゲストかで分岐
-        if request.user.is_authenticated:
-            # ログインユーザー: userに紐付けてPlayerを作成
-            player = Player.objects.create(
-                user=request.user,
-                name=name if name else request.user.username,
-                is_guest=False,
-                level=1,
-                exp=0,
-                next_exp=300,
-                max_hp=base_hp + job_bonus_hp + bonus_hp,
-                hp=base_hp + job_bonus_hp + bonus_hp,
-                atk=base_atk + job_bonus_atk + bonus_atk,
-                defense=base_def + job_bonus_def + bonus_def,
-                spd=base_spd + job_bonus_spd + bonus_spd,
-                max_mp=base_mp + job_bonus_mp + bonus_mp,
-                mp=base_mp + job_bonus_mp + bonus_mp,
-                stat_points=stat_points,
-                job=job,
-                weapon=wooden_sword,
-                armor=leather_armor,
-                gold=base_gold,
-            )
-        else:
-            # ゲストプレイヤー: user=Noneで作成
-            player = Player.objects.create(
-                name=name,
-                is_guest=True,
-                level=1,
-                exp=0,
-                next_exp=300,
-                max_hp=base_hp + job_bonus_hp,
-                hp=base_hp + job_bonus_hp,
-                atk=base_atk + job_bonus_atk,
-                defense=base_def + job_bonus_def,
-                spd=base_spd + job_bonus_spd,
-                max_mp=base_mp + job_bonus_mp,
-                mp=base_mp + job_bonus_mp,
-                stat_points=stat_points,
-                job=job,
-                weapon=wooden_sword,
-                armor=leather_armor,
-                gold=100,
-            )
-            # ゲストプレイヤーの場合、セッションにIDを保存
-            request.session['guest_player_id'] = player.id
-        
-        # 初期装備を所持装備に追加
-        player.owned_equipment.add(wooden_sword, leather_armor)
-        
-        # クエストを初期化
-        initialize_player_quests(player)
+        player = create_player_from_start(request, available_jobs, force_guest)
         
         return redirect('game:battle_start', player_id=player.id)
-    
+        
     # GETリクエスト: 職業選択画面を表示
     # ログインユーザーの場合はデフォルト名をユーザー名にする（ゲスト強制時は空にする）
     default_name = request.user.username if request.user.is_authenticated and not force_guest else ""
