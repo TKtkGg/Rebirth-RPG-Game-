@@ -3,12 +3,12 @@ from django.http import JsonResponse
 from django.shortcuts import get_object_or_404
 from django.contrib.auth import logout
 from .views.gameflow import build_job_slots
-from .views.utils import create_player_from_start
+from .views.utils import create_player_from_start, get_player_from_request
+from .views.battle import battle_start_get
 
-def player_detail(request, player_id):
-    player = get_object_or_404(Player, id=player_id)
-    return JsonResponse({
-        "id": player_id,
+def player_to_api_dict(player):
+    return {
+        "id": player.id,
         "name": player.name,
         "level": player.level,
         "exp": player.exp,
@@ -32,6 +32,13 @@ def player_detail(request, player_id):
         "total_atk_battle": player.total_atk_battle,
         "total_def_battle": player.total_def_battle,
         "total_spd_battle": player.total_spd_battle,
+    }
+
+
+def player_detail(request, player_id):
+    player = get_object_or_404(Player, id=player_id)
+    return JsonResponse({
+        **player_to_api_dict(player),
     })
 
 def stage_list(request):
@@ -92,4 +99,17 @@ def start_post(request):
     return JsonResponse({
         "ok": True,
         "player_id": player.id,
+    })
+
+def battle_start_get_api(request, player_id):
+    player = get_player_from_request(request, player_id)
+    if not player:
+        return JsonResponse({"error": "Player not found"}, status=404)
+    
+    exp_percent, continue_count = battle_start_get(request, player_id)
+    return JsonResponse({
+        **player_to_api_dict(player),
+        "exp_percent": exp_percent,
+        "continue_count": continue_count,
+        "is_guest": player.is_guest,
     })

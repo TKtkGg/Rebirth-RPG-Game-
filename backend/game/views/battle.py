@@ -32,16 +32,10 @@ from .battle_internal_functions import (
     handle_action_mode_end,
 )
 
-
-def battle_start(request, player_id, enemy_id=None):
-    """
-    戦闘開始画面（ホーム画面）を表示
-    
-    プレイヤーのステータス表示、休む機能、ステータスポイント配分を担当します。
-    """
+def battle_start_get(request, player_id):
     player = get_player_from_request(request, player_id)
     if not player:
-        return redirect('game:start')
+        return JsonResponse({"error": "Player not found"}, status=404)
     
     # プレイヤーのHPが0以下の場合、最大HPに回復
     if player.total_hp_battle <= 0:
@@ -74,6 +68,20 @@ def battle_start(request, player_id, enemy_id=None):
     exp_percent = int(player.exp / player.next_exp * 100) if player.next_exp > 0 else 0
 
     continue_count = 2 - player.death_count
+
+    return exp_percent, continue_count
+
+def battle_start(request, player_id, enemy_id=None):
+    """
+    戦闘開始画面（ホーム画面）を表示
+    
+    プレイヤーのステータス表示、休む機能、ステータスポイント配分を担当します。
+    """
+    player = get_player_from_request(request, player_id)
+    if not player:
+        return redirect('game:start')
+    
+    exp_percent, continue_count = battle_start_get(request, player_id)
 
     if request.method == 'POST':
         # 休む機能の処理
