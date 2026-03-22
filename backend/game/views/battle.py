@@ -71,6 +71,38 @@ def battle_start_get(request, player_id):
 
     return exp_percent, continue_count
 
+
+def rest_at_home(player):
+    # 休むペナルティ：次のレベルまでの経験値の5%を減少
+    exp_penalty = int(player.next_exp * 0.05)
+    actual_exp_penalty = min(exp_penalty, player.exp)
+    
+    player.exp = max(0, player.exp - exp_penalty)
+    player.hp = player.max_hp  # 素のHPを最大値に戻す
+    player.mp = player.max_mp  # SPも最大値に戻す
+    player.save()
+
+    return actual_exp_penalty
+
+def allocate_stat_points(player, stat):
+    if stat == 'atk':
+        player.atk += 1  # 【素のATK】を増やす
+    elif stat == 'defense':
+        player.defense += 1  # 【素のDEF】を増やす
+    elif stat == 'hp':
+        player.max_hp += 10  # 【素の最大HP】を増やす
+        player.hp += 10  # 【素の現在HP】も増やす
+    elif stat == 'spd':
+        player.spd += 1  # 【素のSPD】を増やす
+    elif stat == 'mp':
+        player.max_mp += 5  # 【最大SP】を増やす
+        player.mp += 5  # 【現在SP】も増やす
+    else:
+        return
+    player.stat_points -= 1
+    player.save()
+
+
 def battle_start(request, player_id, enemy_id=None):
     """
     戦闘開始画面（ホーム画面）を表示
@@ -87,33 +119,13 @@ def battle_start(request, player_id, enemy_id=None):
         # 休む機能の処理
         action = request.POST.get('action')
         if action == 'rest':
-            # 休むペナルティ：次のレベルまでの経験値の5%を減少
-            exp_penalty = int(player.next_exp * 0.05)
-            actual_exp_penalty = min(exp_penalty, player.exp)
-            
-            player.exp = max(0, player.exp - exp_penalty)
-            player.hp = player.max_hp  # 素のHPを最大値に戻す
-            player.mp = player.max_mp  # SPも最大値に戻す
-            player.save()
+            actual_exp_penalty = rest_at_home(player)
             return redirect('game:battle_start', player_id=player.id)
 
         # ステータスポイント配分の処理
         stat = request.POST.get('stat')
         if stat and player.stat_points > 0:
-            if stat == 'atk':
-                player.atk += 1  # 【素のATK】を増やす
-            elif stat == 'defense':
-                player.defense += 1  # 【素のDEF】を増やす
-            elif stat == 'hp':
-                player.max_hp += 10  # 【素の最大HP】を増やす
-                player.hp += 10  # 【素の現在HP】も増やす
-            elif stat == 'spd':
-                player.spd += 1  # 【素のSPD】を増やす
-            elif stat == 'mp':
-                player.max_mp += 5  # 【最大SP】を増やす
-                player.mp += 5  # 【現在SP】も増やす
-            player.stat_points -= 1
-            player.save()
+            allocate_stat_points(player, stat)
             return redirect('game:battle_start', player_id=player.id)
 
     return render(request, 'game/battle_start.html', {
