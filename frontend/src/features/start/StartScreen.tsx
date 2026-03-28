@@ -30,8 +30,9 @@ export default function StartScreen() {
                     name: name,
                     job: selectedJob,
                 }).then((data: { player_id: string }) => {
-                    localStorage.setItem('player_id', data.player_id)
-                    router.push(`/game/battle/home/${data.player_id}`);
+                    const playerId = data.player_id;
+                    localStorage.setItem('playerId', playerId)
+                    router.push(`/game/battle/home/${playerId}`);
                 });
                 
             }}>スタート</button>

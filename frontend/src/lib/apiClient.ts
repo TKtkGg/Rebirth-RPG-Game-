@@ -25,9 +25,10 @@ export const apiGet = async(path: string) => {
 
 export const apiPost = async(path: string, data: Record<string, string>) => {
     const formData = new FormData();
-    formData.append("name", data.name);
-    formData.append("job", data.job);
-
+    Object.entries(data).forEach(([key, value]) => {
+        formData.append(key, value);
+    });
+    
     const csrfToken = getCookie('csrftoken');
     const response = await fetch(`${process.env.NEXT_PUBLIC_API_BASE_URL}${path}`, {
         credentials: 'include',
