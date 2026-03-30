@@ -1,8 +1,17 @@
 "use client"
 
-import { apiPost } from "../../lib/apiClient";
+import { apiPost, apiGet } from "../../lib/apiClient";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
+
+type session = {
+    is_authenticated: boolean;
+    user: {
+        id: number;
+        username: string;
+    } | null;
+    player_id: string | null;
+}
 
 export default function LoginScreen() {
     const router = useRouter();
@@ -29,7 +38,14 @@ export default function LoginScreen() {
                     password: password,
                 }).then((data: { ok: boolean }) => {
                     if (data.ok) {
-                        router.push('/game/start/');
+                        apiGet('/api/auth/session/').then((data: session) => {
+                            if (data.player_id) {
+                                const playerId = data.player_id;
+                                router.push(`/game/battle/home/${playerId}/`);
+                            } else {
+                                router.push('/game/start/');
+                            }
+                        });
                     }
                 }).catch((error: { message: string }) => {
                     alert(error.message);

@@ -4,16 +4,26 @@ from django.contrib.auth import authenticate, login, logout
 from .forms import SignupForm
 from django.views.decorators.csrf import ensure_csrf_cookie
 from django.middleware.csrf import get_token
+from game.models import Player
 
 def session_view(request):
     is_authenticated = request.user.is_authenticated
     user = request.user if is_authenticated else None
+    if is_authenticated:
+        try:
+            player_id = request.user.player.id
+        except Player.DoesNotExist:
+            player_id = None
+    else:
+        player_id = None
+
     return JsonResponse({
         "is_authenticated": is_authenticated,
         "user": user and {
             "id": user.id,
             "username": user.username,
         } or None,
+        "player_id": player_id,
     })
 
 def login_view(request):
