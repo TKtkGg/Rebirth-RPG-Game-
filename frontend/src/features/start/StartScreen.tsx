@@ -12,6 +12,7 @@ export default function StartScreen() {
     useEffect(() => {
         apiGet('/api/start/').then((data: { default_name: string, job_slots: { name: string }[] }) => {
             setData(data);
+            setName(data?.default_name || "");
         })
     }, []);
     return (
