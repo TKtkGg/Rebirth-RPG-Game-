@@ -33,6 +33,14 @@ export default function HomeScreen(props: Props) {
             <h1>MP：{data?.mp} / {data?.max_mp}</h1>
             
             <button onClick={() => {
+                apiPost(`/api/battle_start/${playerId}/`, {
+                    action: 'rest',
+                }).then((data: HomeScreenData) => {
+                    setData(data);
+                });
+            }}>休む</button>
+
+            <button onClick={() => {
                 apiPost(`/api/auth/logout/`, {}).then((data: { ok: boolean }) => {
                     if (data.ok) {
                         localStorage.removeItem('playerId');

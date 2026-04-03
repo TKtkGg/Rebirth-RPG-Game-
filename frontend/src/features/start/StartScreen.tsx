@@ -3,14 +3,16 @@
 import { useEffect, useState } from "react";
 import { apiGet, apiPost } from "../../lib/apiClient";
 import { useRouter } from "next/navigation";
+import { StartScreenData } from "./types";
+import Image from "next/image";
 
 export default function StartScreen() {
     const router = useRouter();
-    const [data, setData] = useState<{ default_name: string, job_slots: { name: string }[] } | null>(null);
+    const [data, setData] = useState<StartScreenData | null>(null);
     const [name, setName] = useState<string>("");
     const [selectedJob, setSelectedJob] = useState<string>("");
     useEffect(() => {
-        apiGet('/api/start/').then((data: { default_name: string, job_slots: { name: string }[] }) => {
+        apiGet('/api/start/').then((data: StartScreenData) => {
             setData(data);
             setName(data?.default_name || "");
         })
@@ -18,9 +20,15 @@ export default function StartScreen() {
     return (
         <div>
             <input type="text" placeholder="名前を入力" value={name} onChange={(e) => setName(e.target.value)} />
-            {data?.job_slots.map((job: {name: string}, index: number) =>
+            {data?.job_slots.map((job: StartScreenData["job_slots"][number], index: number) =>
             (
-                <button key={index} onClick={() => setSelectedJob(job.name)}>{job.name}</button>
+                <button key={index} onClick={() => setSelectedJob(job.name)}>
+                    <Image src={job.icon} alt={job.name} />
+                    <p>{job.name}</p>
+                    <p>{job.description}</p>
+                    <p>{job.bonus}</p>
+                    <p>{job.unlocked ? "開放" : "未開放"}</p>
+                </button>
             ))}
             <button onClick={() => {
                 if (name === "" || selectedJob === "") {
