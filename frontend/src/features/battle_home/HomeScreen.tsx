@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { apiGet, apiPost } from "../../lib/apiClient";
 import { useRouter } from "next/navigation";
 import { HomeScreenData } from "./types";
+import StatAllocButton from "../../components/atoms/button/StatAllocButton";
 
 type Props = {
     "playerId": string 
@@ -26,12 +27,19 @@ export default function HomeScreen(props: Props) {
             <h1>レベル：{data?.level}</h1>
             <h1>経験値：{data?.exp_percent}%</h1>
             <h1>所持金：{data?.gold}</h1>
+
             <h1>HP：{data?.hp} / {data?.max_hp}</h1>
+            <StatAllocButton playerId={playerId} stat="hp" stat_points={data?.stat_points || 0} setData={setData} />
             <h1>ATK：{data?.atk}</h1>
+            <StatAllocButton playerId={playerId} stat="atk" stat_points={data?.stat_points || 0} setData={setData} />
             <h1>DEF：{data?.defense}</h1>
+            <StatAllocButton playerId={playerId} stat="defense" stat_points={data?.stat_points || 0} setData={setData} />
             <h1>SPD：{data?.spd}</h1>
+            <StatAllocButton playerId={playerId} stat="spd" stat_points={data?.stat_points || 0} setData={setData} />
             <h1>MP：{data?.mp} / {data?.max_mp}</h1>
-            
+            <StatAllocButton playerId={playerId} stat="mp" stat_points={data?.stat_points || 0} setData={setData} />
+            <h1>残りポイント：{data?.stat_points}</h1>
+
             <button onClick={() => {
                 apiPost(`/api/battle_start/${playerId}/`, {
                     action: 'rest',

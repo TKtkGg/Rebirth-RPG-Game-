@@ -10,6 +10,7 @@ export type HomeScreenData = {
     "spd": number,
     "max_mp": number,
     "mp": number,
+    "stat_points": number,
     "job": string,
     "item": string,
     "defeats": number,

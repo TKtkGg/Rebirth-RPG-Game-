@@ -19,6 +19,7 @@ def player_to_api_dict(player):
         "spd": player.spd,
         "max_mp": player.max_mp,
         "mp": player.mp,
+        "stat_points": player.stat_points,
         "job": player.job,
         "item": player.item,
         "defeats": player.defeats,
