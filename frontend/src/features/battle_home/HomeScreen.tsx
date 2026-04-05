@@ -49,6 +49,10 @@ export default function HomeScreen(props: Props) {
             }}>休む</button>
 
             <button onClick={() => {
+                router.push(`/game/stages/`);
+            }}>ステージ選択</button>
+
+            <button onClick={() => {
                 apiPost(`/api/auth/logout/`, {}).then((data: { ok: boolean }) => {
                     if (data.ok) {
                         localStorage.removeItem('playerId');
