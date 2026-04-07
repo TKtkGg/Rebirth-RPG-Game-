@@ -18,7 +18,15 @@ export const apiGet = async(path: string) => {
         },
     });
     if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`);
+        const error = await response.json().catch(() => null);
+        let message = `HTTP ${response.status}`;
+
+        if(typeof error?.error === 'string') {
+            message = error.error;
+        } else if(error?.errors) {
+            message = Object.values(error.errors).join('\n');
+        }
+        throw new Error(message);
     }
     return response.json();
 }
@@ -39,7 +47,15 @@ export const apiPost = async(path: string, data: Record<string, string>) => {
         body: formData,
     });
     if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`);
+        const error = await response.json().catch(() => null);
+        let message = `HTTP ${response.status}`;
+
+        if(typeof error?.error === 'string') {
+            message = error.error;
+        } else if(error?.errors) {
+            message = Object.values(error.errors).join('\n');
+        }
+        throw new Error(message);
     }
     return response.json();
 }

@@ -9,6 +9,7 @@ export default function SignUpScreen() {
     const [username, setUsername] = useState("");
     const [password1, setPassword1] = useState("");
     const [password2, setPassword2] = useState("");
+    const [errorMessage, setErrorMessage] = useState("");
     return(
         <div>
             <h1>サインアップ</h1>
@@ -42,9 +43,10 @@ export default function SignUpScreen() {
                         router.push('/game/start/');
                     }
                 }).catch((error: { message: string }) => {
-                    alert(error.message);
+                    setErrorMessage(error.message);
                 });
             }}>サインアップ</button>
+            <p>{errorMessage}</p>
         </div>
     )
 }

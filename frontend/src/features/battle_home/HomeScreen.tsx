@@ -14,6 +14,8 @@ export default function HomeScreen(props: Props) {
     const { playerId } = props;
     const router = useRouter();
     const [data, setData] = useState<HomeScreenData | null>(null);
+    const [restText, setRestText] = useState("");
+    const [errorMessage, setErrorMessage] = useState("");
     useEffect(() => {
         apiGet(`/api/battle_start/${playerId}/`).then((data: HomeScreenData) => {
             setData(data);
@@ -39,15 +41,18 @@ export default function HomeScreen(props: Props) {
             <h1>MP：{data?.mp} / {data?.max_mp}</h1>
             <StatAllocButton playerId={playerId} stat="mp" stat_points={data?.stat_points || 0} setData={setData} />
             <h1>残りポイント：{data?.stat_points}</h1>
+            <h1>残りコンテニュー回数：{2 - (data?.death_count || 0)}</h1>
 
             <button onClick={() => {
                 apiPost(`/api/battle_start/${playerId}/`, {
                     action: 'rest',
                 }).then((data: HomeScreenData) => {
                     setData(data);
+                }).catch((error: { message: string }) => {
+                    setRestText(error.message);
                 });
             }}>休む</button>
-
+            <p>{restText}</p>
             <button onClick={() => {
                 router.push(`/game/stages/`);
             }}>ステージ選択</button>
@@ -59,9 +64,10 @@ export default function HomeScreen(props: Props) {
                         router.push('/auth/');
                     }
                 }).catch((error: { message: string }) => {
-                    alert(error.message);
+                    setErrorMessage(error.message);
                 });
             }}>ログアウト</button>
+            <p>{errorMessage}</p>
         </div>
     );
 }

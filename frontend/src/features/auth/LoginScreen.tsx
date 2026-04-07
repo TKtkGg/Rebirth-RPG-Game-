@@ -17,6 +17,7 @@ export default function LoginScreen() {
     const router = useRouter();
     const [username, setUsername] = useState("");
     const [password, setPassword] = useState("");
+    const [errorMessage, setErrorMessage] = useState("");
     return(
         <div>
             <h1>ログイン</h1>
@@ -30,7 +31,7 @@ export default function LoginScreen() {
             </div>
             <button onClick={() => {
                 if (username === "" || password === "") {
-                    alert("ユーザー名とパスワードを入力してください");
+                    setErrorMessage("ユーザー名とパスワードを入力してください");
                     return;
                 }
                 apiPost('/api/auth/login/', {
@@ -47,10 +48,11 @@ export default function LoginScreen() {
                             }
                         });
                     }
-                }).catch((error: { message: string }) => {
-                    alert(error.message);
+                }).catch(() => {
+                    setErrorMessage("ユーザーネームまたはパスワードが正しくありません。");
                 });
             }}>ログイン</button>
+            <p>{errorMessage}</p>
         </div>
-    )
+    );
 }
