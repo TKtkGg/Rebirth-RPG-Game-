@@ -5,6 +5,9 @@ import { apiGet, apiPost } from "../../lib/apiClient";
 import { useRouter } from "next/navigation";
 import { StartScreenData } from "./types";
 import styles from "./StartScreen.module.css";
+import { PrimaryButton } from "@/src/components/atoms/button/PrimaryButton";
+import { SectionTitle } from "@/src/components/atoms/title/SectionTitle";
+import { MainPanel } from "@/src/components/atoms/panel/MainPanel";
 
 export default function StartScreen() {
     const router = useRouter();
@@ -22,7 +25,7 @@ export default function StartScreen() {
     }, []);
     return (
         <div className={styles.startScreen}>
-            <div className={styles.startTitle}>職業選択</div>
+            <SectionTitle title="職業選択" />
             <div className={styles.jobForm}>
                 <div className={styles.nameRow}>
                     <label htmlFor="start-name" className={styles.nameLabel}>名前</label>
@@ -38,30 +41,26 @@ export default function StartScreen() {
 
                 <div className={styles.jobGrid}>
                     {data?.job_slots.map((job: StartScreenData["job_slots"][number], index: number) => (
-                        <button
-                            key={index}
-                            type="button"
-                            className={[
-                                styles.jobCard,
-                                !job.unlocked ? styles.locked : "",
-                                selectedJob === job.name ? styles.selected : "",
-                            ].join(" ").trim()}
+                        <MainPanel 
+                            key={index} 
+                            state={selectedJob === job.name ? "selected" : job.unlocked ? "normal" : "muted"}
+                            interactive={job.unlocked}
+                            as="button"
+                            className={styles.jobCardSize}
                             onClick={() => setSelectedJob(job.name)}
                             disabled={!job.unlocked}
-                            title={job.unlocked ? `${job.description}\n${job.bonus}` : "未開放"}
                         >
                             <img
                                 src={`/${job.icon}`}
                                 alt={job.name || "未開放"}
                                 className={!job.unlocked ? styles.jobIconLocked : styles.jobIcon}
                             />
-                            {job.unlocked && <div className={styles.jobName}>{job.name}</div>}
-                        </button>
+                            {job.unlocked && <div className={styles.jobName}>{job.name}</div>} 
+                        </MainPanel>
                     ))}
                 </div>
 
-                <button
-                    className={styles.startButton}
+                <PrimaryButton
                     onClick={() => {
                 if (name === "" && selectedJob === "") {
                     setErrorMessage("名前と職業を選択してください");
@@ -89,7 +88,7 @@ export default function StartScreen() {
                     }}
                 >
                     冒険を始める
-                </button>
+                </PrimaryButton>
                 {errorMessage && <p className={styles.errorMessage}>{errorMessage}</p>}
             </div>
         </div>
