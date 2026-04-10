@@ -1,5 +1,6 @@
 import { apiPost } from "../../../lib/apiClient";
 import { HomeScreenData } from "../../../features/battle_home/types";
+import styles from "./StatAllocButton.module.css";
 
 type Props = {
     "playerId": string
@@ -19,7 +20,7 @@ export default function StatAllocButton(props: Props) {
                     }).then((data: HomeScreenData) => {
                         setData(data);
                     });
-                }}>+</button>
+                }} className={styles.statPlus}>＋</button>
             )}
         </>
     )

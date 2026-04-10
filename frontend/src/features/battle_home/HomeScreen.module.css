@@ -1,0 +1,222 @@
+.homeRoot {
+  position: fixed;
+  inset: 0;
+  width: 100vw;
+  height: 100vh;
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0 48px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 32px;
+  overflow: hidden;
+  background-image: url("/game/img/背景/ホーム.jpg");
+  background-size: cover;
+  background-position: center;
+  background-repeat: no-repeat;
+  background-attachment: fixed;
+  color: #fff;
+}
+
+.statusPanel {
+  align-items: stretch;
+  text-align: left;
+  min-width: min(450px, 42vw);
+  max-width: 420px;
+  width: 100%;
+  max-height: min(92vh, 110vh);
+  overflow-y: auto;
+  padding: 20px;
+  box-sizing: border-box;
+}
+
+.statusTitle {
+  font-size: clamp(20px, 2.2vw, 28px);
+  font-weight: 700;
+  margin: 0 0 20px;
+  text-shadow: 3px 3px 6px rgba(0, 0, 0, 1);
+  line-height: 1.35;
+}
+
+.statusRow {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px 12px;
+  font-size: clamp(18px, 1.8vw, 24px);
+  font-weight: 700;
+  text-shadow: 2px 2px 4px rgba(0, 0, 0, 1);
+}
+
+.statusLabel {
+  flex: 0.5;
+  min-width: 0;
+}
+
+.expBlock {
+  margin: 16px 0 20px;
+}
+
+.expBarLabel {
+  font-size: clamp(18px, 1.8vw, 24px);
+  font-weight: 700;
+  margin-bottom: 10px;
+  text-shadow: 2px 2px 4px rgba(0, 0, 0, 1);
+}
+
+.expBar {
+  width: 100%;
+  height: 20px;
+  background: rgba(255, 255, 255, 0.2);
+  border-radius: 10px;
+  overflow: hidden;
+}
+
+.expBarFill {
+  height: 100%;
+  background: rgba(74, 124, 89, 0.9);
+  transition: width 0.3s ease;
+  max-width: 100%;
+}
+
+.equipmentDivider {
+  margin-top: 8px;
+  padding-top: 16px;
+  border-top: 3px solid rgba(139, 105, 20, 0.8);
+}
+
+
+.buttonColumn {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+  min-width: min(350px, 38vw);
+  max-width: 420px;
+  width: 100%;
+  max-height: 80vh;
+  overflow-y: auto;
+}
+
+.adventureBtn,
+.shopBtn,
+.restBtn {
+  width: 100%;
+  min-height: 120px;
+  padding: 24px 32px;
+  font-size: clamp(26px, 2.5vw, 32px);
+  font-weight: 700;
+  border: 4px solid rgba(255, 255, 255, 0.3);
+  border-radius: 20px;
+  cursor: pointer;
+  text-align: center;
+  text-shadow: 3px 3px 6px rgba(0, 0, 0, 0.9);
+  color: #fff;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  box-sizing: border-box;
+  transition: transform 0.2s ease, filter 0.2s ease;
+}
+
+.adventureBtn:hover:not(:disabled),
+.shopBtn:hover:not(:disabled),
+.restBtn:hover:not(:disabled) {
+  transform: translateY(-3px);
+  filter: brightness(1.05);
+}
+
+.adventureBtn:disabled,
+.shopBtn:disabled,
+.restBtn:disabled {
+  cursor: default;
+  opacity: 0.85;
+}
+
+.adventureBtn {
+  background: rgba(220, 100, 120, 0.92);
+}
+
+.shopBtn {
+  background: rgba(255, 220, 120, 0.92);
+}
+
+.restBtn {
+  background: rgba(120, 180, 220, 0.92);
+}
+
+.adventureNote {
+  font-size: 14px;
+  font-weight: 600;
+  text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.85);
+  opacity: 0.95;
+}
+
+.restMessage {
+  margin: 0;
+  font-size: 14px;
+  color: #ffd3d3;
+  text-align: center;
+  text-shadow: 0 1px 3px rgba(0, 0, 0, 0.8);
+}
+
+.logoutBtn {
+  position: fixed;
+  left: 12px;
+  bottom: 10px;
+  margin: 0;
+  padding: 6px 10px;
+  font-size: 12px;
+  color: rgba(255, 255, 255, 0.75);
+  background: rgba(0, 0, 0, 0.35);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  border-radius: 6px;
+  cursor: pointer;
+  z-index: 2;
+}
+
+.logoutBtn:hover {
+  color: #fff;
+  background: rgba(0, 0, 0, 0.5);
+}
+
+.logoutError {
+  position: fixed;
+  left: 12px;
+  bottom: 44px;
+  margin: 0;
+  max-width: 240px;
+  font-size: 12px;
+  color: #ffb4b4;
+  z-index: 2;
+}
+
+.loading {
+  margin: 0;
+  font-size: 18px;
+  opacity: 0.85;
+}
+
+@media (max-width: 900px) {
+  .homeRoot {
+    flex-direction: column;
+    justify-content: flex-start;
+    padding: 24px 20px 56px;
+    overflow-y: auto;
+    align-items: stretch;
+  }
+
+  .statusPanel {
+    min-width: 0;
+    max-width: none;
+    max-height: none;
+  }
+
+  .buttonColumn {
+    min-width: 0;
+    max-width: none;
+    max-height: none;
+  }
+}
