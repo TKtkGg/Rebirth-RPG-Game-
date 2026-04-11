@@ -6,7 +6,9 @@ import { useRouter } from "next/navigation";
 import { HomeScreenData } from "./types";
 import StatAllocButton from "../../components/atoms/button/StatAllocButton";
 import { MainPanel } from "@/src/components/atoms/panel/MainPanel";
+import { ColorButton } from "@/src/components/atoms/button/ColorButton";
 import styles from "./HomeScreen.module.css";
+import { StatusRow } from "@/src/components/molecules/StatusRow";
 
 type Props = {
     playerId: string;
@@ -47,9 +49,9 @@ export default function HomeScreen(props: Props) {
                             名前：{data.name} 職業：{data.job}
                         </div>
 
-                        <div className={styles.statusRow}>
-                            <span className={styles.statusLabel}>レベル：{data.level}</span>
-                        </div>
+                        <StatusRow 
+                            label={`レベル：${data.level}`} 
+                        />
 
                         <div className={styles.expBlock}>
                             <div className={styles.expBarLabel}>
@@ -63,71 +65,66 @@ export default function HomeScreen(props: Props) {
                             </div>
                         </div>
 
-                        <div className={styles.statusRow}>
-                            <span className={styles.statusLabel}>所持金：{data.gold}G</span>
-                        </div>
+                        <StatusRow 
+                            label={`所持金：${data.gold}G`} 
+                        />
 
-                        <div className={styles.statusRow}>
-                            <span className={styles.statusLabel}>
-                                HP：{data.total_hp_battle} / {data.total_max_hp_battle}
-                            </span>
-                            <StatAllocButton playerId={playerId} stat="hp" stat_points={data.stat_points} setData={setData} />
-                        </div>
-                        <div className={styles.statusRow}>
-                            <span className={styles.statusLabel}>ATK：{data.total_atk_battle}</span>
-                            <StatAllocButton playerId={playerId} stat="atk" stat_points={data.stat_points} setData={setData} />
-                        </div>
-                        <div className={styles.statusRow}>
-                            <span className={styles.statusLabel}>DEF：{data.total_def_battle}</span>
-                            <StatAllocButton playerId={playerId} stat="defense" stat_points={data.stat_points} setData={setData} />
-                        </div>
-                        <div className={styles.statusRow}>
-                            <span className={styles.statusLabel}>SPD：{data.total_spd_battle}</span>
-                            <StatAllocButton playerId={playerId} stat="spd" stat_points={data.stat_points} setData={setData} />
-                        </div>
-                        <div className={styles.statusRow}>
-                            <span className={styles.statusLabel}>
-                                SP：{data.mp} / {data.max_mp}
-                            </span>
-                            <StatAllocButton playerId={playerId} stat="mp" stat_points={data.stat_points} setData={setData} />
-                        </div>
+                        <StatusRow 
+                            label={`HP：${data.total_hp_battle} / ${data.total_max_hp_battle}`} 
+                            action={<StatAllocButton playerId={playerId} stat="hp" stat_points={data.stat_points} setData={setData} />} 
+                        />
+                        <StatusRow 
+                            label={`ATK：${data.total_atk_battle}`} 
+                            action={<StatAllocButton playerId={playerId} stat="atk" stat_points={data.stat_points} setData={setData} />} 
+                        />
+                        <StatusRow 
+                            label={`DEF：${data.total_def_battle}`} 
+                            action={<StatAllocButton playerId={playerId} stat="defense" stat_points={data.stat_points} setData={setData} />} 
+                        />
+                        <StatusRow 
+                            label={`SPD：${data.total_spd_battle}`} 
+                            action={<StatAllocButton playerId={playerId} stat="spd" stat_points={data.stat_points} setData={setData} />} 
+                        />
+                        <StatusRow 
+                            label={`SP：${data.mp} / ${data.max_mp}`} 
+                            action={<StatAllocButton playerId={playerId} stat="mp" stat_points={data.stat_points} setData={setData} />} 
+                        />
 
-                        <div className={styles.statusRow}>
-                            <span className={styles.statusLabel}>残りポイント：{data.stat_points}</span>
-                        </div>
+                        <StatusRow 
+                            label={`残りポイント：${data.stat_points}`} 
+                        />
 
                         <div className={styles.equipmentDivider}>
-                            <div className={styles.statusRow}>
-                                <span className={styles.statusLabel}>武器：{data.weapon || "なし"}</span>
-                            </div>
-                            <div className={styles.statusRow}>
-                                <span className={styles.statusLabel}>防具：{data.armor || "なし"}</span>
-                            </div>
+                            <StatusRow 
+                                label={`武器：${data.weapon || "なし"}`} 
+                            />
+                            <StatusRow 
+                                label={`防具：${data.armor || "なし"}`} 
+                            />
                         </div>
                     </>
                 )}
             </MainPanel>
 
             <div className={styles.buttonColumn}>
-                <button
-                    type="button"
-                    className={styles.adventureBtn}
+                <ColorButton                    
+                    variant="red"
                     disabled={!data}
                     onClick={() => router.push("/game/stages/")}
+                    className={styles.adventureBtn}
                 >
                     <span>冒険</span>
                     <span className={styles.adventureNote}>
                         残り復活回数：{data?.continue_count ?? "—"}回
                     </span>
-                </button>
+                </ColorButton>
 
-                <button type="button" className={styles.shopBtn}>
+                <ColorButton variant="yellow" onClick={() => router.push("/game/shop/")} className={styles.shopBtn}>
                     ショップ
-                </button>
+                </ColorButton>
 
-                <button
-                    type="button"
-                    className={styles.restBtn}
+                <ColorButton
+                    variant="blue"
                     disabled={!data}
                     onClick={() => {
                         setRestText("");
@@ -141,9 +138,10 @@ export default function HomeScreen(props: Props) {
                                 setRestText(error.message);
                             });
                     }}
+                    className={styles.restBtn}
                 >
                     休む
-                </button>
+                </ColorButton>
                 {restText ? <p className={styles.restMessage}>{restText}</p> : null}
             </div>
 

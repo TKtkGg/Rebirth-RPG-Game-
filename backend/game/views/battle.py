@@ -100,6 +100,7 @@ def allocate_stat_points(player, stat):
     else:
         return
     player.stat_points -= 1
+    player.update_battle_stats()
     player.save()
 
 

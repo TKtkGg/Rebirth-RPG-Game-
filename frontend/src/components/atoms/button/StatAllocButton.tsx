@@ -14,7 +14,7 @@ export default function StatAllocButton(props: Props) {
     return(
         <>
             {stat_points > 0 && (
-                <button onClick={() => {
+                <button type="button" onClick={() => {
                     apiPost(`/api/battle_start/${playerId}/`, {
                         stat: stat,
                     }).then((data: HomeScreenData) => {
