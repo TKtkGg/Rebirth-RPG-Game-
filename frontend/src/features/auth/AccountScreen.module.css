@@ -1,0 +1,22 @@
+.buttonStack {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 30px;
+  margin-top: clamp(20px, 5vh, 80px);
+  width: 100%;
+}
+
+.menuButton {
+  width: min(400px, 100%);
+  min-height: auto;
+  padding: 20px 40px;
+  font-size: 32px;
+  border-radius: 8px !important;
+  border: none !important;
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.3);
+}
+
+.menuButton:hover:not(:disabled) {
+  filter: brightness(1.08);
+}
