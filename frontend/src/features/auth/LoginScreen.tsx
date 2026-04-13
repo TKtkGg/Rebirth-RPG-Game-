@@ -6,6 +6,7 @@ import { useState } from "react";
 import { ColorButton } from "@/src/components/atoms/button/ColorButton";
 import { AuthLayout } from "./AuthLayout";
 import layoutStyles from "./authLayout.module.css";
+import { FormInput } from "@/src/components/molecules/FormInput";
 
 type session = {
     is_authenticated: boolean;
@@ -34,34 +35,26 @@ export default function LoginScreen() {
                         </div>
                     ) : null}
 
-                    <div className={layoutStyles.formGroup}>
-                        <label htmlFor="login-username" className={layoutStyles.label}>
-                            ユーザー名
-                        </label>
-                        <input
-                            id="login-username"
-                            className={layoutStyles.input}
-                            type="text"
-                            name="username"
-                            autoComplete="username"
-                            value={username}
-                            onChange={(e) => setUsername(e.target.value)}
-                        />
-                    </div>
-                    <div className={layoutStyles.formGroup}>
-                        <label htmlFor="login-password" className={layoutStyles.label}>
-                            パスワード
-                        </label>
-                        <input
-                            id="login-password"
-                            className={layoutStyles.input}
-                            type="password"
-                            name="password"
-                            autoComplete="current-password"
-                            value={password}
-                            onChange={(e) => setPassword(e.target.value)}
-                        />
-                    </div>
+                    <FormInput 
+                        id="login-username"
+                        type="text"
+                        name="username"
+                        autoComplete="username"
+                        value={username}
+                        onChange={(e) => setUsername(e.target.value)}
+                    >
+                        ユーザー名
+                    </FormInput>
+                    <FormInput 
+                        id="login-password"
+                        type="password"
+                        name="password"
+                        autoComplete="current-password"
+                        value={password}
+                        onChange={(e) => setPassword(e.target.value)}
+                    >
+                        パスワード
+                    </FormInput>
 
                     <div className={layoutStyles.submitWrap}>
                         <ColorButton

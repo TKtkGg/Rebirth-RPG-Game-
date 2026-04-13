@@ -71,32 +71,9 @@
   margin: 0 0 30px;
   color: #fff;
   text-align: center;
-  font-size: clamp(28px, 5vw, 36px);
+  font-size: clamp(28px, 5vw, 34px);
   font-weight: 700;
   text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.5);
-}
-
-.formGroup {
-  margin-bottom: 20px;
-}
-
-.label {
-  display: block;
-  color: #fff;
-  font-size: 18px;
-  margin-bottom: 8px;
-  font-weight: 700;
-}
-
-.input {
-  width: 100%;
-  padding: 12px;
-  font-size: 16px;
-  border: 2px solid rgba(255, 255, 255, 0.3);
-  border-radius: 5px;
-  background-color: rgba(255, 255, 255, 0.9);
-  box-sizing: border-box;
-  color: #111;
 }
 
 .errorMessages {
@@ -143,7 +120,7 @@
 
 .submitButton {
   width: 100%;
-  min-height: auto;
+  min-height: 50px;
   padding: 15px;
   font-size: 24px;
   border-radius: 8px !important;
