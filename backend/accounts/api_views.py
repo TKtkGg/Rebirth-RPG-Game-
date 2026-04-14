@@ -1,4 +1,3 @@
-from json import JSONDecodeError
 from django.http import JsonResponse
 from django.contrib.auth import authenticate, login, logout
 from .forms import SignupForm
@@ -79,6 +78,20 @@ def signup_view(request):
             "ok": False,
             "errors": form.errors
         }, status=400)
+
+def guest_login_view(request):
+    if request.method != 'POST':
+        return JsonResponse({
+            "ok": False,
+            "error": "Method not allowed"
+        }, status=405)
+    
+    if request.user.is_authenticated:
+        logout(request)
+
+    return JsonResponse({
+        "ok": True
+    })
 
 @ensure_csrf_cookie
 def csrf_view(request):
