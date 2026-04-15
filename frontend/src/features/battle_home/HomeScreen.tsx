@@ -119,7 +119,11 @@ export default function HomeScreen(props: Props) {
                     </span>
                 </ColorButton>
 
-                <ColorButton variant="yellow" onClick={() => router.push("/game/shop/")} className={styles.shopBtn}>
+                <ColorButton 
+                    variant="yellow" 
+                    onClick={() => router.push(`/game/shop/${playerId}`)} 
+                    className={styles.shopBtn}
+                >
                     ショップ
                 </ColorButton>
 

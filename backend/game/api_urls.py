@@ -7,4 +7,5 @@ urlpatterns = [
     path('stages/', api_views.stage_list, name='stage_list'),
     path('start/', api_views.start_api, name='start_api'),
     path('battle_start/<int:player_id>/', api_views.battle_start_api, name='battle_start_api'),
+    path('shop/<int:player_id>/', api_views.shop_api, name='shop_api'),
 ]

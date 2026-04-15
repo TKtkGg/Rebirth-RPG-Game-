@@ -5,6 +5,7 @@ from django.contrib.auth import logout
 from .views.gameflow import build_job_slots
 from .views.utils import create_player_from_start, get_player_from_request
 from .views.battle import battle_start_get, rest_at_home, allocate_stat_points
+from .views.shop import shop, buy_item
 
 def player_to_api_dict(player):
     return {
@@ -36,6 +37,31 @@ def player_to_api_dict(player):
         "total_atk_battle": player.total_atk_battle,
         "total_def_battle": player.total_def_battle,
         "total_spd_battle": player.total_spd_battle,
+    }
+
+def equipment_to_api_dict(equipment):
+    return {
+        "id": equipment.id,
+        "name": equipment.name,
+        "equipment_type": equipment.equipment_type,
+        "price": equipment.price,
+        "description": equipment.description,
+        "atk_bonus": equipment.atk_bonus,
+        "def_bonus": equipment.def_bonus,
+        "hp_bonus": equipment.hp_bonus,
+        "spd_bonus": equipment.spd_bonus,
+    }
+
+def item_to_api_dict(item):
+    return {
+        "id": item.id,
+        "name": item.name,
+        "target": item.target,
+        "effect_amount": item.effect_amount,
+        "price": item.price,
+        "description": item.description,
+        "current_stock": item.current_stock,
+        "max_stock": item.max_stock,
     }
 
 
@@ -158,3 +184,34 @@ def battle_start_post_api(request, player_id):
             "is_guest": player.is_guest,
         })
     return JsonResponse({"error": "Invalid action"}, status=400)
+
+def shop_api(request, player_id):
+    if request.method == "GET":
+        return shop_get_api(request, player_id)
+    elif request.method == "POST":
+        return shop_post_api(request, player_id)
+    else:
+        return JsonResponse({"error": "Invalid request method"}, status=405)
+
+def build_shop_data(request, player_id):
+    shop_data = shop(request, player_id)
+    return {
+        "player": player_to_api_dict(shop_data['player']),
+        "weapons": [equipment_to_api_dict(weapon) for weapon in shop_data['weapons']],
+        "armors": [equipment_to_api_dict(armor) for armor in shop_data['armors']],
+        "items": [item_to_api_dict(item) for item in shop_data['items']],
+        "session_purchased": shop_data['session_purchased'],
+    }
+
+def shop_get_api(request, player_id):
+    shop_data = build_shop_data(request, player_id)
+
+    return JsonResponse(shop_data)
+
+def shop_post_api(request, player_id):
+    buy_item(request, player_id)
+    shop_data = build_shop_data(request, player_id)
+    return JsonResponse({
+        "ok": True,
+        **shop_data,
+    })

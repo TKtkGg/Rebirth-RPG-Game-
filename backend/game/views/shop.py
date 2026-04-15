@@ -9,7 +9,6 @@ from django.shortcuts import render, redirect
 from ..models import Player, Equipment, Item, PlayerQuest, PlayerInventory
 from .utils import get_player_from_request
 
-
 def shop(request, player_id):
     """
     ショップページを表示
@@ -97,13 +96,21 @@ def shop(request, player_id):
                 if item.current_stock > 0:
                     items.append(item)
     
-    return render(request, 'game/shop.html', {
+    return {
         'player': player,
         'weapons': weapons,
         'armors': armors,
         'items': items,
-        'session_purchased': json.dumps(session_purchased),
-    })
+        'session_purchased': session_purchased,
+    }
+
+    # return render(request, 'game/shop.html', {
+    #     'player': player,
+    #     'weapons': weapons,
+    #     'armors': armors,
+    #     'items': items,
+    #     'session_purchased': json.dumps(session_purchased),
+    # })
 
 
 def buy_item(request, player_id):
