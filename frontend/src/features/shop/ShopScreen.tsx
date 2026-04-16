@@ -30,8 +30,9 @@ export default function ShopScreen(props: Props) {
             item_price: item.price.toString(),
             item_type: item.equipment_type,
             item_quantity: "1",
+        }).then((updatedData: ShopScreenData) => {
+            setData(updatedData);
         });
-        setData(data);
     }
 
     const handleBuyItem = (item: ItemScreenData, quantity: number) => {
@@ -41,8 +42,9 @@ export default function ShopScreen(props: Props) {
             item_price: item.price.toString(),
             item_type: "item",
             item_quantity: quantity.toString(),
+        }).then((updatedData: ShopScreenData) => {
+            setData(updatedData);
         });
-        setData(data);
     }
 
     return (
