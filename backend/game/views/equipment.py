@@ -39,11 +39,18 @@ def equipment_change(request, player_id):
     owned_weapons = player.owned_equipment.filter(equipment_type='weapon')
     owned_armors = player.owned_equipment.filter(equipment_type='armor')
     
-    return render(request, 'game/equipment_change.html', {
+
+    return({
         'player': player,
         'owned_weapons': owned_weapons,
         'owned_armors': owned_armors,
     })
+    
+    # return render(request, 'game/equipment_change.html', {
+    #     'player': player,
+    #     'owned_weapons': owned_weapons,
+    #     'owned_armors': owned_armors,
+    # })
 
 
 def equip_item(request, player_id, equipment_id):
