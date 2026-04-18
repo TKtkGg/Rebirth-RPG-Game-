@@ -5,4 +5,5 @@ from .api_endpoints import (
     start_api,
     battle_start_api,
     shop_api,
+    inventory_api,
 )

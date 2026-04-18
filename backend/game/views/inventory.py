@@ -32,6 +32,7 @@ def inventory(request, player_id):
     # プレイヤーのインベントリを取得
     inventory_items = PlayerInventory.objects.filter(player=player, quantity__gt=0).select_related('item')
     
+
     # カテゴリーでフィルタリング
     if category == '回復':
         inventory_items = inventory_items.filter(item__target='hp')
@@ -54,14 +55,23 @@ def inventory(request, player_id):
         else:
             selected_item = inventory_items.first()
     
-    return render(request, 'game/inventory.html', {
+    return {
         'player': player,
         'inventory_items': inventory_items,
         'selected_item': selected_item,
         'category': category,
         'search_query': search_query,
         'use_message': use_message,
-    })
+    }
+    
+    # return render(request, 'game/inventory.html', {
+    #     'player': player,
+    #     'inventory_items': inventory_items,
+    #     'selected_item': selected_item,
+    #     'category': category,
+    #     'search_query': search_query,
+    #     'use_message': use_message,
+    # })
 
 
 def use_inventory_item(request, player_id, inventory_item_id):
@@ -113,7 +123,16 @@ def use_inventory_item(request, player_id, inventory_item_id):
     except PlayerInventory.DoesNotExist:
         request.session['use_item_message'] = "アイテムが見つかりません"
     
+    player.update_battle_stats()
+    player.save()
+    
     # インベントリー画面に戻る
     category = request.GET.get('category', '全て')
     search_query = request.GET.get('search', '')
-    return redirect(f"{reverse('game:inventory', kwargs={'player_id': player.id})}?category={category}&search={search_query}")
+
+    return {
+        'category': category,
+        'search_query': search_query,
+    }
+
+    # return redirect(f"{reverse('game:inventory', kwargs={'player_id': player.id})}?category={category}&search={search_query}")

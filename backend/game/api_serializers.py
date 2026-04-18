@@ -46,14 +46,15 @@ def equipment_to_api_dict(equipment):
 
 
 def item_to_api_dict(item):
+    current_stock = getattr(item, 'current_stock', item.max_stock)
     return {
         "id": item.id,
-        "name": item.name,
+        "name": item.name if item else None,
         "target": item.target,
         "effect_amount": item.effect_amount,
         "price": item.price,
         "description": item.description,
         "max_stock": item.max_stock,
-        "current_stock": item.current_stock,
+        "current_stock": current_stock,
     }
 
