@@ -60,12 +60,20 @@ def quest(request, player_id):
     while len(account_quests) < 8:
         account_quests.append(None)
     
-    return render(request, 'game/quest.html', {
+
+    return ({
         'player': player,
         'life_quests': life_quests[:8],
         'account_quests': account_quests[:8],
         'is_guest': player.is_guest,
     })
+    
+    # return render(request, 'game/quest.html', {
+    #     'player': player,
+    #     'life_quests': life_quests[:8],
+    #     'account_quests': account_quests[:8],
+    #     'is_guest': player.is_guest,
+    # })
 
 
 def claim_quest_reward(request, quest_id):

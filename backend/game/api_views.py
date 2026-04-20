@@ -6,4 +6,5 @@ from .api_endpoints import (
     battle_start_api,
     shop_api,
     inventory_api,
+    quest_api,
 )
