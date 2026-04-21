@@ -125,7 +125,7 @@ def score_points(request):
     })
 
 
-def ranking(request):
+def ranking(request, player_id):
     """
     ランキング画面
 
@@ -137,18 +137,6 @@ def ranking(request):
     category = request.GET.get('category', 'score')
     if category not in ['score', 'strong', 'victories']:
         category = 'score'
-    player_id = request.GET.get('player_id')
-    if not player_id or player_id == "None":
-        player_id = None
-        if request.user.is_authenticated:
-            try:
-                player_id = request.user.player.id
-            except Exception:
-                player_id = None
-        if not player_id:
-            player_id = request.session.get('guest_player_id') or request.session.get('gameover_player_id')
-    if not player_id:
-        return redirect('game:start')
 
     job_icon_map = {
         "戦士": "game/img/アイコン/武器_アイコン.png",
@@ -200,10 +188,17 @@ def ranking(request):
         {"key": "victories", "label": "勝利回数"},
     ]
 
-    return render(request, 'game/ranking.html', {
+    return{
         "categories": categories,
         "category": category,
         "entries": entries,
         "label": label,
-        "player_id": player_id,
-    })
+    }
+
+    # return render(request, 'game/ranking.html', {
+    #     "categories": categories,
+    #     "category": category,
+    #     "entries": entries,
+    #     "label": label,
+    #     "player_id": player_id,
+    # })

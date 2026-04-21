@@ -9,6 +9,7 @@ from .api_endpoints import (
     equipment_api,
     inventory_api,
     quest_api,
+    ranking_api,
 )
 
 urlpatterns = [
@@ -21,4 +22,5 @@ urlpatterns = [
     path('equipment/<int:player_id>/', equipment_api, name='equipment_api'),
     path('inventory/<int:player_id>/', inventory_api, name='inventory_api'),
     path('quest/<int:player_id>/', quest_api, name='quest_api'),
+    path('ranking/<int:player_id>/', ranking_api, name='ranking_api'),
 ]
