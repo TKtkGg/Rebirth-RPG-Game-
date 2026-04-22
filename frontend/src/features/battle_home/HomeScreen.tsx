@@ -110,7 +110,7 @@ export default function HomeScreen(props: Props) {
                 <ColorButton                    
                     variant="red"
                     disabled={!data}
-                    onClick={() => router.push("/game/stages/")}
+                    onClick={() => router.push(`/game/stages/${playerId}`)}
                     className={styles.adventureBtn}
                 >
                     <span>冒険</span>

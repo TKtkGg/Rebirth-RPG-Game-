@@ -12,22 +12,21 @@ def player_detail(request, player_id):
     })
 
 
-def stage_list(request):
-    stages = Stage.objects.all()
+def stage_list(request, player_id):
+    player = get_object_or_404(Player, id=player_id)
+    if not player:
+        return JsonResponse({"error": "Player not found"}, status=404)
+
+    stagesData = Stage.objects.all()
     return JsonResponse({
-        "stages": list(stages.values('id', 'name', 'unlock_level', 'background_image', 'min_enemy_level', 'max_enemy_level', 'order'))
+        "player": player_to_api_dict(player),
+        "stages": [{
+            "id": stage.id,
+            "name": stage.name,
+            "unlock_level": stage.unlock_level,
+            "background_image": stage.background_image,
+            "min_enemy_level": stage.min_enemy_level,
+            "max_enemy_level": stage.max_enemy_level,
+            "order": stage.order,
+        } for stage in stagesData],
     })
-
-
-def stage_detail(request, stage_id):
-    stage = get_object_or_404(Stage, id=stage_id)
-    return JsonResponse({
-        "id": stage_id,
-        "name": stage.name,
-        "unlock_level": stage.unlock_level,
-        "background_image": stage.background_image,
-        "min_enemy_level": stage.min_enemy_level,
-        "max_enemy_level": stage.max_enemy_level,
-        "order": stage.order,
-    })
-

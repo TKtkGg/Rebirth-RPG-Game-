@@ -3,27 +3,52 @@ import { useEffect, useState } from "react";
 import { apiGet } from "../../lib/apiClient";
 import { StagesScreenData } from "./types";
 import { useRouter } from "next/navigation";
+import { ReturnButton } from "@/src/components/atoms/button/ReturnButton";
+import styles from "./StagesScreen.module.css";
 
-export default function StagesScreen() {
+type Props = {
+    playerId: string;
+}
+
+export default function StagesScreen({ playerId }: Props) {
     const [data, setData] = useState<StagesScreenData | null>(null);
     const router = useRouter();
+
     useEffect(() => {
-        apiGet("/api/stages/").then((data: StagesScreenData) => {
+        apiGet(`/api/stages/${playerId}`).then((data: StagesScreenData) => {
             setData(data);
         });
-    }, []);
+    }, [playerId]);
+
+    const sortedStages = [...(data?.stages ?? [])].sort((a, b) => a.order - b.order);
+
     return(
-        <div>
-            <h1>ステージ一覧</h1>
-            {data?.stages.map((stage) => (
-                <div key={stage.id}>
-                    <h2>{stage.name}</h2>
-                    <p>開放レベル: {stage.unlock_level}</p>
-                    <p>背景画像: {stage.background_image}</p>
-                    <p>最小敵レベル: {stage.min_enemy_level}</p>
-                    <p>最大敵レベル: {stage.max_enemy_level}</p>
-                </div>
-            ))}
+        <div className={styles.container}>
+            <div className={styles.board}>
+                {sortedStages.map((stage) => {
+                    const isLocked = stage.unlock_level > (data?.player.level ?? 0);
+                    return (
+                        <button
+                            key={stage.id}
+                            type="button"
+                            className={`${styles.stageButton} ${isLocked ? styles.locked : ""}`}
+                            style={{ backgroundImage: `url("/game/img/背景/${stage.background_image}")` }}
+                        >
+                            {isLocked && (
+                                <div className={styles.lockedOverlay}>
+                                    <p className={styles.unlockLabel}>開放条件</p>
+                                    <p className={styles.unlockText}>レベル{stage.unlock_level}以上</p>
+                                </div>
+                            )}
+                            <p className={styles.stageName}>{stage.name}</p>
+                        </button>
+                    );
+                })}
+                <ReturnButton
+                    className={styles.backButton}
+                    onClick={() => router.push(`/game/battle/home/${playerId}`)}
+                />
+            </div>
         </div>
     )
 }
