@@ -17,6 +17,11 @@
     transform: translateY(-2px);
 }
 
+.primaryButton:disabled {
+    cursor: default;
+    opacity: 0.85;
+}
+
 .colorButton {
     padding: 24px 32px;
     font-size: clamp(26px, 2.5vw, 32px);

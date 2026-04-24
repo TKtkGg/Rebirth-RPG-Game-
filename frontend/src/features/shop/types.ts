@@ -9,3 +9,7 @@ export type ShopScreenData = {
     "items": ItemScreenData[];
     "session_purchased": string;
 }
+
+export type ShopDisplayItem =
+    | ({ type: "weapon" | "armor"; iconPath: string } & EquipmentScreenData)
+    | ({ type: "item"; iconPath: string } & ItemScreenData);
