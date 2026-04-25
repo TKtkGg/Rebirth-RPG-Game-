@@ -23,6 +23,10 @@ def equipment_get_api(request, player_id):
         "player": player_to_api_dict(equipment_data['player']),
         "owned_weapons": [equipment_to_api_dict(weapon) for weapon in equipment_data['owned_weapons']],
         "owned_armors": [equipment_to_api_dict(armor) for armor in equipment_data['owned_armors']],
+        "current_weapon": equipment_to_api_dict(equipment_data['current_weapon'] if equipment_data['current_weapon'] else None),
+        "current_armor": equipment_to_api_dict(equipment_data['current_armor'] if equipment_data['current_armor'] else None),
+        "base_stats": equipment_data['base_stats'],
+        "current_totals": equipment_data['current_totals'],
     })
 
 def equipment_post_api(request, player_id):
@@ -50,4 +54,18 @@ def equipment_post_api(request, player_id):
         "player": player_to_api_dict(player),
         "owned_weapons": [equipment_to_api_dict(weapon) for weapon in player.owned_equipment.filter(equipment_type='weapon')],
         "owned_armors": [equipment_to_api_dict(armor) for armor in player.owned_equipment.filter(equipment_type='armor')],
+        "current_weapon": equipment_to_api_dict(player.weapon if player.weapon else None),
+        "current_armor": equipment_to_api_dict(player.armor if player.armor else None),
+        "base_stats": {
+            "atk": player.atk,
+            "def": player.defense,
+            "spd": player.spd,
+            "max_hp": player.max_hp,
+        },
+        "current_totals": {
+            "atk": player.total_atk,
+            "def": player.total_def,
+            "spd": player.total_spd,
+            "max_hp": player.total_max_hp,
+        },
     })

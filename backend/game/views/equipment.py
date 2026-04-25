@@ -38,12 +38,30 @@ def equipment_change(request, player_id):
     # 所持している装備を取得
     owned_weapons = player.owned_equipment.filter(equipment_type='weapon')
     owned_armors = player.owned_equipment.filter(equipment_type='armor')
-    
+
+    current_weapon = player.weapon
+    current_armor = player.armor
+    base_stats = {
+        'atk': player.atk,
+        'def': player.defense,
+        'spd': player.spd,
+        'max_hp': player.max_hp,
+    }
+    current_totals = {
+        'atk': player.total_atk,
+        'def': player.total_def,
+        'spd': player.total_spd,
+        'max_hp': player.total_max_hp,
+    }
 
     return({
         'player': player,
         'owned_weapons': owned_weapons,
         'owned_armors': owned_armors,
+        'current_weapon': current_weapon,
+        'current_armor': current_armor,
+        'base_stats': base_stats,
+        'current_totals': current_totals,
     })
     
     # return render(request, 'game/equipment_change.html', {

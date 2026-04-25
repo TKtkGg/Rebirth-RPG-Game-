@@ -32,6 +32,8 @@ def player_to_api_dict(player):
 
 
 def equipment_to_api_dict(equipment):
+    if not equipment:
+        return None
     return {
         "id": equipment.id,
         "name": equipment.name,
