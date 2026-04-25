@@ -1,6 +1,6 @@
 import { PlayerScreenData } from "../types/player_types";
 
-type StageData = {
+export type StageData = {
     "id": number;
     "name": string;
     "unlock_level": number;

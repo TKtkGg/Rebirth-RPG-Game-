@@ -1,0 +1,60 @@
+.stageButton {
+    position: relative;
+    border: none;
+    border-radius: 16px;
+    overflow: hidden;
+    min-height: 300px;
+    height: 100%;
+    width: 100%;
+    background-size: cover;
+    background-position: center;
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.35);
+    cursor: pointer;
+    padding: 0;
+    transition: transform 0.2s ease-in-out;
+}
+
+.stageButton:hover:not(.locked) {
+    transform: scale(1.05);
+}
+
+.stageButton.locked {
+    cursor: not-allowed;
+    transform: none;
+    box-shadow: none;
+}
+
+.stageName {
+    position: absolute;
+    left: 50%;
+    bottom: 10px;
+    transform: translateX(-50%);
+    margin: 0;
+    color: #fff;
+    font-size: clamp(28px, 2.7vw, 48px);
+    font-weight: 700;
+    text-shadow: 2px 2px 6px rgba(0, 0, 0, 0.85);
+}
+
+.lockedOverlay {
+    position: absolute;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.58);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    color: #fff;
+    font-weight: 700;
+    text-shadow: 2px 2px 6px rgba(0, 0, 0, 0.8);
+}
+
+.unlockLabel {
+    font-size: clamp(34px, 2.6vw, 46px);
+    margin: 0;
+}
+
+.unlockText {
+    font-size: clamp(24px, 2.1vw, 36px);
+    margin: 6px 0 0;
+}
