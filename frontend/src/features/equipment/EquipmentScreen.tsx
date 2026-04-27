@@ -5,9 +5,12 @@ import { apiGet, apiPost } from "../../lib/apiClient";
 import { EquipmentChangeScreenData } from "./types";
 import { useRouter } from "next/navigation";
 import { EquipmentScreenData } from "../types/equipment_types";
-import Image from "next/image";
 import styles from "./EquipmentScreen.module.css";
 import { ReturnButton } from "@/src/components/atoms/button/ReturnButton";
+import DetailRow from "@/src/components/atoms/row/DetailRow";
+import StatusChangeRow from "@/src/components/atoms/row/StatusChangeRow";
+import EquipmentButton from "@/src/components/Organisms/inventory/EquipmentButton";
+import { InventoryPanel } from "@/src/components/atoms/panel/InventoryPanel";
 
 type Props = {
     playerId: string;
@@ -76,17 +79,17 @@ export default function EquipmentScreen(props: Props) {
 
         const nextTotals = isWeapon
             ? {
-                  atk: data.base_stats.atk + equipmentDetail.atk_bonus + currentArmor.atk,
-                  def: data.base_stats.def + equipmentDetail.def_bonus + currentArmor.def,
-                  spd: data.base_stats.spd + equipmentDetail.spd_bonus + currentArmor.spd,
-                  max_hp: data.base_stats.max_hp + equipmentDetail.hp_bonus + currentArmor.hp,
-              }
+                atk: data.base_stats.atk + equipmentDetail.atk_bonus + currentArmor.atk,
+                def: data.base_stats.def + equipmentDetail.def_bonus + currentArmor.def,
+                spd: data.base_stats.spd + equipmentDetail.spd_bonus + currentArmor.spd,
+                max_hp: data.base_stats.max_hp + equipmentDetail.hp_bonus + currentArmor.hp,
+            }
             : {
-                  atk: data.base_stats.atk + currentWeapon.atk + equipmentDetail.atk_bonus,
-                  def: data.base_stats.def + currentWeapon.def + equipmentDetail.def_bonus,
-                  spd: data.base_stats.spd + currentWeapon.spd + equipmentDetail.spd_bonus,
-                  max_hp: data.base_stats.max_hp + currentWeapon.hp + equipmentDetail.hp_bonus,
-              };
+                atk: data.base_stats.atk + currentWeapon.atk + equipmentDetail.atk_bonus,
+                def: data.base_stats.def + currentWeapon.def + equipmentDetail.def_bonus,
+                spd: data.base_stats.spd + currentWeapon.spd + equipmentDetail.spd_bonus,
+                max_hp: data.base_stats.max_hp + currentWeapon.hp + equipmentDetail.hp_bonus,
+            };
 
         return {
             hp: {
@@ -143,7 +146,7 @@ export default function EquipmentScreen(props: Props) {
             </div>
 
             <div className={styles.mainContent}>
-                <div className={styles.equipmentListPanel}>
+                <InventoryPanel state="normal" interactive={false} as="div" className={styles.equipmentListPanel}>
                     <div className={styles.equipmentGrid}>
                         {selectedList.length === 0 && (
                             <div className={styles.noEquipment}>
@@ -158,48 +161,28 @@ export default function EquipmentScreen(props: Props) {
                                     : "/game/img/アイコン/防具_アイコン.png";
 
                             return (
-                                <button
+                                <EquipmentButton
                                     key={equipment.id}
-                                    type="button"
-                                    className={`${styles.equipmentItem} ${isEquipped ? styles.equipped : ""}`}
-                                    onClick={() => setEquipmentDetail(equipment)}
-                                    onDoubleClick={() => !isEquipped && handleEquip(equipment.id.toString())}
-                                >
-                                    <Image
-                                        src={iconPath}
-                                        alt={equipment.name}
-                                        width={80}
-                                        height={80}
-                                        className={styles.equipmentIcon}
-                                    />
-                                    <div className={styles.equipmentName}>{equipment.name}</div>
-                                </button>
+                                    equipment={equipment}
+                                    isEquipped={isEquipped}
+                                    iconPath={iconPath}
+                                    handleEquip={handleEquip}
+                                    setEquipmentDetail={setEquipmentDetail}
+                                />
                             );
                         })}
                     </div>
-                </div>
+                </InventoryPanel>
 
-                <div className={styles.detailPanel}>
+                <InventoryPanel state="normal" interactive={false} as="div" className={styles.detailPanel}>
                     <div className={styles.detailTitle}>{equipmentDetail?.name ?? "-"}</div>
                     <div className={styles.detailSection}>
                         <div className={styles.detailSectionTitle}>能力上昇</div>
                         <div className={styles.detailStats}>
-                            <div className={styles.detailStatItem}>
-                                <span>HP:</span>
-                                <span>{equipmentDetail ? formatBonus(equipmentDetail.hp_bonus) : "-"}</span>
-                            </div>
-                            <div className={styles.detailStatItem}>
-                                <span>ATK:</span>
-                                <span>{equipmentDetail ? formatBonus(equipmentDetail.atk_bonus) : "-"}</span>
-                            </div>
-                            <div className={styles.detailStatItem}>
-                                <span>DEF:</span>
-                                <span>{equipmentDetail ? formatBonus(equipmentDetail.def_bonus) : "-"}</span>
-                            </div>
-                            <div className={styles.detailStatItem}>
-                                <span>SPD:</span>
-                                <span>{equipmentDetail ? formatBonus(equipmentDetail.spd_bonus) : "-"}</span>
-                            </div>
+                            <DetailRow label="HP" value={equipmentDetail ? formatBonus(equipmentDetail.hp_bonus) : "-"} />
+                            <DetailRow label="ATK" value={equipmentDetail ? formatBonus(equipmentDetail.atk_bonus) : "-"} />
+                            <DetailRow label="DEF" value={equipmentDetail ? formatBonus(equipmentDetail.def_bonus) : "-"} />
+                            <DetailRow label="SPD" value={equipmentDetail ? formatBonus(equipmentDetail.spd_bonus) : "-"} />
                         </div>
                     </div>
                     <div className={styles.detailSection}>
@@ -208,46 +191,14 @@ export default function EquipmentScreen(props: Props) {
                             {equipmentDetail?.description ?? "装備を選択してください"}
                         </div>
                     </div>
-                </div>
+                </InventoryPanel>
 
-                <div className={styles.statsPanel}>
-                    <div className={styles.statItem}>
-                        <span className={styles.statLabel}>HP:</span>
-                        <div className={styles.statValueBlock}>
-                            <div className={styles.statValue}>{data?.current_totals.max_hp ?? "-"}</div>
-                            <div className={styles.statChange}>
-                                {previewStats ? formatChange(previewStats.hp.old, previewStats.hp.next, previewStats.hp.diff) : ""}
-                            </div>
-                        </div>
-                    </div>
-                    <div className={styles.statItem}>
-                        <span className={styles.statLabel}>ATK:</span>
-                        <div className={styles.statValueBlock}>
-                            <div className={styles.statValue}>{data?.current_totals.atk ?? "-"}</div>
-                            <div className={styles.statChange}>
-                                {previewStats ? formatChange(previewStats.atk.old, previewStats.atk.next, previewStats.atk.diff) : ""}
-                            </div>
-                        </div>
-                    </div>
-                    <div className={styles.statItem}>
-                        <span className={styles.statLabel}>DEF:</span>
-                        <div className={styles.statValueBlock}>
-                            <div className={styles.statValue}>{data?.current_totals.def ?? "-"}</div>
-                            <div className={styles.statChange}>
-                                {previewStats ? formatChange(previewStats.def.old, previewStats.def.next, previewStats.def.diff) : ""}
-                            </div>
-                        </div>
-                    </div>
-                    <div className={styles.statItem}>
-                        <span className={styles.statLabel}>SPD:</span>
-                        <div className={styles.statValueBlock}>
-                            <div className={styles.statValue}>{data?.current_totals.spd ?? "-"}</div>
-                            <div className={styles.statChange}>
-                                {previewStats ? formatChange(previewStats.spd.old, previewStats.spd.next, previewStats.spd.diff) : ""}
-                            </div>
-                        </div>
-                    </div>
-                </div>
+                <InventoryPanel state="normal" interactive={false} as="div" className={styles.statsPanel}>
+                    <StatusChangeRow label="HP" value={data?.current_totals.max_hp ?? "-"} changeText={previewStats ? formatChange(previewStats.hp.old, previewStats.hp.next, previewStats.hp.diff) : ""} />
+                    <StatusChangeRow label="ATK" value={data?.current_totals.atk ?? "-"} changeText={previewStats ? formatChange(previewStats.atk.old, previewStats.atk.next, previewStats.atk.diff) : ""} />
+                    <StatusChangeRow label="DEF" value={data?.current_totals.def ?? "-"} changeText={previewStats ? formatChange(previewStats.def.old, previewStats.def.next, previewStats.def.diff) : ""} />
+                    <StatusChangeRow label="SPD" value={data?.current_totals.spd ?? "-"} changeText={previewStats ? formatChange(previewStats.spd.old, previewStats.spd.next, previewStats.spd.diff) : ""} />
+                </InventoryPanel>
             </div>
 
             <ReturnButton className={styles.backButton} onClick={() => router.push(`/game/battle/home/${playerId}`)} />
