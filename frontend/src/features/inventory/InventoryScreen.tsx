@@ -13,6 +13,7 @@ export default function InventoryScreen(props: Props) {
     const [data, setData] = useState<InventoryScreenData | null>(null);
     const [itemDetail, setItemDetail] = useState<{ item: ItemScreenData, quantity: number } | null>(null);
     const [category, setCategory] = useState<string>("all");
+    const [search, setSearch] = useState<string>("");
     const router = useRouter();
     useEffect(() => {
         apiGet(`/api/inventory/${playerId}/`).then((data: InventoryScreenData) => {
@@ -21,11 +22,15 @@ export default function InventoryScreen(props: Props) {
     }, [playerId]);
 
     const rows = data?.inventory_items ?? [];
-
-    const visible = category === "all" ? rows : rows.filter((row) => row.item.target === category);
+    const keyword = search.trim().toLowerCase();
+    const visible = rows
+        .filter((row) => category === "all" || row.item.target === category)
+        .filter((row) => row.item.name.toLowerCase().includes(keyword));
 
     return (
         <div>
+            <input type="text" placeholder="アイテム名を検索" value={search} onChange={(e) => setSearch(e.target.value)} />
+            <button onClick={() => setSearch("")}>クリア</button>
             <button onClick={() => setCategory("all")}>All</button>
             <button onClick={() => setCategory("hp")}>HP</button>
             <button onClick={() => setCategory("mp")}>MP</button>
