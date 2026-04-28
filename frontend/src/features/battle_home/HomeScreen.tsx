@@ -9,6 +9,7 @@ import { MainPanel } from "@/src/components/atoms/panel/MainPanel";
 import { ColorButton } from "@/src/components/atoms/button/ColorButton";
 import styles from "./HomeScreen.module.css";
 import { StatusRow } from "@/src/components/molecules/StatusRow";
+import { HomeSubButton } from "@/src/components/molecules/HomeSubButton";
 
 type Props = {
     playerId: string;
@@ -97,10 +98,58 @@ export default function HomeScreen(props: Props) {
                         <div className={styles.equipmentDivider}>
                             <StatusRow 
                                 label={`武器：${data.weapon || "なし"}`} 
+                                action={
+                                    <button
+                                        type="button"
+                                        className={styles.changeBtn}
+                                        onClick={() => router.push(`/game/equipment/${playerId}?tab=weapons`)}
+                                    >
+                                        変更
+                                    </button>
+                                }
                             />
                             <StatusRow 
                                 label={`防具：${data.armor || "なし"}`} 
+                                action={
+                                    <button
+                                        type="button"
+                                        className={styles.changeBtn}
+                                        onClick={() => router.push(`/game/equipment/${playerId}?tab=armors`)}
+                                    >
+                                        変更
+                                    </button>
+                                }
                             />
+                            <div className={styles.quickActionRow}>
+                                <HomeSubButton
+                                    label="持ち物"
+                                    iconPath="/game/img/アイコン/持ち物_アイコン.png"
+                                    onClick={() => router.push(`/game/inventory/${playerId}`)}
+                                />
+                                <HomeSubButton
+                                    label="クエスト"
+                                    iconPath="/game/img/アイコン/クエスト_アイコン.png"
+                                    onClick={() => router.push(`/game/quest/${playerId}`)}
+                                />
+                                {data.is_guest ? (
+                                    <HomeSubButton
+                                        label="ランキング（ゲストは利用不可）"
+                                        iconPath="/game/img/アイコン/ランキング_アイコン.png"
+                                        disabled
+                                    />
+                                ) : (
+                                    <HomeSubButton
+                                        label="ランキング"
+                                        iconPath="/game/img/アイコン/ランキング_アイコン.png"
+                                        onClick={() => router.push(`/game/ranking/${playerId}`)}
+                                    />
+                                )}
+                                <HomeSubButton
+                                    label="設定を開く"
+                                    iconPath="/game/img/アイコン/設定_アイコン.png"
+                                    onClick={() => router.push(`/game/settings/${playerId}`)}
+                                />
+                            </div>
                         </div>
                     </>
                 )}
