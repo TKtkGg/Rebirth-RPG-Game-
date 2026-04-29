@@ -1,0 +1,212 @@
+.screen {
+  position: fixed;
+  inset: 0;
+  background: #e8d68a;
+  padding: 20px;
+  box-sizing: border-box;
+}
+
+.inventoryContainer {
+  display: flex;
+  gap: 20px;
+  height: 100%;
+}
+
+.sidebar {
+  width: 180px;
+  border-radius: 15px;
+  padding: 20px;
+  gap: 18px;
+  align-self: flex-start;
+}
+
+.searchIconButton {
+  border: none;
+  background: transparent;
+  cursor: pointer;
+  width: fit-content;
+  padding: 0;
+}
+
+.categoryButton {
+  font-size: 42px;
+  font-weight: 700;
+  color: #000;
+  border: 3px solid #8b6a2e;
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.5);
+  cursor: pointer;
+  min-height: 82px;
+}
+
+.active {
+  background: rgba(173, 216, 230, 0.7);
+}
+
+.mainContent {
+  flex: 1;
+  display: flex;
+  gap: 20px;
+  min-height: 0;
+}
+
+.itemsPanel {
+  flex: 1;
+  border-radius: 20px;
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+  gap: 20px;
+  align-content: start;
+  overflow-y: auto;
+}
+
+.itemCard {
+  border: 3px solid #8b6a2e;
+  border-radius: 15px;
+  background: rgba(255, 255, 255, 0.55);
+  align-items: center;
+  padding: 16px;
+  min-height: 300px;
+}
+
+.itemIcon {
+  filter: drop-shadow(0 4px 8px rgba(0, 0, 0, 0.3));
+}
+
+.itemName {
+  margin: 0;
+  font-size: 30px;
+  font-weight: 700;
+  color: #000;
+  text-align: center;
+}
+
+.itemQuantity {
+  margin: 0;
+  font-size: 28px;
+  font-weight: 700;
+  color: #000;
+}
+
+.useButton {
+  margin-top: auto;
+  border: 2px solid #2d7a2d;
+  border-radius: 8px;
+  background: rgba(50, 150, 50, 0.85);
+  color: #fff;
+  font-size: 24px;
+  font-weight: 700;
+  padding: 10px 24px;
+  cursor: pointer;
+}
+
+.detailPanel {
+  width: 400px;
+  border-radius: 20px;
+  gap: 16px;
+  align-self: flex-start;
+}
+
+.detailTitle {
+  margin: 0;
+  font-size: 50px;
+  text-align: center;
+  color: #000;
+  font-weight: 700;
+  border-bottom: 3px solid rgba(139, 105, 20, 0.4);
+  padding-bottom: 14px;
+}
+
+.detailDescription,
+.detailStats,
+.detailCount {
+  margin: 0;
+  color: #000;
+  background: rgba(255, 255, 255, 0.35);
+  border-radius: 10px;
+  font-weight: 700;
+  padding: 14px;
+}
+
+.detailDescription {
+  min-height: 90px;
+  line-height: 1.5;
+  font-size: 28px;
+}
+
+.detailStats,
+.detailCount {
+  font-size: 38px;
+}
+
+.emptyMessage {
+  grid-column: 1 / -1;
+  text-align: center;
+  color: #666;
+  font-size: 32px;
+  font-weight: 700;
+  margin-top: 80px;
+}
+
+.backButton {
+  position: fixed;
+  left: 30px;
+  bottom: 30px;
+}
+
+.searchOverlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.5);
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+  padding-top: 90px;
+  z-index: 20;
+}
+
+.searchBox {
+  width: min(620px, 92vw);
+  border-radius: 20px;
+}
+
+.searchTitle {
+  margin: 0;
+  color: #000;
+  font-size: 42px;
+  font-weight: 700;
+  text-align: center;
+}
+
+.searchInputRow {
+  display: flex;
+  gap: 10px;
+}
+
+.searchInput {
+  flex: 1;
+  font-size: 28px;
+  border: 3px solid #8b6a2e;
+  border-radius: 10px;
+  padding: 12px 14px;
+}
+
+.searchAction,
+.closeAction {
+  border: 3px solid #8b6a2e;
+  border-radius: 10px;
+  color: #fff;
+  font-size: 24px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.searchAction {
+  background: rgba(139, 105, 20, 0.9);
+  padding: 0 22px;
+}
+
+.closeAction {
+  background: rgba(130, 130, 130, 0.9);
+  padding: 12px 20px;
+}
