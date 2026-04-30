@@ -18,6 +18,7 @@ export default function InventoryScreen(props: Props) {
     const [itemDetail, setItemDetail] = useState<{ item: ItemScreenData, quantity: number } | null>(null);
     const [category, setCategory] = useState<string>("all");
     const [search, setSearch] = useState<string>("");
+    const [text, setText] = useState<string>("");
     const [searchModalOpen, setSearchModalOpen] = useState(false);
     const router = useRouter();
     useEffect(() => {
@@ -51,17 +52,20 @@ export default function InventoryScreen(props: Props) {
             {searchModalOpen && (
                 <div className={styles.searchOverlay} onClick={() => setSearchModalOpen(false)}>
                     <InventoryPanel state="normal" interactive={false} className={styles.searchBox}>
-                        <h2 className={styles.searchTitle}>アイテム検索</h2>
+                        <h2 className={styles.searchTitle}>検索</h2>
                         <div className={styles.searchInputRow} onClick={(e) => e.stopPropagation()}>
                             <input
                                 type="text"
                                 placeholder="アイテム名を入力..."
                                 className={styles.searchInput}
-                                value={search}
-                                onChange={(e) => setSearch(e.target.value)}
+                                value={text}
+                                onChange={(e) => setText(e.target.value)}
                                 autoFocus
                             />
-                            <button type="button" className={styles.searchAction} onClick={() => setSearchModalOpen(false)}>
+                            <button type="button" className={styles.searchAction} onClick={() => {
+                                setSearchModalOpen(false);
+                                setSearch(text);
+                            }}>
                                 検索
                             </button>
                         </div>
@@ -74,9 +78,19 @@ export default function InventoryScreen(props: Props) {
 
             <div className={styles.inventoryContainer}>
                 <InventoryPanel state="normal" interactive={false} className={styles.sidebar}>
-                    <button type="button" className={styles.searchIconButton} onClick={() => setSearchModalOpen(true)}>
-                        <Image src="/game/img/アイコン/検索_アイコン.png" alt="検索" width={48} height={48} />
-                    </button>
+                    <div className={styles.searchIconContainer}>
+                        <button type="button" className={styles.searchIconButton} onClick={() => setSearchModalOpen(true)}>
+                            <Image src="/game/img/アイコン/検索_アイコン.png" alt="検索" width={48} height={48} />
+                        </button>
+                        {search && (
+                            <button type="button" className={styles.clearSearchButton} onClick={() => {
+                            setSearch("");
+                            setText("");
+                            }}>
+                                <Image src="/game/img/アイコン/バツ_アイコン.png" alt="クリア" width={48} height={48} />
+                            </button>
+                        )}
+                    </div>
 
                     <button type="button" className={`${styles.categoryButton} ${category === "all" ? styles.active : ""}`} onClick={() => setCategory("all")}>全て</button>
                     <button type="button" className={`${styles.categoryButton} ${category === "hp" ? styles.active : ""}`} onClick={() => setCategory("hp")}>回復</button>
@@ -91,11 +105,8 @@ export default function InventoryScreen(props: Props) {
                             <p className={styles.emptyMessage}>アイテムがありません</p>
                         ) : (
                             visible.map((inventoryItem) => (
-                                <InventoryPanel
+                                <div
                                     key={inventoryItem.id}
-                                    state={itemDetail?.item.id === inventoryItem.item.id ? "selected" : "normal"}
-                                    interactive
-                                    as="button"
                                     className={styles.itemCard}
                                     onClick={() => setItemDetail({ item: inventoryItem.item, quantity: inventoryItem.quantity })}
                                 >
@@ -112,7 +123,7 @@ export default function InventoryScreen(props: Props) {
                                     >
                                         使用
                                     </button>
-                                </InventoryPanel>
+                                </div>
                             ))
                         )}
                     </InventoryPanel>
