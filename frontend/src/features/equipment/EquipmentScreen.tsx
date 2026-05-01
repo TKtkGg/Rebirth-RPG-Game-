@@ -11,6 +11,7 @@ import DetailRow from "@/src/components/atoms/row/DetailRow";
 import StatusChangeRow from "@/src/components/atoms/row/StatusChangeRow";
 import EquipmentButton from "@/src/components/Organisms/inventory/EquipmentButton";
 import { InventoryPanel } from "@/src/components/atoms/panel/InventoryPanel";
+import FilterTabs from "@/src/components/Organisms/inventory/FilterTabs";
 
 type Props = {
     playerId: string;
@@ -22,6 +23,11 @@ export default function EquipmentScreen(props: Props) {
     const router = useRouter();
     const [tab, setTab] = useState<"weapons" | "armors">("weapons");
     const [equipmentDetail, setEquipmentDetail] = useState<EquipmentScreenData | null>(null);
+
+    const equipmentTabs = [
+        { label: "武器", value: "weapons" },
+        { label: "防具", value: "armors" },
+    ];
 
     useEffect(() => {
         apiGet(`/api/equipment/${playerId}/`).then((data: EquipmentChangeScreenData) => {
@@ -122,28 +128,14 @@ export default function EquipmentScreen(props: Props) {
 
     return (
         <div className={styles.container}>
-            <div className={styles.sidebar}>
-                <button
-                    type="button"
-                    className={`${styles.sidebarItem} ${tab === "weapons" ? styles.active : ""}`}
-                    onClick={() => {
-                        setTab("weapons");
-                        setEquipmentDetail(null);
-                    }}
-                >
-                    武器
-                </button>
-                <button
-                    type="button"
-                    className={`${styles.sidebarItem} ${tab === "armors" ? styles.active : ""}`}
-                    onClick={() => {
-                        setTab("armors");
-                        setEquipmentDetail(null);
-                    }}
-                >
-                    防具
-                </button>
-            </div>
+            <FilterTabs 
+                tabs={equipmentTabs} 
+                activeValue={tab} 
+                onChange={(value) => {
+                    setTab(value as "weapons" | "armors");
+                    setEquipmentDetail(null);
+                }}
+            />
 
             <div className={styles.mainContent}>
                 <InventoryPanel state="normal" interactive={false} as="div" className={styles.equipmentListPanel}>

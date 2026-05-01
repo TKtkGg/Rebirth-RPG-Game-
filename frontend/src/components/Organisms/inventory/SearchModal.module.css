@@ -1,0 +1,58 @@
+.searchOverlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.5);
+    display: flex;
+    align-items: flex-start;
+    justify-content: center;
+    padding-top: 90px;
+    z-index: 20;
+}
+
+.searchBox {
+    width: min(620px, 92vw);
+    border-radius: 20px;
+}
+
+.searchTitle {
+    margin: 0;
+    color: #000;
+    font-size: 42px;
+    font-weight: 700;
+    text-align: center;
+}
+
+.searchInputRow {
+    display: flex;
+    gap: 10px;
+}
+
+.searchInput {
+    background: rgba(255, 255, 255);
+    color: #000;
+    flex: 1;
+    font-size: 28px;
+    border: 3px solid #8b6a2e;
+    border-radius: 10px;
+    padding: 12px 14px;
+}
+
+.searchAction,
+.closeAction {
+    border: 3px solid #8b6a2e;
+    border-radius: 10px;
+    color: #fff;
+    font-size: 24px;
+    font-weight: 700;
+    cursor: pointer;
+}
+
+.searchAction {
+    background: rgba(139, 105, 20, 0.9);
+    padding: 0 22px;
+}
+
+.closeAction {
+    background: rgba(130, 130, 130, 0.9);
+    padding: 12px 20px;
+}

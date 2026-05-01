@@ -6,6 +6,11 @@ import { useRouter } from "next/navigation";
 import Image from "next/image";
 import { InventoryPanel } from "@/src/components/atoms/panel/InventoryPanel";
 import { ReturnButton } from "@/src/components/atoms/button/ReturnButton";
+import SearchModal from "@/src/components/Organisms/inventory/SearchModal";
+import ItemButton from "@/src/components/Organisms/inventory/ItemButton";
+import ItemDetail from "@/src/components/molecules/ItemDetail";
+import FilterTabs from "@/src/components/Organisms/inventory/FilterTabs";
+
 import styles from "./InventoryScreen.module.css";
 
 type Props = {
@@ -18,7 +23,6 @@ export default function InventoryScreen(props: Props) {
     const [itemDetail, setItemDetail] = useState<{ item: ItemScreenData, quantity: number } | null>(null);
     const [category, setCategory] = useState<string>("all");
     const [search, setSearch] = useState<string>("");
-    const [text, setText] = useState<string>("");
     const [searchModalOpen, setSearchModalOpen] = useState(false);
     const router = useRouter();
     useEffect(() => {
@@ -32,6 +36,16 @@ export default function InventoryScreen(props: Props) {
     const visible = rows
         .filter((row) => category === "all" || row.item.target === category)
         .filter((row) => row.item.name.toLowerCase().includes(keyword));
+
+    const onSelectItemDetail = (item: ItemScreenData, quantity: number) => {
+        setItemDetail({ item, quantity });
+    }
+
+    const inventoryTabs = [
+        { label: "全て", value: "all" },
+        { label: "回復", value: "hp" },
+        { label: "魔法", value: "mp" },
+    ]
 
     const handleUseItem = (inventoryItemId: number) => {
         apiPost(`/api/inventory/${playerId}/`, {
@@ -50,54 +64,29 @@ export default function InventoryScreen(props: Props) {
     return (
         <div className={styles.screen}>
             {searchModalOpen && (
-                <div className={styles.searchOverlay} onClick={() => setSearchModalOpen(false)}>
-                    <InventoryPanel state="normal" interactive={false} className={styles.searchBox}>
-                        <h2 className={styles.searchTitle}>検索</h2>
-                        <div className={styles.searchInputRow} onClick={(e) => e.stopPropagation()}>
-                            <input
-                                type="text"
-                                placeholder="アイテム名を入力..."
-                                className={styles.searchInput}
-                                value={text}
-                                onChange={(e) => setText(e.target.value)}
-                                autoFocus
-                            />
-                            <button type="button" className={styles.searchAction} onClick={() => {
-                                setSearchModalOpen(false);
-                                setSearch(text);
-                            }}>
-                                検索
-                            </button>
-                        </div>
-                        <button type="button" className={styles.closeAction} onClick={() => setSearchModalOpen(false)}>
-                            閉じる
-                        </button>
-                    </InventoryPanel>
-                </div>
+                <SearchModal setSearchModalOpen={setSearchModalOpen} setSearch={setSearch} />
             )}
 
             <div className={styles.inventoryContainer}>
-                <InventoryPanel state="normal" interactive={false} className={styles.sidebar}>
-                    <div className={styles.searchIconContainer}>
-                        <button type="button" className={styles.searchIconButton} onClick={() => setSearchModalOpen(true)}>
-                            <Image src="/game/img/アイコン/検索_アイコン.png" alt="検索" width={48} height={48} />
-                        </button>
-                        {search && (
-                            <button type="button" className={styles.clearSearchButton} onClick={() => {
-                            setSearch("");
-                            setText("");
-                            }}>
-                                <Image src="/game/img/アイコン/バツ_アイコン.png" alt="クリア" width={48} height={48} />
+                <FilterTabs 
+                    tabs={inventoryTabs} 
+                    activeValue={category} 
+                    onChange={(value) => setCategory(value)} 
+                    header={
+                        <div className={styles.searchIconContainer}>
+                            <button type="button" className={styles.searchIconButton} onClick={() => setSearchModalOpen(true)}>
+                                <Image src="/game/img/アイコン/検索_アイコン.png" alt="検索" width={48} height={48} />
                             </button>
-                        )}
-                    </div>
-
-                    <button type="button" className={`${styles.categoryButton} ${category === "all" ? styles.active : ""}`} onClick={() => setCategory("all")}>全て</button>
-                    <button type="button" className={`${styles.categoryButton} ${category === "hp" ? styles.active : ""}`} onClick={() => setCategory("hp")}>回復</button>
-                    <button type="button" className={styles.categoryButton}>未定</button>
-                    <button type="button" className={styles.categoryButton}>未定</button>
-                    <button type="button" className={styles.categoryButton}>未定</button>
-                </InventoryPanel>
+                            {search && (
+                                <button type="button" className={styles.clearSearchButton} onClick={() => {
+                                setSearch("");
+                                }}>
+                                    <Image src="/game/img/アイコン/バツ_アイコン.png" alt="クリア" width={48} height={48} />
+                                </button>
+                            )}
+                        </div>
+                    }
+                />
 
                 <div className={styles.mainContent}>
                     <InventoryPanel state="normal" interactive={false} className={styles.itemsPanel}>
@@ -105,45 +94,18 @@ export default function InventoryScreen(props: Props) {
                             <p className={styles.emptyMessage}>アイテムがありません</p>
                         ) : (
                             visible.map((inventoryItem) => (
-                                <div
+                                <ItemButton
                                     key={inventoryItem.id}
-                                    className={styles.itemCard}
-                                    onClick={() => setItemDetail({ item: inventoryItem.item, quantity: inventoryItem.quantity })}
-                                >
-                                    <Image src="/game/img/アイコン/回復_アイコン.png" alt={inventoryItem.item.name} width={100} height={100} className={styles.itemIcon} />
-                                    <p className={styles.itemName}>{inventoryItem.item.name}</p>
-                                    <p className={styles.itemQuantity}>({inventoryItem.quantity})</p>
-                                    <button
-                                        type="button"
-                                        className={styles.useButton}
-                                        onClick={(e) => {
-                                            e.stopPropagation();
-                                            handleUseItem(inventoryItem.id);
-                                        }}
-                                    >
-                                        使用
-                                    </button>
-                                </div>
+                                    inventoryItem={inventoryItem}
+                                    onSelectItemDetail={onSelectItemDetail}
+                                    handleUseItem={handleUseItem}
+                                />
                             ))
                         )}
                     </InventoryPanel>
 
                     <InventoryPanel state="normal" interactive={false} className={styles.detailPanel}>
-                        {itemDetail ? (
-                            <>
-                                <h2 className={styles.detailTitle}>{itemDetail.item.name}</h2>
-                                <p className={styles.detailDescription}>{itemDetail.item.description}</p>
-                                <p className={styles.detailStats}>{itemDetail.item.target.toUpperCase()} : +{itemDetail.item.effect_amount}</p>
-                                <p className={styles.detailCount}>所持数 : {itemDetail.quantity}</p>
-                            </>
-                        ) : (
-                            <>
-                                <h2 className={styles.detailTitle}>-</h2>
-                                <p className={styles.detailDescription}>アイテムを選択してください</p>
-                                <p className={styles.detailStats}>-</p>
-                                <p className={styles.detailCount}>所持数 : 0</p>
-                            </>
-                        )}
+                        <ItemDetail itemDetail={itemDetail} />
                     </InventoryPanel>
                 </div>
             </div>

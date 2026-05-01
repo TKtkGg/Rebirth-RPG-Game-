@@ -1,0 +1,22 @@
+.sidebar {
+    width: 180px;
+    border-radius: 15px;
+    padding: 20px;
+    gap: 18px;
+    align-self: flex-start;
+}
+
+.categoryButton {
+    font-size: 34px;
+    font-weight: 600;
+    color: #000;
+    border: 3px solid #8b6a2e;
+    border-radius: 10px;
+    background: rgba(255, 255, 255, 0.5);
+    cursor: pointer;
+    min-height: 82px;
+}
+
+.active {
+    background: rgba(173, 216, 230, 0.7);
+}
