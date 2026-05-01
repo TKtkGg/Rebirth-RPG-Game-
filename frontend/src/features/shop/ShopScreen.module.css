@@ -2,7 +2,6 @@
     position: fixed;
     inset: 0;
     background-image: url("/game/img/背景/ショップ_背景.png");
-    background-size: cover;
     background-position: center;
     background-repeat: no-repeat;
     display: flex;
@@ -34,9 +33,6 @@
     position: fixed;
     left: 10px;
     bottom: 34px;
-    color: #fff;
-    background: rgba(100, 100, 100, 0.8);
-    border-color: rgba(255, 255, 255, 0.5);
     padding: 14px 18px;
     font-size: 32px;
 }
