@@ -1,0 +1,76 @@
+.questBox {
+    background: rgba(50, 50, 50, 0.6);
+    border: 3px solid rgba(139, 105, 20, 0.7);
+    border-radius: 10px;
+    padding: 15px;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.5);
+    color: #fff;
+    text-align: center;
+}
+
+button.questBox {
+    cursor: default;
+}
+
+button.completed {
+    cursor: pointer;
+}
+
+button.completed:hover {
+    background: rgba(144, 238, 144, 0.5);
+    transform: translateY(-2px);
+    box-shadow: 0 6px 20px rgba(0, 0, 0, 0.6);
+}
+
+.completed {
+    background: rgba(144, 238, 144, 0.4);
+}
+
+.claimed {
+    background: rgba(100, 100, 100, 0.3);
+    opacity: 0.6;
+}
+
+.empty {
+    background: rgba(30, 30, 30, 0.4);
+    border: 2px dashed rgba(100, 100, 100, 0.5);
+}
+
+.questTitle {
+    font-size: 20px;
+    font-weight: 700;
+    color: #fff;
+    text-shadow: 2px 2px 4px rgba(0, 0, 0, 1);
+    margin-bottom: 10px;
+}
+
+.questDescription {
+    font-size: 16px;
+    color: #ddd;
+    margin-bottom: 8px;
+    line-height: 1.4;
+}
+
+.questProgress {
+    font-size: 18px;
+    font-weight: 700;
+    color: #90ee90;
+    text-shadow: 1px 1px 3px rgba(0, 0, 0, 1);
+    margin-bottom: 8px;
+}
+
+.questReward {
+    font-size: 16px;
+    color: #ffd700;
+    text-shadow: 1px 1px 3px rgba(0, 0, 0, 1);
+    line-height: 1.5;
+}
+
+.emptyText {
+    color: #888;
+    margin-top: auto;
+    margin-bottom: auto;
+}

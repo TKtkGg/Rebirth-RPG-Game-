@@ -1,6 +1,6 @@
 import { PlayerScreenData } from "../types/player_types";
 
-type QuestItem = {
+export type QuestItem = {
     "id": number;
     "quest_template": {
         "title": string;
