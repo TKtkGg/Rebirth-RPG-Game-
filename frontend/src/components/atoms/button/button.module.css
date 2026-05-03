@@ -11,13 +11,28 @@
     box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
 }
 
-.primaryButton:hover {
+.backButton {
+    padding: 12px 20px;
+    font-size: 28px;
+    font-weight: 700;
+    background: rgba(230, 230, 230, 0.95);
+    color: #111;
+    border: 3px solid #222;
+    border-radius: 8px;
+    cursor: pointer;
+    transition: transform 0.1s ease, background 0.2s ease, color 0.2s ease;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
+}
+
+.primaryButton,
+.backButton:hover {
     background: #222;
     color: #fff;
     transform: translateY(-2px);
 }
 
-.primaryButton:disabled {
+.primaryButton,
+.backButton:disabled {
     cursor: default;
     opacity: 0.85;
 }

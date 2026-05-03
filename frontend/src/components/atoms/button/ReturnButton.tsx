@@ -11,7 +11,7 @@ export const ReturnButton = ({ onClick, children = "戻る", className }: Props)
     return (
         <button
             type="button"
-            className={`${styles.primaryButton} ${className ?? ""}`}
+            className={`${styles.backButton} ${className ?? ""}`}
             onClick={onClick}
         >
             {children}

@@ -12,6 +12,8 @@
 .searchBox {
     width: min(620px, 92vw);
     border-radius: 20px;
+    display: flex;
+    flex-direction: column;
 }
 
 .searchTitle {
