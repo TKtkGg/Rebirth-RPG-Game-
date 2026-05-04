@@ -82,27 +82,27 @@ def build_job_slots(user, available_jobs):
     job_definitions_base = [
         {
             "key": "戦士",
-            "icon": "game/img/アイコン/武器_アイコン.png",
+            "icon": "/game/img/アイコン/武器_アイコン.png",
             "description": "体力、攻撃力、防御力が高いが、スピードは遅め。",
         },
         {
             "key": "魔法使い",
-            "icon": "game/img/アイコン/魔法の杖_アイコン.png",
+            "icon": "/game/img/アイコン/魔法の杖_アイコン.png",
             "description": "高い攻撃力を持つが、打たれ弱い。",
         },
         {
             "key": "忍者",
-            "icon": "game/img/アイコン/忍者_アイコン.png",
+            "icon": "/game/img/アイコン/忍者_アイコン.png",
             "description": "攻撃力、スピードのあるジョブ。他はフツー。",
         },
         {
             "key": "格闘家",
-            "icon": "game/img/アイコン/格闘_アイコン.png",
+            "icon": "/game/img/アイコン/格闘_アイコン.png",
             "description": "攻撃力に特に優れたジョブ。体力と気力が少し低め。",
         },
         {
             "key": "侍",
-            "icon": "game/img/アイコン/武器_アイコン.png",
+            "icon": "/game/img/アイコン/武器_アイコン.png",
             "description": "一瞬の見切りで勝機を掴む剣士。",
         },
     ]

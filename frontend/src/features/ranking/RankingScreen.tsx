@@ -1,14 +1,38 @@
 "use client"
 
 import { useState, useEffect } from "react";
+import Image from "next/image";
+import { useRouter } from "next/navigation";
 import { RankingData } from "./types";
 import { apiGet } from "@/src/lib/apiClient";
+import { SectionTitle } from "@/src/components/atoms/title/SectionTitle";
+import { ReturnButton } from "@/src/components/atoms/button/ReturnButton";
+import styles from "./RankingScreen.module.css";
 
 type Props = {
     playerId: string;
+};
+
+const PLACEHOLDER_ENTRY: RankingData["entries"][number] = {
+    name: "—",
+    value: 0,
+    job: "",
+    job_icon: "game/img/アイコン/はてな_アイコン.png",
+};
+
+const FALLBACK_CATEGORIES: RankingData["categories"] = [
+    { key: "score", label: "スコア" },
+    { key: "strong", label: "強敵討伐数" },
+    { key: "victories", label: "勝利回数" },
+];
+
+function toPublicPath(path: string): string {
+    if (!path) return "/game/img/アイコン/はてな_アイコン.png";
+    return path.startsWith("/") ? path : `/${path}`;
 }
 
 export default function RankingScreen({ playerId }: Props) {
+    const router = useRouter();
     const [rankingData, setRankingData] = useState<RankingData | null>(null);
     const [category, setCategory] = useState<string>("score");
 
@@ -19,24 +43,89 @@ export default function RankingScreen({ playerId }: Props) {
             });
     }, [playerId, category]);
 
+    const categories = rankingData?.categories ?? FALLBACK_CATEGORIES;
+
+    const entries =
+        rankingData?.entries && rankingData.entries.length === 3
+            ? rankingData.entries
+            : [PLACEHOLDER_ENTRY, PLACEHOLDER_ENTRY, PLACEHOLDER_ENTRY];
+
+    const first = entries[0];
+    const second = entries[1];
+    const third = entries[2];
+
+    const sectionTitle =
+        rankingData?.label ?? categories.find((c) => c.key === category)?.label ?? "スコア";
+
     return (
-        <div>
-            <div>
-                {rankingData?.categories.map((category) => (
-                    <button key={category.key} onClick={() => setCategory(category.key)}>
-                        {category.label}
+        <div className={styles.layout}>
+            <aside className={styles.sidebar}>
+                <div className={styles.sidebarTitle}>ランキング</div>
+                {categories.map((cat) => (
+                    <button
+                        key={cat.key}
+                        type="button"
+                        className={`${styles.sidebarItem} ${category === cat.key ? styles.sidebarItemActive : ""}`}
+                        onClick={() => setCategory(cat.key)}
+                    >
+                        {cat.label}
                     </button>
                 ))}
-                <h1>{rankingData?.label}</h1>
-                {rankingData?.entries.map((entry) => (
-                    <div key={entry.name}>
-                        {entry.name}
-                        <img src={entry.job_icon} alt={entry.job} />
-                        {entry.value}
+                <div className={styles.backWrap}>
+                    <ReturnButton onClick={() => router.push(`/game/battle/home/${playerId}`)} />
+                </div>
+            </aside>
+
+            <main className={styles.main}>
+                <SectionTitle title={sectionTitle} className={styles.mainTitle} />
+
+                <div className={styles.board}>
+                    <Image
+                        src="/game/img/アイコン/ランキング台.png"
+                        alt="ランキング台"
+                        width={900}
+                        height={520}
+                        className={styles.podiumImage}
+                        priority
+                    />
+
+                    <div className={`${styles.podiumEntry} ${styles.podiumFirst}`}>
+                        <div className={styles.entryValue}>{first.value}</div>
+                        <div className={styles.entryName}>{first.name}</div>
+                        <Image
+                            src={toPublicPath(first.job_icon)}
+                            alt={first.job || "職業"}
+                            width={70}
+                            height={70}
+                            className={styles.entryIcon}
+                        />
                     </div>
-                ))}
-            </div>
-            
+
+                    <div className={`${styles.podiumEntry} ${styles.podiumSecond}`}>
+                        <div className={styles.entryValue}>{second.value}</div>
+                        <div className={styles.entryName}>{second.name}</div>
+                        <Image
+                            src={toPublicPath(second.job_icon)}
+                            alt={second.job || "職業"}
+                            width={70}
+                            height={70}
+                            className={styles.entryIcon}
+                        />
+                    </div>
+
+                    <div className={`${styles.podiumEntry} ${styles.podiumThird}`}>
+                        <div className={styles.entryValue}>{third.value}</div>
+                        <div className={styles.entryName}>{third.name}</div>
+                        <Image
+                            src={toPublicPath(third.job_icon)}
+                            alt={third.job || "職業"}
+                            width={70}
+                            height={70}
+                            className={styles.entryIcon}
+                        />
+                    </div>
+                </div>
+            </main>
         </div>
     );
 }
