@@ -8,7 +8,7 @@ import { InventoryPanel } from "@/src/components/atoms/panel/InventoryPanel";
 import { ReturnButton } from "@/src/components/atoms/button/ReturnButton";
 import SearchModal from "@/src/components/Organisms/inventory/SearchModal";
 import ItemButton from "@/src/components/Organisms/inventory/ItemButton";
-import ItemDetail from "@/src/components/molecules/ItemDetail";
+import ItemDetail from "@/src/components/molecules/item/ItemDetail";
 import FilterTabs from "@/src/components/Organisms/inventory/FilterTabs";
 
 import styles from "./InventoryScreen.module.css";

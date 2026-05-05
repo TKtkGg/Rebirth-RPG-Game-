@@ -8,8 +8,8 @@ import StatAllocButton from "../../components/atoms/button/StatAllocButton";
 import { MainPanel } from "@/src/components/atoms/panel/MainPanel";
 import { ColorButton } from "@/src/components/atoms/button/ColorButton";
 import styles from "./HomeScreen.module.css";
-import { StatusRow } from "@/src/components/molecules/StatusRow";
-import { HomeSubButton } from "@/src/components/molecules/HomeSubButton";
+import { StatusRow } from "@/src/components/molecules/home/StatusRow";
+import { HomeSubButton } from "@/src/components/molecules/home/HomeSubButton";
 
 type Props = {
     playerId: string;

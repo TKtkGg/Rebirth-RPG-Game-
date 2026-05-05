@@ -8,6 +8,7 @@ import { apiGet } from "@/src/lib/apiClient";
 import { SectionTitle } from "@/src/components/atoms/title/SectionTitle";
 import { ReturnButton } from "@/src/components/atoms/button/ReturnButton";
 import styles from "./RankingScreen.module.css";
+import RankingEntry from "@/src/components/molecules/ranking/RankingEntry";
 
 type Props = {
     playerId: string;
@@ -89,41 +90,9 @@ export default function RankingScreen({ playerId }: Props) {
                         priority
                     />
 
-                    <div className={`${styles.podiumEntry} ${styles.podiumFirst}`}>
-                        <div className={styles.entryValue}>{first.value}</div>
-                        <div className={styles.entryName}>{first.name}</div>
-                        <Image
-                            src={toPublicPath(first.job_icon)}
-                            alt={first.job || "職業"}
-                            width={70}
-                            height={70}
-                            className={styles.entryIcon}
-                        />
-                    </div>
-
-                    <div className={`${styles.podiumEntry} ${styles.podiumSecond}`}>
-                        <div className={styles.entryValue}>{second.value}</div>
-                        <div className={styles.entryName}>{second.name}</div>
-                        <Image
-                            src={toPublicPath(second.job_icon)}
-                            alt={second.job || "職業"}
-                            width={70}
-                            height={70}
-                            className={styles.entryIcon}
-                        />
-                    </div>
-
-                    <div className={`${styles.podiumEntry} ${styles.podiumThird}`}>
-                        <div className={styles.entryValue}>{third.value}</div>
-                        <div className={styles.entryName}>{third.name}</div>
-                        <Image
-                            src={toPublicPath(third.job_icon)}
-                            alt={third.job || "職業"}
-                            width={70}
-                            height={70}
-                            className={styles.entryIcon}
-                        />
-                    </div>
+                    <RankingEntry value={first.value} name={first.name} job_icon={toPublicPath(first.job_icon)} job={first.job} className={styles.podiumFirst} />
+                    <RankingEntry value={second.value} name={second.name} job_icon={toPublicPath(second.job_icon)} job={second.job} className={styles.podiumSecond} />
+                    <RankingEntry value={third.value} name={third.name} job_icon={toPublicPath(third.job_icon)} job={third.job} className={styles.podiumThird} />
                 </div>
             </main>
         </div>
