@@ -1,14 +1,3 @@
-.searchOverlay {
-    position: fixed;
-    inset: 0;
-    background: rgba(0, 0, 0, 0.5);
-    display: flex;
-    align-items: flex-start;
-    justify-content: center;
-    padding-top: 90px;
-    z-index: 20;
-}
-
 .searchBox {
     width: min(620px, 92vw);
     border-radius: 20px;

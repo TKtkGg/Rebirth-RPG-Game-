@@ -1,0 +1,49 @@
+.settingsModal {
+    position: relative;
+    width: min(500px, 90vw);
+    background: rgba(15, 15, 15, 0.9);
+    border: 3px solid rgba(139, 105, 20, 0.9);
+    border-radius: 20px;
+    padding: 40px 30px;
+    color: #fff;
+    text-align: center;
+    box-shadow: 0 20px 40px rgba(0, 0, 0, 0.8);
+}
+
+.modalTitle {
+    font-size: 28px;
+    font-weight: 700;
+    margin-bottom: 30px;
+    text-shadow: 0 4px 12px rgba(0, 0, 0, 0.7);
+}
+
+.modalClose {
+    position: absolute;
+    top: 15px;
+    right: 15px;
+    background: transparent;
+    color: #fff;
+    border: none;
+    font-size: 28px;
+    cursor: pointer;
+}
+
+.modalOptions {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+}  
+
+.modalOption {
+    padding: 24px 32px;
+    font-size: 26px;
+    font-weight: 700;
+    width: 100%;
+    min-height: 80px;
+}
+
+.modalError {
+    margin: 12px 0 0;
+    color: #ffb4b4;
+    font-size: 14px;
+}

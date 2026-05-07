@@ -10,6 +10,7 @@ import { ColorButton } from "@/src/components/atoms/button/ColorButton";
 import styles from "./HomeScreen.module.css";
 import { StatusRow } from "@/src/components/molecules/home/StatusRow";
 import { HomeSubButton } from "@/src/components/molecules/home/HomeSubButton";
+import { SettingModal } from "@/src/components/Organisms/home/SettingModal";
 
 type Props = {
     playerId: string;
@@ -25,7 +26,7 @@ export default function HomeScreen(props: Props) {
     const router = useRouter();
     const [data, setData] = useState<HomeScreenData | null>(null);
     const [restText, setRestText] = useState("");
-    const [errorMessage, setErrorMessage] = useState("");
+    const [isSettingsOpen, setIsSettingsOpen] = useState(false);
 
     useEffect(() => {
         apiGet(`/api/battle_start/${playerId}/`).then((d: HomeScreenData) => {
@@ -147,7 +148,7 @@ export default function HomeScreen(props: Props) {
                                 <HomeSubButton
                                     label="設定を開く"
                                     iconPath="/game/img/アイコン/設定_アイコン.png"
-                                    onClick={() => router.push(`/game/settings/${playerId}`)}
+                                    onClick={() => setIsSettingsOpen(true)}
                                 />
                             </div>
                         </div>
@@ -198,26 +199,11 @@ export default function HomeScreen(props: Props) {
                 {restText ? <p className={styles.restMessage}>{restText}</p> : null}
             </div>
 
-            <button
-                type="button"
-                className={styles.logoutBtn}
-                onClick={() => {
-                    setErrorMessage("");
-                    apiPost(`/api/auth/logout/`, {})
-                        .then((d: { ok: boolean }) => {
-                            if (d.ok) {
-                                localStorage.removeItem("playerId");
-                                router.push("/auth/");
-                            }
-                        })
-                        .catch((error: { message: string }) => {
-                            setErrorMessage(error.message);
-                        });
-                }}
-            >
-                ログアウト
-            </button>
-            {errorMessage ? <p className={styles.logoutError}>{errorMessage}</p> : null}
+            {isSettingsOpen && (
+                <SettingModal
+                    setIsModalOpen={setIsSettingsOpen}
+                />
+            )}
         </div>
     );
 }

@@ -6,12 +6,11 @@ import { ShopScreenData } from "./types";
 import { EquipmentScreenData } from "../types/equipment_types";
 import { ItemScreenData } from "../types/item_types";
 import { useRouter } from "next/navigation";
-import Image from "next/image";
 import { SectionTitle } from "@/src/components/atoms/title/SectionTitle";
 import { ReturnButton } from "@/src/components/atoms/button/ReturnButton";
 import styles from "./ShopScreen.module.css";
 import { Tooltip } from "@/src/components/Organisms/shop/Tooltip";
-import { Modal } from "@/src/components/Organisms/shop/Modal";
+import { ShopModal } from "@/src/components/Organisms/shop/ShopModal";
 import { MerchandiseButton } from "@/src/components/Organisms/shop/MerchandiseButton";
 import { ShopDisplayItem } from "./types";
 
@@ -31,6 +30,7 @@ export default function ShopScreen(props: Props) {
     const [data, setData] = useState<ShopScreenData | null>(null);
     const [tooltip, setTooltip] = useState<TooltipState | null>(null);
     const [selectedItem, setSelectedItem] = useState<ShopDisplayItem | null>(null);
+    const [isModalOpen, setIsModalOpen] = useState(false);
 
     useEffect(() => {
         apiGet(`/api/shop/${playerId}/`).then((data: ShopScreenData) => {
@@ -89,6 +89,7 @@ export default function ShopScreen(props: Props) {
     const handleItemClick = (item: ShopDisplayItem) => {
         setTooltip(null);
         setSelectedItem(item);
+        setIsModalOpen(true);
     };
 
     const handleTooltipEnter = (item: ShopDisplayItem, x: number, y: number) => {
@@ -103,10 +104,6 @@ export default function ShopScreen(props: Props) {
         setTooltip(null);
     };
 
-    const closeModal = () => {
-        setSelectedItem(null);
-    };
-
     const confirmPurchase = (purchaseQuantity: number) => {
         if (!selectedItem) {
             return;
@@ -117,11 +114,11 @@ export default function ShopScreen(props: Props) {
         } else {
             handleBuyEquipment(selectedItem);
         }
-        closeModal();
+        setIsModalOpen(false);
     };
 
     return (
-        <div className={`${styles.shopContainer} ${selectedItem ? styles.dimmed : ""}`}>
+        <div className={`${styles.shopContainer} ${isModalOpen ? styles.dimmed : ""}`}>
             <SectionTitle title="ショップ" className={styles.title} />
             <div className={styles.shopGrid}>
                 {displayItems.map((item) => (
@@ -145,9 +142,9 @@ export default function ShopScreen(props: Props) {
                 <Tooltip tooltip={tooltip} />
             )}
 
-            {selectedItem && (
-                <Modal
-                    closeModal={closeModal}
+            {isModalOpen && selectedItem && (
+                <ShopModal
+                    setIsModalOpen={setIsModalOpen}
                     confirmPurchase={confirmPurchase}
                     selectedItem={selectedItem}
                     data={data}

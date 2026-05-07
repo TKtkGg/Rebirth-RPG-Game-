@@ -1,23 +1,24 @@
-import styles from "./Modal.module.css";
+import styles from "./ShopModal.module.css";
 import { ShopDisplayItem } from "@/src/features/shop/types";
 import { ShopScreenData } from "@/src/features/shop/types";
 import { useState } from "react";
 import { PrimaryButton } from "../../atoms/button/PrimaryButton";
+import Modal from "../../molecules/Modal";
 
 type Props = {
-    closeModal: () => void;
+    setIsModalOpen: (open: boolean) => void;
     confirmPurchase: (purchaseQuantity: number) => void;
     selectedItem: ShopDisplayItem;
     data: ShopScreenData | null;
 }
 
-export function Modal(props: Props) {
-    const { closeModal, confirmPurchase, selectedItem, data } = props;
+export function ShopModal(props: Props) {
+    const { setIsModalOpen, confirmPurchase, selectedItem, data } = props;
 
     const [purchaseQuantity, setPurchaseQuantity] = useState(1);
 
     return (
-        <div className={styles.modalOverlay} onClick={closeModal}>
+        <Modal setIsModalOpen={setIsModalOpen}>
             <div className={styles.modalContent} onClick={(event) => event.stopPropagation()}>
                 <div className={styles.modalText}>
                     {selectedItem.name} を
@@ -58,12 +59,14 @@ export function Modal(props: Props) {
                         Yes
                     </PrimaryButton>
                     <PrimaryButton
-                        onClick={closeModal}
+                        onClick={() => {
+                            setIsModalOpen(false);
+                        }}
                     >
                         No
                     </PrimaryButton>
                 </div>
             </div>
-        </div>
+        </Modal>
     );
 }
