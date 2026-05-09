@@ -6,3 +6,4 @@ from .equipment_api import equipment_api
 from .inventory_api import inventory_api
 from .quest_api import quest_api
 from .ranking_api import ranking_api
+from .battle_api import battle_api

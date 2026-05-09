@@ -8,4 +8,5 @@ from .api_endpoints import (
     inventory_api,
     quest_api,
     ranking_api,
+    battle_api,
 )

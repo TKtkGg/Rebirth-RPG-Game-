@@ -30,6 +30,33 @@ def player_to_api_dict(player):
         "total_spd_battle": player.total_spd_battle,
     }
 
+def enemy_to_api_dict(enemy):
+    return {
+        "id": enemy.id,
+        "name": enemy.name,
+        "image_url": enemy.image_url,
+        "attack_sound": enemy.attack_sound,
+        "attack_effect": enemy.attack_effect,
+        "level": enemy.level,
+        "atk": enemy.atk,
+        "defense": enemy.defense,
+        "spd": enemy.spd,
+        "hp": enemy.hp,
+        "max_hp": enemy.max_hp,
+        "exp": enemy.exp,
+        "drop_gold": enemy.drop_gold,
+        "is_defeated": enemy.is_defeated,
+        "is_strong": enemy.is_strong,
+        "appear_level": enemy.appear_level,
+        "base_max_hp": enemy.base_max_hp,
+        "base_atk": enemy.base_atk,
+        "base_def": enemy.base_def,
+        "base_spd": enemy.base_spd,
+        "base_exp": enemy.base_exp,
+        "drop_gold_base": enemy.drop_gold_base,
+        "drop_equipment": [equipment_to_api_dict(equipment) for equipment in enemy.drop_equipment.all()],
+        "stages": [stage_to_api_dict(stage) for stage in enemy.stages.all()],
+    }
 
 def equipment_to_api_dict(equipment):
     if not equipment:
@@ -58,5 +85,16 @@ def item_to_api_dict(item):
         "description": item.description,
         "max_stock": item.max_stock,
         "current_stock": current_stock,
+    }
+
+def stage_to_api_dict(stage):
+    return {
+        "id": stage.id,
+        "name": stage.name,
+        "unlock_level": stage.unlock_level,
+        "background_image": stage.background_image,
+        "min_enemy_level": stage.min_enemy_level,
+        "max_enemy_level": stage.max_enemy_level,
+        "order": stage.order,
     }
 

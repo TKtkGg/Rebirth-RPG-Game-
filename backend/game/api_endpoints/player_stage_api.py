@@ -1,7 +1,7 @@
 from django.http import JsonResponse
 from django.shortcuts import get_object_or_404
 
-from ..api_serializers import player_to_api_dict
+from ..api_serializers import player_to_api_dict, stage_to_api_dict
 from ..models import Player, Stage
 
 
@@ -20,13 +20,5 @@ def stage_list(request, player_id):
     stagesData = Stage.objects.all()
     return JsonResponse({
         "player": player_to_api_dict(player),
-        "stages": [{
-            "id": stage.id,
-            "name": stage.name,
-            "unlock_level": stage.unlock_level,
-            "background_image": stage.background_image,
-            "min_enemy_level": stage.min_enemy_level,
-            "max_enemy_level": stage.max_enemy_level,
-            "order": stage.order,
-        } for stage in stagesData],
+        "stages": [stage_to_api_dict(stage) for stage in stagesData],
     })

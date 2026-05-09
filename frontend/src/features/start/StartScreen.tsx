@@ -51,7 +51,7 @@ export default function StartScreen() {
                             disabled={!job.unlocked}
                         >
                             <img
-                                src={`/${job.icon}`}
+                                src={`${job.icon}`}
                                 alt={job.name || "未開放"}
                                 className={!job.unlocked ? styles.jobIconLocked : styles.jobIcon}
                             />

@@ -74,7 +74,7 @@ def render_battle_screen(
 
 
 def tohome(message, player, request):
-    # 休むペナルティ：経験値を全て失い、ゴールドの30%を減少
+    # 敗北ペナルティ：経験値を全て失い、ゴールドの30%を減少
     gold_penalty = int(player.gold * 0.3)
     
     actual_exp_penalty = player.exp  # 全ての経験値を失う

@@ -118,7 +118,7 @@ def build_job_slots(user, available_jobs):
     while len(job_slots) < 8:
         job_slots.append({
             "name": "",
-            "icon": "game/img/アイコン/はてな_アイコン.png",
+            "icon": "/game/img/アイコン/はてな_アイコン.png",
             "description": "",
             "bonus": "",
             "unlocked": False,
