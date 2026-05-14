@@ -1482,6 +1482,7 @@ def battle_post(request, player_id):
         # プレイヤーの総HPが0以下になったかチェック
         if player.total_hp_battle <= 0:
             player.death_count += 1
+            player.save()
             _reset_battle_session(request, clear_enemy_id=True)
             if player.death_count >= 3:
                 request.session['gameover_player_id'] = player.id
