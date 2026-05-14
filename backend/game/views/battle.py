@@ -1092,7 +1092,7 @@ def battle(request, player_id, enemy_id=None):
     
     return render(request, "game/battle.html", render_battle_screen(message, **render_kwargs))
 
-def build_battle_data(state, result=None):
+def build_battle_data(state):
     return {
         "player": player_to_api_dict(state["player"]),
         "enemy": enemy_to_api_dict(state["enemy"]) if state["enemy"] else None,
@@ -1111,62 +1111,28 @@ def build_battle_data(state, result=None):
         "player_hp_percent": state["player_hp_percent"],
         "player_sp_percent": state["player_sp_percent"],
         "enemy_hp_percent": state["enemy_hp_percent"],
-        "result": {
-            "gained_exp": result["gained_exp"],
-            "gained_gold": result["gained_gold"],
-            "existLevel": result["existLevel"],
-        } if result else None,
     }
+def build_result_data(result):
+    return {
+        "gained_exp": result["gained_exp"],
+        "gained_gold": result["gained_gold"],
+        "existLevel": result["existLevel"],
+        "stage": stage_to_api_dict(result["stage"]),
+    } if result else None
+
 
 def battle_get(request, player_id):
     player = get_player_from_request(request, player_id)
     if not player:
         return {
-            "error": "プレイヤーが存在しません。",
+            "battle": None,
+            "event": {
+                "type": "error",
+                "payload": {
+                    "message": "プレイヤーが存在しません。",
+                },
+            },
         }
-    
-    # AJAXで勝利した後のリロード時の処理
-    if request.session.get('battle_won'):
-        gained_exp = request.session.pop('gained_exp', 0)
-        gained_gold = request.session.pop('gained_gold', 0)
-        old_level = request.session.pop('old_level', player.level)
-        request.session.pop('battle_won')
-        
-        # セッションをクリア
-        _reset_battle_session(request, clear_enemy_id=True)
-        
-        # ステージを取得
-        stage = _get_stage_or_first(request.session.get('stage_id'))
-        
-        # 勝利画面を表示
-        player_skills, player_items = _get_player_skills_and_items(player)
-
-        victory_state = {
-            "player": player,
-            "enemy": None,
-            "message_history": [],
-            "player_skills": player_skills,
-            "player_items": player_items,
-            "stage": stage,
-            "player_hp_percent": 100,
-            "player_sp_percent": 100,
-            "enemy_hp_percent": 0,
-            "buffs": {},
-            "debuffs": {},
-            "showplayer_atk": 0,
-            "showplayer_def": 0,
-            "showplayer_spd": 0,
-            "showenemy_atk": 0,
-            "showenemy_def": 0,
-            "showenemy_spd": 0,
-        }
-        result = {
-            "gained_exp": gained_exp,
-            "gained_gold": gained_gold,
-            "existLevel": old_level,
-        }
-        
-        return build_battle_data(victory_state, result)
     
     # ステージIDを取得（GETパラメータまたはセッション）
     stage = _resolve_stage_from_request(request)
@@ -1179,7 +1145,13 @@ def battle_get(request, player_id):
         if not enemy:
             # 敵が1体も存在しない場合はエラー
             return {
-                "error": "敵が存在しません。",
+                "battle": None,
+                "event": {
+                    "type": "error",
+                    "payload": {
+                        "message": "敵が存在しません。",
+                    },
+                },
             }
         enemy_id = enemy.id
         
@@ -1194,7 +1166,13 @@ def battle_get(request, player_id):
             enemy = Enemy.objects.get(id=enemy_id)
         except Enemy.DoesNotExist:
             return {
-                "error": "enemy_idが存在しません。",
+                "battle": None,
+                "event": {
+                    "type": "error",
+                    "payload": {
+                        "message": "enemy_idが存在しません。",
+                    },
+                },
             }
         
     # メッセージ履歴を取得（累積表示用）
@@ -1242,15 +1220,380 @@ def battle_get(request, player_id):
         "enemy_hp_percent": enemy_hp_percent,
     }
 
-    return build_battle_data(full_state, None)
+    return {
+        "battle": build_battle_data(full_state),
+        "event": None,
+    }
+
 
 def battle_post(request, player_id):
     player = get_player_from_request(request, player_id)
     if not player:
         return {
-            "error": "プレイヤーが存在しません。",
+            "battle": None,
+            "event": {
+                "type": "error",
+                "payload": {
+                    "message": "プレイヤーが存在しません。",
+                },
+            },
         }
     
+    # ステージIDを取得（GETパラメータまたはセッション）
+    stage = _resolve_stage_from_request(request)
+
+    player_skills, player_items = _get_player_skills_and_items(player)
+    
+    enemy_id = request.session.get("enemy_id")
+    
+    # 新しい戦闘開始時のみ敵を選択（stage_idがGETパラメータにある場合、またはenemy_idが存在しない場合）
+    if (request.GET.get('stage_id') or not enemy_id) and not enemy_id:
+        enemy = select_new_enemy(player, stage, request)
+        if not enemy:
+            # 敵が1体も存在しない場合はエラー
+            return {
+                "battle": None,
+                "event": {
+                    "type": "error",
+                    "payload": {
+                        "message": "敵が存在しません。",
+                    },
+                },
+            }
+        enemy_id = enemy.id
+        
+        # 戦闘用ステータスを更新（装備ボーナス込み）
+        player.update_battle_stats()
+        player.save()
+        
+        # 新しい戦闘開始時にメッセージ履歴をクリア
+        _reset_battle_session(request)
+    else:
+        try:
+            enemy = Enemy.objects.get(id=enemy_id)
+        except Enemy.DoesNotExist:
+            return {
+                "battle": None,
+                "event": {
+                    "type": "error",
+                    "payload": {
+                        "message": "enemy_idが存在しません。",
+                    },
+                },
+            }
+    
+    message = ""
+    
+    # メッセージ履歴を取得（累積表示用）
+    message_history = request.session.get("message_history", [])
+
+    buffs = request.session.get("buffs", {})
+    debuffs = request.session.get("debuffs", {})
+    special_states = request.session.get("special_states", {})  # 特殊状態（確定回避など）
+
+    actionp = request.POST.get('action')
+    # 逃走処理
+    if actionp == 'escape':
+        message, escaped, exp_penalty, gold_penalty = escape(message, player, enemy, request)
+        if escaped:
+            player.save()
+            _reset_battle_session(request, clear_enemy_id=True)
+            # 逃走成功
+            return {
+                "battle": None,
+                "event": {
+                    "type": "escape",
+                    "payload": {
+                        "message": message,
+                        "enemy_override": None,
+                        "escaped": True,
+                        "exp_penalty": exp_penalty,
+                        "gold_penalty": gold_penalty,
+                    },
+                }
+            }
+        else:
+            # 逃走失敗 - 敵のターンへ
+            actione = choose_enemyAction(enemy, player, buffs, debuffs)
+            ex_message, buffs, debuffs = enemyAction(message, enemy, player, buffs, debuffs, actionp, actione, special_states)
+            request.session["buffs"] = buffs
+            request.session["debuffs"] = debuffs
+            message += ex_message
+            
+            # メッセージ履歴に追加
+            message_history.append(message)
+            request.session["message_history"] = message_history
+            player.save()
+            # プレイヤーが倒れたかチェック
+            if player.total_hp_battle <= 0:
+                player.death_count += 1
+                player.save()
+                _reset_battle_session(request, clear_enemy_id=True)
+                if player.death_count >= 3:
+                    request.session['gameover_player_id'] = player.id                    
+                    return {
+                        "battle": None,
+                        "event": {
+                            "type": "gameover",
+                            "payload": {
+                                "message": "プレイヤーが倒れました。",
+                            },
+                        }
+                    }
+                else:
+                    message = tohome(message, player, request)
+                    return {
+                        "battle": None,
+                        "event": {
+                            "type": "tohome",
+                            "payload": {
+                                "message": message,
+                                "redirect_after": True,
+                                "recovering": True,
+                            },
+                        }
+                    }
+            
+            # 表示用ステータスを再計算【装備ボーナス込み + バフ×デバフ適用】
+            # プレイヤーのステータス（total_atk, total_def, total_spdは装備込み）
+            showplayer_atk = int(_get_effective_stat(player.total_atk_battle, buffs, debuffs, "player", "atk"))
+            showplayer_def = int(_get_effective_stat(player.total_def_battle, buffs, debuffs, "player", "def"))
+            showplayer_spd = int(_get_effective_stat(player.total_spd_battle, buffs, debuffs, "player", "spd"))
+            
+            # 敵のステータス（装備なし）
+            showenemy_atk = int(_get_effective_stat(enemy.atk, buffs, debuffs, "enemy", "atk"))
+            showenemy_def = int(_get_effective_stat(enemy.defense, buffs, debuffs, "enemy", "def"))
+            showenemy_spd = int(_get_effective_stat(enemy.spd, buffs, debuffs, "enemy", "spd"))
+
+            state = {
+                "player": player,
+                "enemy": enemy,
+                "message_history": message_history,
+                "showplayer_atk": showplayer_atk,
+                "showplayer_def": showplayer_def,
+                "showplayer_spd": showplayer_spd,
+                "buffs": buffs,
+                "showenemy_atk": showenemy_atk,
+                "showenemy_def": showenemy_def,
+                "showenemy_spd": showenemy_spd,
+                "debuffs": debuffs,
+                "player_skills": player_skills,
+                "player_items": player_items,
+                "stage": stage,
+                "player_hp_percent": int((player.total_hp_battle / player.total_max_hp_battle) * 100) if player.total_max_hp_battle > 0 else 0,
+                "player_sp_percent": int((player.mp / player.max_mp) * 100) if player.max_mp > 0 else 0,
+                "enemy_hp_percent": int((enemy.hp / enemy.max_hp) * 100) if enemy.max_hp > 0 else 0,
+            }
+            # 通常の戦闘画面に戻る
+            return {
+                "battle": build_battle_data(state),
+                "event": None,
+            }
+    
+    actione = choose_enemyAction(enemy, player, buffs, debuffs)
+
+    is_player_first = spdcheck(actionp, actione, player, enemy, buffs, debuffs)
+    if is_player_first:
+        ex_message = ""
+        message, success, player_action_result = playerAction(
+            message,
+            actionp,
+            None,
+            actione,
+            player,
+            enemy,
+            buffs,
+            debuffs,
+            special_states,
+            request,
+        )
+        if not success:
+            return {
+                "battle": None,
+                "event": {
+                    "type": "error",
+                    "payload": {
+                        "message": "プレイヤーの行動に失敗しました。",
+                    },
+                },
+            }
+            
+        if enemy.hp <= 0:
+            message, gained_exp, gained_gold, existLevel = win(message, player, enemy, request)
+            result = {
+                "gained_exp": gained_exp,
+                "gained_gold": gained_gold,
+                "existLevel": existLevel,
+                "stage": stage,
+            }
+            _reset_battle_session(request, clear_enemy_id=True)
+            return {
+                "battle": None,
+                "event": {
+                    "type": "victory",
+                    "payload": build_result_data(result),
+                }
+            }
+        else:
+            ex_message, buffs, debuffs = enemyAction(message, enemy, player, buffs, debuffs, actionp, actione, special_states)
+
+        # セッションに保存
+        request.session["buffs"] = buffs
+        request.session["debuffs"] = debuffs
+        if ex_message:
+            message += ex_message    
+        
+        # プレイヤーの総HPが0以下になったかチェック
+        # プレイヤーが倒れたかチェック
+        if player.total_hp_battle <= 0:
+            player.death_count += 1
+            _reset_battle_session(request, clear_enemy_id=True)
+            if player.death_count >= 3:
+                request.session['gameover_player_id'] = player.id
+                return {
+                    "battle": None,
+                    "event": {
+                        "type": "gameover",
+                        "payload": {
+                            "message": "プレイヤーが倒れました。",
+                        },
+                    },
+                }   
+            else:
+                message = tohome(message, player, request)
+                return {
+                    "battle": None,
+                    "event": {
+                        "type": "tohome",
+                        "payload": {
+                            "message": message,
+                            "redirect_after": True,
+                            "recovering": True,
+                        },
+                    }
+                }          
+    else:
+        message, buffs, debuffs = enemyAction(message, enemy, player, buffs, debuffs, actionp, actione, special_states)
+
+        # セッションに保存
+        request.session["buffs"] = buffs
+        request.session["debuffs"] = debuffs
+        
+        # プレイヤーの総HPが0以下になったかチェック
+        if player.total_hp_battle <= 0:
+            player.death_count += 1
+            _reset_battle_session(request, clear_enemy_id=True)
+            if player.death_count >= 3:
+                request.session['gameover_player_id'] = player.id
+                return {
+                    "battle": None,
+                    "event": {
+                        "type": "gameover",
+                        "payload": {
+                            "message": "プレイヤーが倒れました。",
+                        },
+                    },
+                }
+            else:
+                message = tohome(message, player, request)
+                return {
+                    "battle": None,
+                    "event": {
+                        "type": "tohome",
+                        "payload": {
+                            "message": message,
+                            "redirect_after": True,
+                            "recovering": True,
+                        },
+                    }
+                }
+        
+        ex_message, success, player_action_result = playerAction(
+            message,
+            actionp,
+            None,
+            actione,
+            player,
+            enemy,
+            buffs,
+            debuffs,
+            special_states,
+            request,
+        )
+        message += ex_message
+        if not success:
+            return {
+                "battle": None,
+                "event": {
+                    "type": "error",
+                    "payload": {
+                        "message": message,
+                    },
+                },
+            }
+        
+        if enemy.hp <= 0:
+            message, gained_exp, gained_gold, existLevel = win(message, player, enemy, request)
+            result = {
+                "gained_exp": gained_exp,
+                "gained_gold": gained_gold,
+                "existLevel": existLevel,
+                "stage": stage,
+            }
+            _reset_battle_session(request, clear_enemy_id=True)
+            return {
+                "battle": None,
+                "event": {
+                    "type": "victory",
+                    "payload": build_result_data(result),
+                }
+            }
+    
+
+    # ターン経過でバフを減少
+    buffs, debuffs, special_states = decrease_buff_debuff_turns(buffs, debuffs, special_states)
+    request.session["buffs"] = buffs
+    request.session["debuffs"] = debuffs
+    request.session["special_states"] = special_states
+    
+    # 表示用ステータスを再計算【装備ボーナス込み + バフ×デバフ適用】
+    # プレイヤーのステータス（total_atk, total_def, total_spdは装備込み）
+    showplayer_atk = int(_get_effective_stat(player.total_atk_battle, buffs, debuffs, "player", "atk"))
+    showplayer_def = int(_get_effective_stat(player.total_def_battle, buffs, debuffs, "player", "def"))
+    showplayer_spd = int(_get_effective_stat(player.total_spd_battle, buffs, debuffs, "player", "spd"))
+    
+    # 敵のステータス（装備なし）
+    showenemy_atk = int(_get_effective_stat(enemy.atk, buffs, debuffs, "enemy", "atk"))
+    showenemy_def = int(_get_effective_stat(enemy.defense, buffs, debuffs, "enemy", "def"))
+    showenemy_spd = int(_get_effective_stat(enemy.spd, buffs, debuffs, "enemy", "spd"))
+
+    # メッセージを履歴に追加
+    if message:
+        message_history.append(message)
+        request.session["message_history"] = message_history
+
+    state = {
+        "player": player,
+        "enemy": enemy,
+        "message_history": message_history,
+        "showplayer_atk": showplayer_atk,
+        "showplayer_def": showplayer_def,
+        "showplayer_spd": showplayer_spd,
+        "buffs": buffs,
+        "showenemy_atk": showenemy_atk,
+        "showenemy_def": showenemy_def,
+        "showenemy_spd": showenemy_spd,
+        "debuffs": debuffs,
+        "player_skills": player_skills,
+        "player_items": player_items,
+        "stage": stage,
+        "player_hp_percent": int((player.total_hp_battle / player.total_max_hp_battle) * 100) if player.total_max_hp_battle > 0 else 0,
+        "player_sp_percent": int((player.mp / player.max_mp) * 100) if player.max_mp > 0 else 0,
+        "enemy_hp_percent": int((enemy.hp / enemy.max_hp) * 100) if enemy.max_hp > 0 else 0,
+    }
+
+    player.save()
     return {
-        "message": "戦闘が開始されました。",
+        "battle": build_battle_data(state),
+        "event": None,
     }
