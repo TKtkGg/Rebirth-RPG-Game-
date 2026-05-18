@@ -1,7 +1,7 @@
 "use client"
 import { useEffect, useState } from "react";
 import { apiGet } from "../../lib/apiClient";
-import { StagesScreenData } from "./types";
+import { StagesScreenData } from "../types/stage_types";
 import { useRouter } from "next/navigation";
 import { ReturnButton } from "@/src/components/atoms/button/ReturnButton";
 import styles from "./StagesScreen.module.css";
@@ -27,7 +27,7 @@ export default function StagesScreen({ playerId }: Props) {
         <div className={styles.container}>
             <div className={styles.board}>
                 {sortedStages.map((stage) => {
-                    return <StageButton key={stage.id} stage={stage} playerLevel={data?.player.level ?? 0} />
+                    return <StageButton key={stage.id} stage={stage} playerLevel={data?.player.level ?? 0} playerId={playerId} />
                 })}
                 <ReturnButton
                     className={styles.backButton}

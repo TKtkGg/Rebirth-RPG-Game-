@@ -82,6 +82,7 @@ def rest_at_home(player):
     player.exp = max(0, player.exp - exp_penalty)
     player.hp = player.max_hp  # 素のHPを最大値に戻す
     player.mp = player.max_mp  # SPも最大値に戻す
+    player.update_battle_stats()
     player.save()
 
     return actual_exp_penalty
@@ -1117,6 +1118,7 @@ def build_result_data(result):
         "gained_exp": result["gained_exp"],
         "gained_gold": result["gained_gold"],
         "existLevel": result["existLevel"],
+        "newLevel": result["newLevel"],
         "stage": stage_to_api_dict(result["stage"]),
     } if result else None
 
@@ -1424,6 +1426,7 @@ def battle_post(request, player_id):
                 "gained_exp": gained_exp,
                 "gained_gold": gained_gold,
                 "existLevel": existLevel,
+                "newLevel": player.level,
                 "stage": stage,
             }
             _reset_battle_session(request, clear_enemy_id=True)
@@ -1448,6 +1451,7 @@ def battle_post(request, player_id):
         if player.total_hp_battle <= 0:
             player.death_count += 1
             _reset_battle_session(request, clear_enemy_id=True)
+            player.save()
             if player.death_count >= 3:
                 request.session['gameover_player_id'] = player.id
                 return {
@@ -1539,6 +1543,7 @@ def battle_post(request, player_id):
                 "gained_exp": gained_exp,
                 "gained_gold": gained_gold,
                 "existLevel": existLevel,
+                "newLevel": player.level,
                 "stage": stage,
             }
             _reset_battle_session(request, clear_enemy_id=True)
