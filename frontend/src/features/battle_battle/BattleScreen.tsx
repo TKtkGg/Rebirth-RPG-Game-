@@ -13,6 +13,7 @@ type Props = {
 export default function BattleScreen(props: Props) {
     const { playerId, stageId } = props;
     const [data, setData] = useState<BattleScreenData | null>(null);
+    const [itemOpen, setItemOpen] = useState(false);
     const router = useRouter();
 
     useEffect(() => {
@@ -22,19 +23,29 @@ export default function BattleScreen(props: Props) {
     }, [playerId, stageId]);
 
     const handleAttack = () => {
+        setItemOpen(false);
         apiPost(`/api/battle/${playerId}/?stage_id=${stageId}`, { action: "attack" }).then((data: BattleScreenData) => {
             setData(data);
         });
     }
 
     const handleDefend = () => {
+        setItemOpen(false);
         apiPost(`/api/battle/${playerId}/?stage_id=${stageId}`, { action: "defend" }).then((data: BattleScreenData) => {
             setData(data);
         });
     }
 
     const handleEscape = () => {
+        setItemOpen(false);
         apiPost(`/api/battle/${playerId}/?stage_id=${stageId}`, { action: "escape" }).then((data: BattleScreenData) => {
+            setData(data);
+        });
+    }
+
+    const handleUseItem = (itemId: string) => {
+        setItemOpen(false);
+        apiPost(`/api/battle/${playerId}/?stage_id=${stageId}`, { action: "item", item_id: itemId }).then((data: BattleScreenData) => {
             setData(data);
         });
     }
@@ -62,9 +73,20 @@ export default function BattleScreen(props: Props) {
                     <br />
                     <button onClick={handleAttack}>攻撃</button>
                     <button onClick={handleDefend}>防御</button>
+                    <button onClick={() => setItemOpen(true)}>アイテム</button>
                     <button onClick={handleEscape}>逃げる</button>
-                </> 
+                    {itemOpen && (
+                        <div>
+                            <p>アイテム</p>
+                            {data?.battle?.player_items.map((item) => (
+                                <button key={item.id} onClick={() => handleUseItem(item.item.id.toString())}>{item.item.name} (×{item.quantity})</button>
+                            ))}
+                            <button onClick={() => setItemOpen(false)}>閉じる</button>
+                        </div>
+                    )}
+                </>
             )}
+            
 
             {data?.event?.type === "victory" && (
                 <div>

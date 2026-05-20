@@ -5,7 +5,7 @@ import random
 from django.http import JsonResponse
 from django.shortcuts import render
 from django.urls import reverse
-from ..models import PlayerQuest
+from ..models import PlayerQuest, Item, PlayerInventory
 from ..skills import ENEMY_SKILLS, PLAYER_SKILLS
 from .utils import (
     level_up_player,
@@ -431,6 +431,44 @@ def playerAction(message, action, special, actione, player, enemy, buffs, debuff
                 message += f"{target_obj.name}は姿をくらました！\n"
         
         message += f"SPが{skill_cost}減った！\n"
+        player.save()
+
+    elif action == 'item':
+        item_id = request.POST.get('item_id')
+        if not item_id:
+            return "アイテムIDが存在しません", False, action_result
+
+        try:
+            item = Item.objects.get(id=item_id)
+        except Item.DoesNotExist:
+            return "アイテムが存在しません", False, action_result
+
+        player_items = PlayerInventory.objects.filter(player=player, item=item, quantity__gt=0)
+        if not player_items.exists():
+            return "アイテムが存在しません", False, action_result
+            
+        item = player_items.first().item
+        if item.target == 'hp':
+            old_hp = player.total_hp_battle
+            player.total_hp_battle = min(player.total_hp_battle + item.effect_amount, player.total_max_hp_battle)
+            actual_recovery = player.total_hp_battle - old_hp
+            
+            # 素のHPも同時に更新
+            weapon_bonus = player.weapon.hp_bonus if player.weapon else 0
+            armor_bonus = player.armor.hp_bonus if player.armor else 0
+            player.hp = max(0, player.total_hp_battle - weapon_bonus - armor_bonus)
+            message = f"{player.name}は{item.name}を使った！\nHPが{actual_recovery}回復した！\n"
+
+        if item.target == 'mp':
+            old_mp = player.mp
+            player.mp = min(player.mp + item.effect_amount, player.max_mp)
+            actual_recovery = player.mp - old_mp
+            message = f"{player.name}は{item.name}を使った！\nSPが{actual_recovery}回復した！\n"
+        
+        # アイテムを1つ消費
+        inventory_item = PlayerInventory.objects.get(player=player, item=item, quantity__gt=0)
+        inventory_item.quantity -= 1
+        inventory_item.save()
         player.save()
             
     return message, True, action_result

@@ -87,6 +87,13 @@ def item_to_api_dict(item):
         "current_stock": current_stock,
     }
 
+def player_inventory_to_api_dict(player_inventory):
+    return {
+        "id": player_inventory.id,
+        "item": item_to_api_dict(player_inventory.item),
+        "quantity": player_inventory.quantity,
+    }
+
 def stage_to_api_dict(stage):
     return {
         "id": stage.id,

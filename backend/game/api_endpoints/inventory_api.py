@@ -1,16 +1,8 @@
 from django.http import JsonResponse
 
-from ..models import Player, PlayerInventory
-from ..api_serializers import player_to_api_dict, item_to_api_dict
+from ..api_serializers import player_to_api_dict, player_inventory_to_api_dict
 from ..views.utils import get_player_from_request
 from ..views.inventory import inventory, use_inventory_item
-
-def player_inventory_to_api_dict(player_inventory):
-    return {
-        "id": player_inventory.id,
-        "item": item_to_api_dict(player_inventory.item),
-        "quantity": player_inventory.quantity,
-    }
 
 def inventory_api(request, player_id):
     if request.method == "GET":

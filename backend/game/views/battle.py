@@ -8,7 +8,7 @@ import random
 from django.shortcuts import render, redirect
 from django.urls import reverse
 from django.http import JsonResponse
-from ..models import Player, Enemy, PlayerInventory
+from ..models import Player, Enemy, PlayerInventory, Item
 from ..skills import PLAYER_SKILLS
 from .utils import get_player_from_request, select_new_enemy, decrease_buff_debuff_turns
 from .battle_helpers import (
@@ -32,7 +32,7 @@ from .battle_internal_functions import (
     handle_action_mode_end,
 )
 
-from ..api_serializers import player_to_api_dict, enemy_to_api_dict, stage_to_api_dict, item_to_api_dict
+from ..api_serializers import player_to_api_dict, enemy_to_api_dict, stage_to_api_dict, item_to_api_dict, player_inventory_to_api_dict
 
 def battle_start_get(request, player_id):
     player = get_player_from_request(request, player_id)
@@ -1107,7 +1107,7 @@ def build_battle_data(state):
         "showenemy_spd": state["showenemy_spd"],
         "debuffs": state["debuffs"],
         "player_skills": state["player_skills"],
-        "player_items": [item_to_api_dict(item) for item in state["player_items"]],
+        "player_items": [player_inventory_to_api_dict(item) for item in state["player_items"]],
         "stage": stage_to_api_dict(state["stage"]),
         "player_hp_percent": state["player_hp_percent"],
         "player_sp_percent": state["player_sp_percent"],
@@ -1352,7 +1352,7 @@ def battle_post(request, player_id):
                                 "message": message,
                                 "redirect_after": True,
                                 "recovering": True,
-                            },
+                            },  
                         }
                     }
             
@@ -1391,7 +1391,7 @@ def battle_post(request, player_id):
                 "battle": build_battle_data(state),
                 "event": None,
             }
-    
+
     actione = choose_enemyAction(enemy, player, buffs, debuffs)
 
     is_player_first = spdcheck(actionp, actione, player, enemy, buffs, debuffs)

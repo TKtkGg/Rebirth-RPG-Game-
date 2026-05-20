@@ -22,7 +22,11 @@ export type BattleScreenData = {
             "player": Record<string, unknown>,
         },
         "player_skills": string[],
-        "player_items": ItemScreenData[],
+        "player_items": {
+            "id": number;
+            "item": ItemScreenData;
+            "quantity": number;
+        }[];
         "stage": StageData,
         "player_hp_percent": number,
         "player_sp_percent": number,
