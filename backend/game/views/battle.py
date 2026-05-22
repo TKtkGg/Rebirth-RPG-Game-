@@ -1392,6 +1392,8 @@ def battle_post(request, player_id):
                 "event": None,
             }
 
+    special = request.POST.get('special')
+
     actione = choose_enemyAction(enemy, player, buffs, debuffs)
 
     is_player_first = spdcheck(actionp, actione, player, enemy, buffs, debuffs)
@@ -1400,7 +1402,7 @@ def battle_post(request, player_id):
         message, success, player_action_result = playerAction(
             message,
             actionp,
-            None,
+            special,
             actione,
             player,
             enemy,
@@ -1516,7 +1518,7 @@ def battle_post(request, player_id):
         ex_message, success, player_action_result = playerAction(
             message,
             actionp,
-            None,
+            special,
             actione,
             player,
             enemy,

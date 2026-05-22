@@ -14,6 +14,7 @@ export default function BattleScreen(props: Props) {
     const { playerId, stageId } = props;
     const [data, setData] = useState<BattleScreenData | null>(null);
     const [itemOpen, setItemOpen] = useState(false);
+    const [skillOpen, setSkillOpen] = useState(false);
     const router = useRouter();
 
     useEffect(() => {
@@ -24,6 +25,7 @@ export default function BattleScreen(props: Props) {
 
     const handleAttack = () => {
         setItemOpen(false);
+        setSkillOpen(false);
         apiPost(`/api/battle/${playerId}/?stage_id=${stageId}`, { action: "attack" }).then((data: BattleScreenData) => {
             setData(data);
         });
@@ -31,6 +33,7 @@ export default function BattleScreen(props: Props) {
 
     const handleDefend = () => {
         setItemOpen(false);
+        setSkillOpen(false);
         apiPost(`/api/battle/${playerId}/?stage_id=${stageId}`, { action: "defend" }).then((data: BattleScreenData) => {
             setData(data);
         });
@@ -38,6 +41,7 @@ export default function BattleScreen(props: Props) {
 
     const handleEscape = () => {
         setItemOpen(false);
+        setSkillOpen(false);
         apiPost(`/api/battle/${playerId}/?stage_id=${stageId}`, { action: "escape" }).then((data: BattleScreenData) => {
             setData(data);
         });
@@ -45,9 +49,19 @@ export default function BattleScreen(props: Props) {
 
     const handleUseItem = (itemId: string) => {
         setItemOpen(false);
+        setSkillOpen(false);
         apiPost(`/api/battle/${playerId}/?stage_id=${stageId}`, { action: "item", item_id: itemId }).then((data: BattleScreenData) => {
             setData(data);
         });
+    }
+
+    const handleUseSkill = (index: number) => {
+        setItemOpen(false);
+        setSkillOpen(false);
+        apiPost(`/api/battle/${playerId}/?stage_id=${stageId}`, { action: "special", special: `skill${index + 1}` }).then((data: BattleScreenData) => {
+            setData(data);
+        });
+        setSkillOpen(false);
     }
 
     const handleReturn = () => {
@@ -73,6 +87,7 @@ export default function BattleScreen(props: Props) {
                     <br />
                     <button onClick={handleAttack}>攻撃</button>
                     <button onClick={handleDefend}>防御</button>
+                    <button onClick={() => setSkillOpen(true)}>特技</button>
                     <button onClick={() => setItemOpen(true)}>アイテム</button>
                     <button onClick={handleEscape}>逃げる</button>
                     {itemOpen && (
@@ -82,6 +97,15 @@ export default function BattleScreen(props: Props) {
                                 <button key={item.id} onClick={() => handleUseItem(item.item.id.toString())}>{item.item.name} (×{item.quantity})</button>
                             ))}
                             <button onClick={() => setItemOpen(false)}>閉じる</button>
+                        </div>
+                    )}
+                    {skillOpen && (
+                        <div>
+                            <p>特技</p>
+                            {data?.battle?.player_skills.map((skill, index) => (
+                                <button key={index} onClick={() => handleUseSkill(index)}>{skill.name} (SP: {skill.cost})</button>
+                            ))}
+                            <button onClick={() => setSkillOpen(false)}>閉じる</button>
                         </div>
                     )}
                 </>

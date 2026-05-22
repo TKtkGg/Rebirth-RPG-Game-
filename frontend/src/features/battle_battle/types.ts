@@ -21,7 +21,21 @@ export type BattleScreenData = {
         "debuffs": {
             "player": Record<string, unknown>,
         },
-        "player_skills": string[],
+        "player_skills": {
+            "id": number;
+            "name": string;
+            "cost": number;
+            "description": string;
+            "is_action": boolean | null;
+            "action_type": "spam" | "timing" | null;
+            "effects": {
+                "type": string;
+                "target": "player" | "enemy";
+                "multiplier": number;
+                "stat": "atk" | "def" | "spd" | null;
+                "turn": number | null;
+            }[];
+        }[];
         "player_items": {
             "id": number;
             "item": ItemScreenData;
