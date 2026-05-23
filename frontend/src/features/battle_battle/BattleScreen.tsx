@@ -17,10 +17,14 @@ export default function BattleScreen(props: Props) {
     const [skillOpen, setSkillOpen] = useState(false);
     const router = useRouter();
 
-    useEffect(() => {
+    const loadBattle = () => {
         apiGet(`/api/battle/${playerId}/?stage_id=${stageId}`).then((data: BattleScreenData) => {
             setData(data);
         });
+    }
+
+    useEffect(() => {
+        loadBattle();
     }, [playerId, stageId]);
 
     const handleAttack = () => {
@@ -66,6 +70,10 @@ export default function BattleScreen(props: Props) {
 
     const handleReturn = () => {
         router.push(`/game/battle/home/${playerId}/`);
+    }
+
+    const handleContinue = () => {
+        loadBattle();
     }
 
     return (
@@ -123,6 +131,7 @@ export default function BattleScreen(props: Props) {
                             <p>LV: {data?.event?.payload.existLevel} → {data?.event?.payload.newLevel}</p>
                         </>
                     )}
+                    <button onClick={handleContinue}>続けて戦う</button>
                     <button onClick={handleReturn}>戻る</button>
                 </div>
             )}
