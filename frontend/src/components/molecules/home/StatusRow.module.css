@@ -1,0 +1,14 @@
+.statusRow {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 8px 12px;
+    font-size: clamp(18px, 1.8vw, 24px);
+    font-weight: 700;
+    text-shadow: 2px 2px 4px rgba(0, 0, 0, 1);
+}
+
+.statusLabel {
+    flex: 0.5;
+    min-width: 0;
+}

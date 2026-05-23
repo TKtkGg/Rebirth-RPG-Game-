@@ -1,0 +1,58 @@
+.itemCard {
+    border: 3px solid #8b6a2e;
+    border-radius: 15px;
+    background: rgba(255, 255, 255, 0.3);
+    align-items: center;
+    display: flex;
+    flex-direction: column;
+    padding: 16px;
+    min-height: 280px;
+    cursor: pointer;
+    transition: all 0.3s ease;
+}
+
+.itemCard:hover {
+    background: rgba(255, 255, 255, 0.5);
+    transform: translateY(-3px);
+}
+
+.itemIcon {
+    filter: drop-shadow(0 4px 8px rgba(0, 0, 0, 0.3));
+}
+
+.itemName {
+    margin: 0;
+    font-size: 25px;
+    font-weight: 700;
+    color: #000;
+    text-align: center;
+}
+
+.itemQuantity {
+    margin: -10px 0 0 0;
+    font-size: 20px;
+    font-weight: 700;
+    color: #000;
+}
+
+.useButton {
+    margin-top: 13px;
+    border: 2px solid #2d7a2d;
+    border-radius: 8px;
+    background: rgba(50, 150, 50, 0.85);
+    color: #fff;
+    font-size: 24px;
+    font-weight: 700;
+    padding: 10px 24px;
+    cursor: pointer;
+}
+
+.useButton:disabled {
+    background: rgba(130, 130, 130, 0.9);
+    border-color: #666;
+    cursor: not-allowed;
+}
+
+.useButton:hover {
+    background: rgba(50, 150, 50, 1);
+}

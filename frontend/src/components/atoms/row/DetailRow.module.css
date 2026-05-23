@@ -1,0 +1,10 @@
+.detailStatItem {
+    font-size: 18px;
+    font-weight: 700;
+    color: #000;
+    padding: 8px 12px;
+    background: rgba(255, 255, 255, 0.4);
+    border-radius: 6px;
+    display: flex;
+    justify-content: space-between;
+}
