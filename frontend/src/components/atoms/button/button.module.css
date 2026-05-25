@@ -75,6 +75,10 @@
     background: rgba(120, 180, 220, 0.92);
 }
 
+.colorButton.orange {
+    background: rgba(255, 165, 0, 0.92);
+}
+
 .colorButton.brown {
     background-color: rgba(139, 69, 19, 0.9);
 }

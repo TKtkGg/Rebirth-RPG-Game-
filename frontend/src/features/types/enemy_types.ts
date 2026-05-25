@@ -4,6 +4,7 @@ import { StagesScreenData } from "./stage_types";
 export type EnemyScreenData = {
     "id": number;
     "name": string;
+    "image_url"?: string;
     "level": number;
     "max_hp": number;
     "hp": number;
