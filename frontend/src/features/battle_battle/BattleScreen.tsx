@@ -10,6 +10,7 @@ import styles from "./BattleScreen.module.css";
 import { getHpColor, enemyImageSrc, stageBackgroundSrc } from "./battleUtils";
 import { MessageBox } from "../../components/molecules/battle/MessageBox";
 import { GaugeBar } from "../../components/molecules/battle/GaugeBar";
+import { SpecialCommand } from "@/src/components/Organisms/battle/SpecialCommand";
 
 type Props = {
     playerId: string;
@@ -230,65 +231,21 @@ export default function BattleScreen(props: Props) {
                             )}
 
                             {skillOpen && (
-                                <div className={styles.buttonArea}>
-                                    <div style={{ display: "flex", flexDirection: "column", gap: 10, width: "100%" }}>
-                                        <p className={styles.subPanelTitle}>特技</p>
-                                        {battle.player_skills.map((skill, index) =>
-                                            skill.is_action ? null : (
-                                                <ColorButton
-                                                    key={index}
-                                                    variant="yellow"
-                                                    className={styles.skillButton}
-                                                    onClick={() => handleUseSkill(index)}
-                                                >
-                                                    {skill.name} (SP: {skill.cost})
-                                                </ColorButton>
-                                            ),
-                                        )}
-                                        <ColorButton
-                                            variant="other"
-                                            className={styles.skillButton}
-                                            onClick={() => setSkillOpen(false)}
-                                        >
-                                            戻る
-                                        </ColorButton>
-                                    </div>
-                                </div>
+                                <SpecialCommand 
+                                    mode="skill"
+                                    skills={battle.player_skills}
+                                    onSelectSkill={handleUseSkill}
+                                    onClose={() => setSkillOpen(false)}
+                                />
                             )}
 
                             {itemOpen && (
-                                <div style={{ display: "flex", flexDirection: "column", gap: 10, width: "100%" }}>
-                                    <p className={styles.subPanelTitle}>アイテム</p>
-                                    <div className={styles.itemList}>
-                                        {battle.player_items.length === 0 ? (
-                                            <div className={styles.itemEmpty}>アイテムがありません</div>
-                                        ) : (
-                                            battle.player_items.map((inv) => (
-                                                <ColorButton
-                                                    key={inv.id}
-                                                    variant="orange"
-                                                    className={styles.itemButton}
-                                                    onClick={() =>
-                                                        handleUseItem(inv.item.id.toString())
-                                                    }
-                                                >
-                                                    {inv.item.name}
-                                                    <br />
-                                                    (×{inv.quantity})
-                                                </ColorButton>
-                                            ))
-                                        )}
-                                    </div>
-                                    <div className={styles.buttonArea}>
-                                        <ColorButton
-                                            variant="other"
-                                            className={styles.skillButton}
-                                            onClick={() => setItemOpen(false)}
-                                        >
-                                            戻る
-                                        </ColorButton>
-                                    </div>
-                                </div>
+                                <SpecialCommand
+                                    mode="item"
+                                    items={battle.player_items}
+                                    onSelectItem={handleUseItem}
+                                    onClose={() => setItemOpen(false)}
+                                />
                             )}
                         </div>
                     </div>

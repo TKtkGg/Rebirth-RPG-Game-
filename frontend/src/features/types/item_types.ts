@@ -8,3 +8,9 @@ export type ItemScreenData = {
     current_stock: number;
     max_stock: number;
 }
+
+export type InventoryItemData = {
+    id: number;
+    item: ItemScreenData;
+    quantity: number;
+}

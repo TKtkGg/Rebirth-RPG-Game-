@@ -1,7 +1,7 @@
 import { PlayerScreenData } from "../types/player_types";
 import { EnemyScreenData } from "../types/enemy_types";
 import { StageData } from "../types/stage_types";
-import { ItemScreenData } from "../types/item_types";
+import { InventoryItemData } from "../types/item_types";
 import { BattleEvent } from "./event_types";
 
 export type BattleScreenData = {
@@ -21,30 +21,28 @@ export type BattleScreenData = {
         "debuffs": {
             "player": Record<string, unknown>,
         },
-        "player_skills": {
-            "id": number;
-            "name": string;
-            "cost": number;
-            "description": string;
-            "is_action": boolean | null;
-            "action_type": "spam" | "timing" | null;
-            "effects": {
-                "type": string;
-                "target": "player" | "enemy";
-                "multiplier": number;
-                "stat": "atk" | "def" | "spd" | null;
-                "turn": number | null;
-            }[];
-        }[];
-        "player_items": {
-            "id": number;
-            "item": ItemScreenData;
-            "quantity": number;
-        }[];
+        "player_skills": SkillData[];
+        "player_items": InventoryItemData[];
         "stage": StageData,
         "player_hp_percent": number,
         "player_sp_percent": number,
         "enemy_hp_percent": number,
     } | null,
     "event": BattleEvent | null;
-};  
+};
+
+export type SkillData = {
+    id: number;
+    name: string;
+    cost: number;
+    description: string;
+    is_action: boolean | null;
+    action_type: "spam" | "timing" | null;
+    effects: {
+        type: string;
+        target: "player" | "enemy";
+        multiplier: number;
+        stat: "atk" | "def" | "spd" | null;
+        turn: number | null;
+    }[];
+}
