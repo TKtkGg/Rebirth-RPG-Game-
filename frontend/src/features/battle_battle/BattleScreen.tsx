@@ -8,6 +8,7 @@ import { ColorButton } from "../../components/atoms/button/ColorButton";
 import { MainPanel } from "../../components/atoms/panel/MainPanel";
 import styles from "./BattleScreen.module.css";
 import { getHpColor, enemyImageSrc, stageBackgroundSrc } from "./battleUtils";
+import { MessageBox } from "../../components/molecules/battle/MessageBox";
 
 type Props = {
     playerId: string;
@@ -111,12 +112,8 @@ export default function BattleScreen(props: Props) {
 
             {showCombat && battle && enemy && (
                 <>
-                    <div className={styles.messageArea} ref={messageAreaRef}>
-                        {battle.message_history.map((msg, i) => (
-                            <div key={i} className={styles.messageItem}>
-                                {msg}
-                            </div>
-                        ))}
+                    <div className={styles.messageArea}>
+                        <MessageBox message={battle.message_history.join("\n")} />
                     </div>
 
                     <div className={styles.enemyArea}>
