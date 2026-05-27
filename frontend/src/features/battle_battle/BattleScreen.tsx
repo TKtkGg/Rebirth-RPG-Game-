@@ -9,6 +9,7 @@ import { MainPanel } from "../../components/atoms/panel/MainPanel";
 import styles from "./BattleScreen.module.css";
 import { getHpColor, enemyImageSrc, stageBackgroundSrc } from "./battleUtils";
 import { MessageBox } from "../../components/molecules/battle/MessageBox";
+import { GaugeBar } from "../../components/molecules/battle/GaugeBar";
 
 type Props = {
     playerId: string;
@@ -134,16 +135,13 @@ export default function BattleScreen(props: Props) {
                                 className={styles.enemyImage}
                             />
                         )}
-                        <div className={styles.enemyHpBarContainer}>
-                            <div
-                                className={styles.enemyHpBarFill}
-                                style={{
-                                    width: `${battle.enemy_hp_percent}%`,
-                                    backgroundColor: getHpColor(battle.enemy_hp_percent),
-                                }}
-                            />
-                            <span className={styles.enemyHpValue}>{enemy.hp}</span>
-                        </div>
+                        <GaugeBar
+                            percent={battle.enemy_hp_percent}
+                            value={enemy.hp}
+                            color={getHpColor}
+                            variant="hp"
+                            className={styles.enemyHpBarContainer}
+                        />
                     </div>
 
                     <div className={styles.playerArea}>
@@ -160,38 +158,22 @@ export default function BattleScreen(props: Props) {
                                         <div className={styles.playerNameCol}>{battle.player.name}</div>
                                         <div className={styles.statusGauge}>
                                             <span>HP:</span>
-                                            <div className={styles.statusGaugeBar}>
-                                                <div
-                                                    className={styles.statusGaugeFill}
-                                                    style={{
-                                                        width: `${battle.player_hp_percent}%`,
-                                                        backgroundColor: getHpColor(
-                                                            battle.player_hp_percent,
-                                                        ),
-                                                    }}
-                                                />
-                                                <span
-                                                    className={`${styles.statusGaugeValue} hp-value`}
-                                                >
-                                                    {battle.player.total_hp_battle}
-                                                </span>
-                                            </div>
+                                            <GaugeBar
+                                                percent={battle.player_hp_percent}
+                                                value={battle.player.total_hp_battle}
+                                                color={getHpColor}
+                                                variant="hp"
+                                                className={styles.statusGaugeBar}
+                                            />
                                         </div>
                                         <div className={styles.statusGauge}>
                                             <span>SP:</span>
-                                            <div className={styles.statusGaugeBar}>
-                                                <div
-                                                    className={`${styles.statusGaugeFill} ${styles.statusGaugeFillSp}`}
-                                                    style={{
-                                                        width: `${battle.player_sp_percent}%`,
-                                                    }}
-                                                />
-                                                <span
-                                                    className={`${styles.statusGaugeValue} sp-value`}
-                                                >
-                                                    {battle.player.mp}
-                                                </span>
-                                            </div>
+                                            <GaugeBar
+                                                percent={battle.player_sp_percent}
+                                                value={battle.player.mp}
+                                                variant="sp"
+                                                className={styles.statusGaugeBar}
+                                            />
                                         </div>
                                     </div>
                                     <div className={styles.statsRow}>

@@ -78,15 +78,7 @@
 .enemyHpBarContainer {
     width: 600px;
     max-width: 90vw;
-    background: rgb(56, 56, 56);
-    border: 3px solid #333;
-    border-radius: 30px;
     height: 40px;
-    overflow: hidden;
-    position: relative;
-    display: flex;
-    align-items: center;
-    justify-content: center;
     box-shadow: 0 4px 15px rgba(0, 0, 0, 0.5);
     margin-bottom: 20px;
 }
@@ -166,14 +158,6 @@
 .statusGaugeBar {
     width: 120px;
     height: 25px;
-    background: rgba(56, 56, 56);
-    border: 2px solid #333;
-    border-radius: 5px;
-    overflow: hidden;
-    position: relative;
-    display: flex;
-    align-items: center;
-    justify-content: center;
 }
 
 .statusGaugeFill {

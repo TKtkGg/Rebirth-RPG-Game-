@@ -1,0 +1,30 @@
+.GaugeBarContainer {
+    background: rgba(56, 56, 56);
+    border: 2px solid #333;
+    border-radius: 20px;
+    overflow: hidden;
+    position: relative;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.GaugeBarFill {
+    height: 100%;
+    width: 100%;
+    transition: width 0.3s;
+    position: absolute;
+    left: 0;
+    top: 0;
+}
+
+.GaugeBarValue {
+    min-width: 50px;
+    text-align: center;
+    font-weight: bold;
+    color: #fff;
+    position: relative;
+    z-index: 10;
+    font-size: 18px;
+    text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.8);
+}
