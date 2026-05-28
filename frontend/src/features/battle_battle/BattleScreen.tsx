@@ -5,12 +5,12 @@ import { useRouter } from "next/navigation";
 import { apiGet, apiPost } from "../../lib/apiClient";
 import { BattleScreenData } from "./types";
 import { ColorButton } from "../../components/atoms/button/ColorButton";
-import { MainPanel } from "../../components/atoms/panel/MainPanel";
 import styles from "./BattleScreen.module.css";
 import { getHpColor, enemyImageSrc, stageBackgroundSrc } from "./battleUtils";
 import { MessageBox } from "../../components/molecules/battle/MessageBox";
 import { GaugeBar } from "../../components/molecules/battle/GaugeBar";
 import { SpecialCommand } from "@/src/components/Organisms/battle/SpecialCommand";
+import { BattleEndPanel } from "@/src/components/Organisms/battle/BattleEndPanel";
 
 type Props = {
     playerId: string;
@@ -53,12 +53,6 @@ export default function BattleScreen(props: Props) {
     useEffect(() => {
         loadBattle();
     }, [playerId, stageId]);
-
-    useEffect(() => {
-        const el = messageAreaRef.current;
-        if (!el) return;
-        el.scrollTop = el.scrollHeight;
-    }, [data?.battle?.message_history]);
 
     const handleAttack = () => {
         setItemOpen(false);
@@ -115,7 +109,7 @@ export default function BattleScreen(props: Props) {
             {showCombat && battle && enemy && (
                 <>
                     <div className={styles.messageArea}>
-                        <MessageBox message={battle.message_history.join("\n")} />
+                        <MessageBox message={battle.message_history.join("\n")} messageHistory={battle.message_history} />
                     </div>
 
                     <div className={styles.enemyArea}>
@@ -252,102 +246,14 @@ export default function BattleScreen(props: Props) {
                 </>
             )}
 
-            {data?.event?.type === "victory" && (
-                <div className={styles.endOverlay}>
-                    <MainPanel state="normal" interactive={false} className={styles.endPanel}>
-                        <h2 className={styles.endTitle}>勝利</h2>
-                        <div
-                            className={
-                                data.event.payload.newLevel > data.event.payload.existLevel
-                                    ? styles.victoryContent
-                                    : `${styles.victoryContent} ${styles.victoryContentNoLevelup}`
-                            }
-                        >
-                            <div className={styles.victoryLeft}>
-                                <div className={styles.victoryStat}>
-                                    <span className={`${styles.victoryLabel} ${styles.expLabel}`}>
-                                        EXP
-                                    </span>
-                                    <span className={styles.victoryValue}>
-                                        {data.event.payload.gained_exp}
-                                    </span>
-                                </div>
-                                <div className={styles.victoryStat}>
-                                    <span className={`${styles.victoryLabel} ${styles.goldLabel}`}>
-                                        GOLD
-                                    </span>
-                                    <span className={styles.victoryValue}>
-                                        {data.event.payload.gained_gold}
-                                    </span>
-                                </div>
-                            </div>
-                            {data.event.payload.newLevel > data.event.payload.existLevel && (
-                                <div className={styles.victoryRight}>
-                                    <div className={styles.victoryLevelup}>レベルアップ！</div>
-                                    <div className={styles.victoryLevel}>
-                                        LV : {data.event.payload.existLevel} →{" "}
-                                        {data.event.payload.newLevel}
-                                    </div>
-                                </div>
-                            )}
-                        </div>
-                        <div className={styles.endButtons}>
-                            <ColorButton
-                                variant="other"
-                                className={`${styles.endActionButton} ${styles.continueButton}`}
-                                onClick={handleContinue}
-                            >
-                                続けて戦う
-                            </ColorButton>
-                            <ColorButton
-                                variant="other"
-                                className={styles.endActionButton}
-                                onClick={handleReturn}
-                            >
-                                戻る
-                            </ColorButton>
-                        </div>
-                    </MainPanel>
-                </div>
+            {data?.event && (
+                <BattleEndPanel
+                    event={data.event}
+                    onReturn={handleReturn}
+                    onContinue={handleContinue}
+                />
             )}
 
-            {data?.event?.type === "escape" && (
-                <div className={styles.endOverlay}>
-                    <MainPanel state="normal" interactive={false} className={styles.endPanel}>
-                        <h2 className={styles.endTitle}>逃走</h2>
-                        <div className={styles.escapePenalty}>
-                            <p>経験値 : -{data.event.payload.exp_penalty}</p>
-                            <p>ゴールド : -{data.event.payload.gold_penalty}</p>
-                        </div>
-                        <div className={styles.endButtons}>
-                            <ColorButton
-                                variant="other"
-                                className={styles.endActionButton}
-                                onClick={handleReturn}
-                            >
-                                戻る
-                            </ColorButton>
-                        </div>
-                    </MainPanel>
-                </div>
-            )}
-
-            {data?.event?.type === "tohome" && (
-                <div className={styles.endOverlay}>
-                    <MainPanel state="normal" interactive={false} className={styles.endPanel}>
-                        <p className={styles.tohomeMessage}>{data.event.payload.message}</p>
-                        <div className={styles.endButtons}>
-                            <ColorButton
-                                variant="other"
-                                className={styles.endActionButton}
-                                onClick={handleReturn}
-                            >
-                                戻る
-                            </ColorButton>
-                        </div>
-                    </MainPanel>
-                </div>
-            )}
         </div>
     );
 }
