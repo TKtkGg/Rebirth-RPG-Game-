@@ -18,7 +18,7 @@
 |------|------|
 | ジャンル | ターン制バトル × スコア競争型 RPG |
 | 開発者 | [Yuki Miyamoto (TKtkGg)](https://github.com/TKtkGg) |
-| リポジトリ | https://github.com/TKtkGg/mysite |
+| リポジトリ | https://github.com/TKtkGg/Rebirth-RPG-Game- |
 | ステータス | **制作中**（フロントエンド Next.js 移行フェーズ） |
 
 ---
@@ -279,11 +279,9 @@ npm run dev
 
 **Yuki Miyamoto** — [GitHub @TKtkGg](https://github.com/TKtkGg)
 
-- Portfolio: [portfolio-flame-chi-96.vercel.app](https://portfolio-flame-chi-96.vercel.app)
 - Email: miyamotoyuki0729@gmail.com
 
 ---
 
 ## ライセンス
-
-制作中の個人プロジェクトです。ライセンスは未定です。
+[MIT License](./LICENSE)
