@@ -355,6 +355,9 @@ def playerAction(message, action, special, actione, player, enemy, buffs, debuff
                 'base_multiplier': adjusted_multiplier,
                 'multiplier': adjusted_multiplier,
             }
+            request.session['action_total_damage'] = 0
+            request.session['action_click_count'] = 0
+            message = f"{player.name}の{skill_name}！\n"
             # アクションモード用の特別なレンダリングを返す
             return message, True, action_result
         

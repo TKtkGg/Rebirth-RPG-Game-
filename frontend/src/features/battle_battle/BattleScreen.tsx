@@ -28,31 +28,53 @@ function updateBackgroundFromData(
     }
 }
 
+function getActionKey(data: BattleScreenData) {
+    const actionMode = data.action_mode?.active ? data.action_mode : null;
+    if (!actionMode) return null;
+    return `${actionMode.skill_index}-${actionMode.skill_name}`;
+}
+
 export default function BattleScreen(props: Props) {
     const { playerId, stageId } = props;
     const [data, setData] = useState<BattleScreenData | null>(null);
     const [backgroundImage, setBackgroundImage] = useState<string | null>(null);
     const [itemOpen, setItemOpen] = useState(false);
     const [skillOpen, setSkillOpen] = useState(false);
+    const [actionTimeLeft, setActionTimeLeft] = useState<number | null>(null);
+    const [actionHitBusy, setActionHitBusy] = useState(false);
+    const [actionFinishing, setActionFinishing] = useState(false);
+    const finishingActionRef = useRef(false);
+    const activeActionKeyRef = useRef<string | null>(null);
     const router = useRouter();
-    const messageAreaRef = useRef<HTMLDivElement>(null);
 
     const applyData = useCallback((next: BattleScreenData) => {
         setData(next);
         updateBackgroundFromData(next, setBackgroundImage);
+        const nextActionKey = getActionKey(next);
+        const nextActionMode = next.action_mode?.active ? next.action_mode : null;
+        if (!nextActionKey || !nextActionMode) {
+            activeActionKeyRef.current = null;
+            setActionTimeLeft(null);
+            setActionFinishing(false);
+        } else if (activeActionKeyRef.current !== nextActionKey) {
+            activeActionKeyRef.current = nextActionKey;
+            setActionTimeLeft(nextActionMode.duration_seconds);
+            setActionFinishing(false);
+            finishingActionRef.current = false;
+        }
     }, []);
 
-    const loadBattle = () => {
+    const loadBattle = useCallback(() => {
         apiGet(`/api/battle/${playerId}/?stage_id=${stageId}`).then((res: BattleScreenData) => {
             applyData(res);
             setItemOpen(false);
             setSkillOpen(false);
         });
-    };
+    }, [applyData, playerId, stageId]);
 
     useEffect(() => {
         loadBattle();
-    }, [playerId, stageId]);
+    }, [loadBattle]);
 
     const handleAttack = () => {
         setItemOpen(false);
@@ -97,10 +119,71 @@ export default function BattleScreen(props: Props) {
 
     const battle = data?.battle;
     const enemy = battle?.enemy;
+    const actionMode = data?.action_mode?.active ? data.action_mode : null;
     const showCombat = battle != null && data?.event == null;
     const bgStyle = backgroundImage
         ? { backgroundImage: `url("${stageBackgroundSrc(backgroundImage)}")` }
         : undefined;
+
+    const finishAction = useCallback((extraData: Record<string, string> = {}) => {
+        if (finishingActionRef.current) return;
+        finishingActionRef.current = true;
+        setActionFinishing(true);
+        setActionHitBusy(true);
+        apiPost(`/api/battle/${playerId}/action-finish/`, {
+            click_count: String(data?.action_mode?.click_count ?? 0),
+            ...extraData,
+        })
+            .then((res: BattleScreenData) => {
+                applyData(res);
+                setActionTimeLeft(null);
+                activeActionKeyRef.current = null;
+            })
+            .finally(() => {
+                setActionHitBusy(false);
+                setActionFinishing(false);
+                finishingActionRef.current = false;
+            });
+    }, [applyData, data?.action_mode?.click_count, playerId]);
+
+    const handleActionHit = () => {
+        if (!actionMode || actionMode.action_type !== "spam" || actionHitBusy || actionFinishing || finishingActionRef.current) return;
+        setActionHitBusy(true);
+        apiPost(`/api/battle/${playerId}/action-hit/`, {})
+            .then((res: BattleScreenData) => {
+                applyData(res);
+                if (res.action_hit?.enemy_defeated) {
+                    finishAction();
+                }
+            })
+            .finally(() => {
+                setActionHitBusy(false);
+            });
+    };
+
+    const handleTimingResult = (success: boolean) => {
+        finishAction({
+            timing_result: success ? "success" : "fail",
+            timing_multiplier: success ? "1.5" : "0",
+        });
+    };
+
+    useEffect(() => {
+        if (!actionMode || actionMode.action_type !== "spam" || actionTimeLeft == null) return;
+        if (actionTimeLeft <= 0) return;
+        const timerId = window.setTimeout(() => {
+            setActionTimeLeft((current) => {
+                if (current == null) return current;
+                const nextTime = Math.max(0, Number((current - 0.1).toFixed(1)));
+                if (nextTime <= 0) {
+                    finishAction();
+                }
+                return nextTime;
+            });
+        }, 100);
+
+        return () => window.clearTimeout(timerId);
+    }, [actionMode, actionTimeLeft, finishAction]);
 
     return (
         <div className={styles.battleContainer} style={bgStyle}>
@@ -252,6 +335,54 @@ export default function BattleScreen(props: Props) {
                     onReturn={handleReturn}
                     onContinue={handleContinue}
                 />
+            )}
+
+            {showCombat && battle && enemy && actionMode && (
+                <div className={styles.actionOverlay}>
+                    <div className={styles.actionTimer}>
+                        {actionMode.action_type === "spam"
+                            ? (actionTimeLeft ?? actionMode.duration_seconds).toFixed(1)
+                            : "TIMING"}
+                    </div>
+                    <div className={styles.actionSkillName}>{actionMode.skill_name}</div>
+                    {actionMode.action_type === "spam" ? (
+                        <>
+                            <button
+                                type="button"
+                                className={styles.actionHitArea}
+                                onClick={handleActionHit}
+                                disabled={actionHitBusy || actionFinishing}
+                            >
+                                連打！！
+                            </button>
+                            <div className={styles.actionResult}>
+                                {actionMode.click_count} HIT / 合計 {actionMode.total_damage} ダメージ
+                            </div>
+                            {data.action_hit ? (
+                                <div className={styles.actionLastHit}>
+                                    +{data.action_hit.damage}
+                                </div>
+                            ) : null}
+                        </>
+                    ) : (
+                        <div className={styles.timingActions}>
+                            <ColorButton
+                                variant="yellow"
+                                className={styles.timingButton}
+                                onClick={() => handleTimingResult(true)}
+                            >
+                                成功
+                            </ColorButton>
+                            <ColorButton
+                                variant="other"
+                                className={styles.timingButton}
+                                onClick={() => handleTimingResult(false)}
+                            >
+                                失敗
+                            </ColorButton>
+                        </div>
+                    )}
+                </div>
             )}
 
         </div>

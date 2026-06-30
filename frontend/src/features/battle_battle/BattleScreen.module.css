@@ -407,6 +407,91 @@
     line-height: 1.5;
 }
 
+/* --- アクション特技 --- */
+.actionOverlay {
+    position: fixed;
+    inset: 0;
+    z-index: 80;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: flex-start;
+    padding-top: 80px;
+    background: rgba(0, 0, 0, 0.68);
+    user-select: none;
+}
+
+.actionTimer {
+    font-size: clamp(72px, 12vw, 130px);
+    font-weight: 900;
+    color: #fff;
+    line-height: 1;
+    text-shadow: 4px 4px 10px rgba(0, 0, 0, 0.95);
+}
+
+.actionSkillName {
+    margin-top: 12px;
+    font-size: clamp(24px, 4vw, 44px);
+    font-weight: 900;
+    color: #fff;
+    text-shadow: 3px 3px 8px rgba(0, 0, 0, 0.95);
+}
+
+.actionHitArea {
+    margin-top: 42px;
+    width: min(720px, 86vw);
+    height: min(320px, 38vh);
+    border: 6px solid rgba(255, 255, 255, 0.75);
+    border-radius: 28px;
+    background: rgba(255, 255, 255, 0.12);
+    color: rgba(255, 255, 255, 0.85);
+    font-size: clamp(54px, 10vw, 96px);
+    font-weight: 900;
+    text-shadow: 4px 4px 8px rgba(0, 0, 0, 0.9);
+    cursor: pointer;
+}
+
+.actionHitArea:active {
+    transform: scale(0.98);
+    background: rgba(255, 255, 255, 0.22);
+}
+
+.actionHitArea:disabled {
+    cursor: default;
+    opacity: 0.72;
+}
+
+.actionResult {
+    margin-top: 28px;
+    font-size: clamp(24px, 4vw, 40px);
+    font-weight: bold;
+    color: #fff;
+    text-shadow: 3px 3px 8px rgba(0, 0, 0, 0.9);
+}
+
+.actionLastHit {
+    margin-top: 10px;
+    font-size: clamp(32px, 5vw, 56px);
+    font-weight: 900;
+    color: #ffeb3b;
+    text-shadow: 3px 3px 8px rgba(0, 0, 0, 0.9);
+}
+
+.timingActions {
+    display: flex;
+    gap: 28px;
+    margin-top: 56px;
+    flex-wrap: wrap;
+    justify-content: center;
+}
+
+.timingButton {
+    min-width: 180px;
+    height: 80px;
+    font-size: 32px !important;
+    font-weight: 900 !important;
+}
+
 @media (max-height: 800px) {
     .enemyImage {
         width: 220px;

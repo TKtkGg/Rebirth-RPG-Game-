@@ -34,6 +34,65 @@ from .battle_internal_functions import (
 
 from ..api_serializers import player_to_api_dict, enemy_to_api_dict, stage_to_api_dict, item_to_api_dict, player_inventory_to_api_dict
 
+
+ACTION_SKILL_DURATION_SECONDS = 3.0
+
+
+def _serialize_action_mode(request):
+    action_data = request.session.get("action_mode")
+    if not action_data:
+        return None
+
+    return {
+        "active": True,
+        "skill_name": action_data.get("skill_name", ""),
+        "action_type": action_data.get("action_type", "spam"),
+        "skill_index": action_data.get("skill_index"),
+        "duration_seconds": ACTION_SKILL_DURATION_SECONDS,
+        "click_count": request.session.get("action_click_count", 0),
+        "total_damage": request.session.get("action_total_damage", 0),
+    }
+
+
+def _build_current_battle_response(request, player, enemy, stage, event=None):
+    if event:
+        return {
+            "battle": None,
+            "event": event,
+            "action_mode": _serialize_action_mode(request),
+        }
+
+    message_history = request.session.get("message_history", [])
+    buffs = request.session.get("buffs", {})
+    debuffs = request.session.get("debuffs", {})
+    player_skills, player_items = _get_player_skills_and_items(player)
+
+    state = {
+        "player": player,
+        "enemy": enemy,
+        "message_history": message_history,
+        "showplayer_atk": int(_get_effective_stat(player.total_atk_battle, buffs, debuffs, "player", "atk")),
+        "showplayer_def": int(_get_effective_stat(player.total_def_battle, buffs, debuffs, "player", "def")),
+        "showplayer_spd": int(_get_effective_stat(player.total_spd_battle, buffs, debuffs, "player", "spd")),
+        "buffs": buffs,
+        "showenemy_atk": int(_get_effective_stat(enemy.atk, buffs, debuffs, "enemy", "atk")),
+        "showenemy_def": int(_get_effective_stat(enemy.defense, buffs, debuffs, "enemy", "def")),
+        "showenemy_spd": int(_get_effective_stat(enemy.spd, buffs, debuffs, "enemy", "spd")),
+        "debuffs": debuffs,
+        "player_skills": player_skills,
+        "player_items": player_items,
+        "stage": stage,
+        "player_hp_percent": int((player.total_hp_battle / player.total_max_hp_battle) * 100) if player.total_max_hp_battle > 0 else 0,
+        "player_sp_percent": int((player.mp / player.max_mp) * 100) if player.max_mp > 0 else 0,
+        "enemy_hp_percent": int((enemy.hp / enemy.max_hp) * 100) if enemy.max_hp > 0 else 0,
+    }
+
+    return {
+        "battle": build_battle_data(state),
+        "event": None,
+        "action_mode": _serialize_action_mode(request),
+    }
+
 def battle_start_get(request, player_id):
     player = get_player_from_request(request, player_id)
     if not player:
@@ -264,6 +323,179 @@ def action_skill_end(request, player_id, enemy_id):
     request.session['action_skill_message'] = message
     
     return redirect('game:battle', player_id=player_id, enemy_id=enemy_id)
+
+
+def battle_action_hit(request, player_id):
+    if request.method != "POST":
+        return {"error": "POST required"}
+
+    player = get_player_from_request(request, player_id)
+    if not player:
+        return {"error": "Player not found"}
+
+    enemy_id = request.session.get("enemy_id")
+    if not enemy_id:
+        return {"error": "No enemy in session"}
+
+    try:
+        enemy = Enemy.objects.get(id=enemy_id)
+    except Enemy.DoesNotExist:
+        return {"error": "Enemy not found"}
+
+    action_data = request.session.get("action_mode")
+    if not action_data:
+        return {"error": "No action mode"}
+    if action_data.get("action_type") != "spam":
+        return {"error": "This action skill does not accept hit requests"}
+    if enemy.hp <= 0:
+        return _build_current_battle_response(request, player, enemy, _resolve_stage_from_request(request))
+
+    buffs = request.session.get("buffs", {})
+    debuffs = request.session.get("debuffs", {})
+    multiplier = action_data.get("multiplier", 1.0)
+
+    effective_atk = _get_effective_stat(player.total_atk_battle, buffs, debuffs, "player", "atk")
+    effective_def = _get_effective_stat(enemy.defense, buffs, debuffs, "enemy", "def") // 3
+    base_damage = max(1, effective_atk - effective_def)
+    damage_variance = random.randint(0, 3)
+    damage = max(int(base_damage * multiplier) + damage_variance, 1)
+
+    enemy.hp = max(0, enemy.hp - damage)
+    enemy.save()
+
+    total_damage = request.session.get("action_total_damage", 0) + damage
+    click_count = request.session.get("action_click_count", 0) + 1
+    request.session["action_total_damage"] = total_damage
+    request.session["action_click_count"] = click_count
+
+    response = _build_current_battle_response(request, player, enemy, _resolve_stage_from_request(request))
+    response["action_hit"] = {
+        "damage": damage,
+        "total_damage": total_damage,
+        "click_count": click_count,
+        "enemy_defeated": enemy.hp <= 0,
+    }
+    return response
+
+
+def battle_action_finish(request, player_id):
+    if request.method != "POST":
+        return {"error": "POST required"}
+
+    player = get_player_from_request(request, player_id)
+    if not player:
+        return {"error": "Player not found"}
+
+    enemy_id = request.session.get("enemy_id")
+    if not enemy_id:
+        return {"error": "No enemy in session"}
+
+    try:
+        enemy = Enemy.objects.get(id=enemy_id)
+    except Enemy.DoesNotExist:
+        return {"error": "Enemy not found"}
+
+    stage = _resolve_stage_from_request(request)
+    action_data = request.session.pop("action_mode", None)
+    if not action_data:
+        return {"error": "No action mode"}
+
+    buffs = request.session.get("buffs", {})
+    debuffs = request.session.get("debuffs", {})
+    special_states = request.session.get("special_states", {})
+    message_history = request.session.get("message_history", [])
+    action_type = action_data.get("action_type", "spam")
+    skill_name = action_data.get("skill_name", "")
+    total_damage = request.session.pop("action_total_damage", 0)
+    click_count = request.session.pop("action_click_count", 0)
+
+    message = f"{player.name}の{skill_name}！\n"
+    if action_type == "timing":
+        timing_result = request.POST.get("timing_result")
+        if timing_result != "success":
+            message += "失敗してしまった！\n"
+        else:
+            try:
+                timing_multiplier = float(request.POST.get("timing_multiplier", 1))
+            except (TypeError, ValueError):
+                timing_multiplier = 1
+            multiplier = action_data.get("multiplier", 1.0) * timing_multiplier
+            effective_atk = _get_effective_stat(player.total_atk_battle, buffs, debuffs, "player", "atk")
+            effective_def = _get_effective_stat(enemy.defense, buffs, debuffs, "enemy", "def") // 3
+            base_damage = max(1, effective_atk - effective_def)
+            damage_variance = random.randint(0, 3)
+            total_damage = max(int(base_damage * multiplier) + damage_variance, 1)
+            enemy.hp = max(0, enemy.hp - total_damage)
+            enemy.save()
+            message += f"{enemy.name}に{total_damage}ダメージ！\n"
+    else:
+        message += f"{click_count}回の連続攻撃！ 合計{total_damage}ダメージ！\n"
+
+    if enemy.hp <= 0:
+        message, gained_exp, gained_gold, existLevel = win(message, player, enemy, request)
+        result = {
+            "gained_exp": gained_exp,
+            "gained_gold": gained_gold,
+            "existLevel": existLevel,
+            "newLevel": player.level,
+            "stage": stage,
+        }
+        _reset_battle_session(request, clear_enemy_id=True)
+        return _build_current_battle_response(request, player, enemy, stage, event={
+            "type": "victory",
+            "payload": build_result_data(result),
+        })
+
+    actione = choose_enemyAction(enemy, player, buffs, debuffs)
+    ex_message, buffs, debuffs = enemyAction(
+        message,
+        enemy,
+        player,
+        buffs,
+        debuffs,
+        None,
+        actione,
+        special_states,
+    )
+    message += ex_message
+
+    request.session["buffs"] = buffs
+    request.session["debuffs"] = debuffs
+
+    if player.total_hp_battle <= 0:
+        player.death_count += 1
+        player.save()
+        _reset_battle_session(request, clear_enemy_id=True)
+        if player.death_count >= 3:
+            request.session["gameover_player_id"] = player.id
+            return _build_current_battle_response(request, player, enemy, stage, event={
+                "type": "gameover",
+                "payload": {
+                    "message": "プレイヤーが倒れました。",
+                },
+            })
+
+        message = tohome(message, player, request)
+        return _build_current_battle_response(request, player, enemy, stage, event={
+            "type": "tohome",
+            "payload": {
+                "message": message,
+                "redirect_after": True,
+                "recovering": True,
+            },
+        })
+
+    buffs, debuffs, special_states = decrease_buff_debuff_turns(buffs, debuffs, special_states)
+    request.session["buffs"] = buffs
+    request.session["debuffs"] = debuffs
+    request.session["special_states"] = special_states
+
+    if message:
+        message_history.append(message)
+        request.session["message_history"] = message_history
+
+    player.save()
+    return _build_current_battle_response(request, player, enemy, stage)
 
 
 def battle(request, player_id, enemy_id=None):
@@ -1225,6 +1457,7 @@ def battle_get(request, player_id):
     return {
         "battle": build_battle_data(full_state),
         "event": None,
+        "action_mode": _serialize_action_mode(request),
     }
 
 
@@ -1396,7 +1629,17 @@ def battle_post(request, player_id):
 
     actione = choose_enemyAction(enemy, player, buffs, debuffs)
 
-    is_player_first = spdcheck(actionp, actione, player, enemy, buffs, debuffs)
+    special_action_skill = False
+    if special:
+        player_skills_local = PLAYER_SKILLS.get(player.job, [])
+        try:
+            skill_index = int(special.replace('skill', '')) - 1
+        except ValueError:
+            skill_index = -1
+        if 0 <= skill_index < len(player_skills_local):
+            special_action_skill = player_skills_local[skill_index].get("is_action", False)
+
+    is_player_first = True if special_action_skill else spdcheck(actionp, actione, player, enemy, buffs, debuffs)
     if is_player_first:
         ex_message = ""
         message, success, player_action_result = playerAction(
@@ -1417,10 +1660,16 @@ def battle_post(request, player_id):
                 "event": {
                     "type": "error",
                     "payload": {
-                        "message": "プレイヤーの行動に失敗しました。",
+                        "message": message or "プレイヤーの行動に失敗しました。",
                     },
                 },
             }
+
+        if request.session.get("action_mode"):
+            if message:
+                message_history.append(message)
+                request.session["message_history"] = message_history
+            return _build_current_battle_response(request, player, enemy, stage)
             
         if enemy.hp <= 0:
             message, gained_exp, gained_gold, existLevel = win(message, player, enemy, request)
@@ -1538,6 +1787,12 @@ def battle_post(request, player_id):
                     },
                 },
             }
+
+        if request.session.get("action_mode"):
+            if message:
+                message_history.append(message)
+                request.session["message_history"] = message_history
+            return _build_current_battle_response(request, player, enemy, stage)
         
         if enemy.hp <= 0:
             message, gained_exp, gained_gold, existLevel = win(message, player, enemy, request)
@@ -1604,4 +1859,5 @@ def battle_post(request, player_id):
     return {
         "battle": build_battle_data(state),
         "event": None,
+        "action_mode": _serialize_action_mode(request),
     }

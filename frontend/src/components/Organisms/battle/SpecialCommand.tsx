@@ -22,18 +22,22 @@ export const SpecialCommand = (props: Props) => {
                     <>
                         <p className={styles.subPanelTitle}>特技</p>
                         <div className={styles.commandList}>
-                            {skills?.map((skill, index) =>
-                                skill.is_action ? null : (
-                                    <ColorButton
-                                        key={index}
-                                        variant="yellow"
-                                        className={styles.skillButton}
-                                        onClick={() => onSelectSkill?.(index)}
-                                    >
-                                        {skill.name} (SP: {skill.cost})
-                                    </ColorButton>
-                                ),
-                            )}
+                            {skills?.map((skill, index) => (
+                                <ColorButton
+                                    key={index}
+                                    variant="yellow"
+                                    className={styles.skillButton}
+                                    onClick={() => onSelectSkill?.(index)}
+                                >
+                                    {skill.name} (SP: {skill.cost})
+                                    {skill.is_action ? (
+                                        <>
+                                            <br />
+                                            ACTION
+                                        </>
+                                    ) : null}
+                                </ColorButton>
+                            ))}
                         </div>
                     </>
                 )}

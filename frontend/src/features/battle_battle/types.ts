@@ -29,6 +29,25 @@ export type BattleScreenData = {
         "enemy_hp_percent": number,
     } | null,
     "event": BattleEvent | null;
+    "action_mode"?: ActionModeData | null;
+    "action_hit"?: ActionHitData;
+};
+
+export type ActionModeData = {
+    active: boolean;
+    skill_name: string;
+    action_type: "spam" | "timing";
+    skill_index: number | null;
+    duration_seconds: number;
+    click_count: number;
+    total_damage: number;
+};
+
+export type ActionHitData = {
+    damage: number;
+    total_damage: number;
+    click_count: number;
+    enemy_defeated: boolean;
 };
 
 export type SkillData = {
