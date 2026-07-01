@@ -17,6 +17,26 @@ type Props = {
     stageId: string;
 };
 
+type TimingPhase = "ready" | "waiting" | "signal" | "finished";
+
+const TIMING_WAIT_MIN_MS = 800;
+const TIMING_WAIT_MAX_MS = 2200;
+const TIMING_FAIL_MS = 2000;
+
+function getTimingMultiplier(elapsedMs: number) {
+    if (elapsedMs <= 200) return 3.0;
+    if (elapsedMs <= 500) return 2.0;
+    if (elapsedMs <= 1000) return 1.2;
+    if (elapsedMs <= TIMING_FAIL_MS) return 0.8;
+    return 0;
+}
+
+function getRandomTimingDelayMs() {
+    return Math.floor(
+        TIMING_WAIT_MIN_MS + Math.random() * (TIMING_WAIT_MAX_MS - TIMING_WAIT_MIN_MS),
+    );
+}
+
 function updateBackgroundFromData(
     data: BattleScreenData,
     setBackgroundImage: (v: string) => void,
@@ -42,10 +62,26 @@ export default function BattleScreen(props: Props) {
     const [skillOpen, setSkillOpen] = useState(false);
     const [actionTimeLeft, setActionTimeLeft] = useState<number | null>(null);
     const [actionStarted, setActionStarted] = useState(false);
+    const [timingPhase, setTimingPhase] = useState<TimingPhase>("ready");
+    const [timingResultText, setTimingResultText] = useState("");
     const [actionFinishing, setActionFinishing] = useState(false);
     const finishingActionRef = useRef(false);
     const activeActionKeyRef = useRef<string | null>(null);
+    const timingDelayTimerRef = useRef<number | null>(null);
+    const timingFailTimerRef = useRef<number | null>(null);
+    const timingSignalAtRef = useRef<number | null>(null);
     const router = useRouter();
+
+    const clearTimingTimers = useCallback(() => {
+        if (timingDelayTimerRef.current != null) {
+            window.clearTimeout(timingDelayTimerRef.current);
+            timingDelayTimerRef.current = null;
+        }
+        if (timingFailTimerRef.current != null) {
+            window.clearTimeout(timingFailTimerRef.current);
+            timingFailTimerRef.current = null;
+        }
+    }, []);
 
     const applyData = useCallback((next: BattleScreenData) => {
         setData(next);
@@ -53,18 +89,26 @@ export default function BattleScreen(props: Props) {
         const nextActionKey = getActionKey(next);
         const nextActionMode = next.action_mode?.active ? next.action_mode : null;
         if (!nextActionKey || !nextActionMode) {
+            clearTimingTimers();
             activeActionKeyRef.current = null;
+            timingSignalAtRef.current = null;
             setActionTimeLeft(null);
             setActionStarted(false);
+            setTimingPhase("ready");
+            setTimingResultText("");
             setActionFinishing(false);
         } else if (activeActionKeyRef.current !== nextActionKey) {
+            clearTimingTimers();
             activeActionKeyRef.current = nextActionKey;
-            setActionTimeLeft(nextActionMode.duration_seconds);
+            timingSignalAtRef.current = null;
+            setActionTimeLeft(nextActionMode.action_type === "spam" ? nextActionMode.duration_seconds : null);
             setActionStarted(false);
+            setTimingPhase("ready");
+            setTimingResultText("");
             setActionFinishing(false);
             finishingActionRef.current = false;
         }
-    }, []);
+    }, [clearTimingTimers]);
 
     const loadBattle = useCallback(() => {
         apiGet(`/api/battle/${playerId}/?stage_id=${stageId}`).then((res: BattleScreenData) => {
@@ -130,7 +174,9 @@ export default function BattleScreen(props: Props) {
     const finishAction = useCallback((extraData: Record<string, string> = {}) => {
         if (finishingActionRef.current) return;
         finishingActionRef.current = true;
+        clearTimingTimers();
         setActionFinishing(true);
+        setTimingPhase("finished");
         apiPost(`/api/battle/${playerId}/action-finish/`, {
             click_count: String(data?.action_mode?.click_count ?? 0),
             ...extraData,
@@ -139,13 +185,16 @@ export default function BattleScreen(props: Props) {
                 applyData(res);
                 setActionTimeLeft(null);
                 setActionStarted(false);
+                setTimingPhase("ready");
+                setTimingResultText("");
+                timingSignalAtRef.current = null;
                 activeActionKeyRef.current = null;
             })
             .finally(() => {
                 setActionFinishing(false);
                 finishingActionRef.current = false;
             });
-    }, [applyData, data?.action_mode?.click_count, playerId]);
+    }, [applyData, clearTimingTimers, data?.action_mode?.click_count, playerId]);
 
     const handleActionHit = () => {
         if (!actionMode || actionMode.action_type !== "spam" || actionFinishing || finishingActionRef.current) return;
@@ -176,11 +225,63 @@ export default function BattleScreen(props: Props) {
         handleSpamOverlayClick();
     };
 
-    const handleTimingResult = (success: boolean) => {
+    const failTimingAction = useCallback((message = "失敗") => {
+        if (finishingActionRef.current) return;
+        clearTimingTimers();
+        setTimingResultText(message);
         finishAction({
-            timing_result: success ? "success" : "fail",
-            timing_multiplier: success ? "1.5" : "0",
+            timing_result: "fail",
+            timing_multiplier: "0",
         });
+    }, [clearTimingTimers, finishAction]);
+
+    const startTimingAction = () => {
+        if (!actionMode || actionMode.action_type !== "timing" || actionFinishing || finishingActionRef.current) return;
+        setActionStarted(true);
+        setTimingPhase("waiting");
+        setTimingResultText("集中...");
+        timingDelayTimerRef.current = window.setTimeout(() => {
+            timingDelayTimerRef.current = null;
+            timingSignalAtRef.current = performance.now();
+            setTimingPhase("signal");
+            setTimingResultText("");
+            timingFailTimerRef.current = window.setTimeout(() => {
+                timingFailTimerRef.current = null;
+                failTimingAction("遅すぎた！");
+            }, TIMING_FAIL_MS);
+        }, getRandomTimingDelayMs());
+    };
+
+    const handleTimingOverlayClick = () => {
+        if (!actionMode || actionMode.action_type !== "timing" || actionFinishing || finishingActionRef.current) return;
+        if (timingPhase === "ready") {
+            startTimingAction();
+            return;
+        }
+        if (timingPhase === "waiting") {
+            failTimingAction("早すぎた！");
+            return;
+        }
+        if (timingPhase !== "signal" || timingSignalAtRef.current == null) return;
+
+        const elapsedMs = performance.now() - timingSignalAtRef.current;
+        const timingMultiplier = getTimingMultiplier(elapsedMs);
+        if (timingMultiplier <= 0) {
+            failTimingAction("遅すぎた！");
+            return;
+        }
+        clearTimingTimers();
+        setTimingResultText(`${timingMultiplier.toFixed(1)}倍`);
+        finishAction({
+            timing_result: "success",
+            timing_multiplier: timingMultiplier.toString(),
+        });
+    };
+
+    const handleTimingOverlayKeyDown = (event: KeyboardEvent<HTMLDivElement>) => {
+        if (event.key !== "Enter" && event.key !== " ") return;
+        event.preventDefault();
+        handleTimingOverlayClick();
     };
 
     useEffect(() => {
@@ -199,6 +300,10 @@ export default function BattleScreen(props: Props) {
 
         return () => window.clearTimeout(timerId);
     }, [actionMode, actionStarted, actionTimeLeft, finishAction]);
+
+    useEffect(() => {
+        return () => clearTimingTimers();
+    }, [clearTimingTimers]);
 
     return (
         <div className={styles.battleContainer} style={bgStyle}>
@@ -355,15 +460,17 @@ export default function BattleScreen(props: Props) {
             {showCombat && battle && enemy && actionMode && (
                 <div
                     className={styles.actionOverlay}
-                    onClick={actionMode.action_type === "spam" ? handleSpamOverlayClick : undefined}
-                    onKeyDown={actionMode.action_type === "spam" ? handleSpamOverlayKeyDown : undefined}
-                    role={actionMode.action_type === "spam" ? "button" : undefined}
-                    tabIndex={actionMode.action_type === "spam" ? 0 : undefined}
+                    onClick={actionMode.action_type === "spam" ? handleSpamOverlayClick : handleTimingOverlayClick}
+                    onKeyDown={actionMode.action_type === "spam" ? handleSpamOverlayKeyDown : handleTimingOverlayKeyDown}
+                    role="button"
+                    tabIndex={0}
                 >
                     <div className={styles.actionTimer}>
                         {actionMode.action_type === "spam"
                             ? (actionTimeLeft ?? actionMode.duration_seconds).toFixed(1)
-                            : "TIMING"}
+                            : timingPhase === "signal"
+                                ? "！"
+                                : "TIMING"}
                     </div>
                     <div className={styles.actionSkillName}>{actionMode.skill_name}</div>
                     {actionMode.action_type === "spam" ? (
@@ -381,21 +488,22 @@ export default function BattleScreen(props: Props) {
                             ) : null}
                         </>
                     ) : (
-                        <div className={styles.timingActions}>
-                            <ColorButton
-                                variant="yellow"
-                                className={styles.timingButton}
-                                onClick={() => handleTimingResult(true)}
-                            >
-                                成功
-                            </ColorButton>
-                            <ColorButton
-                                variant="other"
-                                className={styles.timingButton}
-                                onClick={() => handleTimingResult(false)}
-                            >
-                                失敗
-                            </ColorButton>
+                        <div className={styles.timingArea}>
+                            <div className={timingPhase === "signal" ? styles.timingSignal : styles.actionStartPrompt}>
+                                {timingPhase === "ready" && "画面をクリックして開始"}
+                                {timingPhase === "waiting" && "集中..."}
+                                {timingPhase === "signal" && "今だ！"}
+                                {timingPhase === "finished" && "判定中..."}
+                            </div>
+                            <div className={styles.timingGuide}>
+                                {timingPhase === "ready" && "「！」が出た瞬間を狙おう"}
+                                {timingPhase === "waiting" && "まだクリックしない"}
+                                {timingPhase === "signal" && "早くクリックするほど高火力"}
+                                {timingPhase === "finished" && timingResultText}
+                            </div>
+                            {timingResultText && timingPhase !== "finished" ? (
+                                <div className={styles.actionLastHit}>{timingResultText}</div>
+                            ) : null}
                         </div>
                     )}
                 </div>
