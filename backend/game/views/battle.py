@@ -93,6 +93,14 @@ def _build_current_battle_response(request, player, enemy, stage, event=None):
         "action_mode": _serialize_action_mode(request),
     }
 
+
+def _build_battle_event_response(request, player, enemy, stage, event, turn_result=None):
+    response = _build_current_battle_response(request, player, enemy, stage)
+    response["event"] = event
+    if turn_result:
+        response["turn_result"] = turn_result
+    return response
+
 def battle_start_get(request, player_id):
     player = get_player_from_request(request, player_id)
     if not player:
@@ -440,11 +448,12 @@ def battle_action_finish(request, player_id):
             "newLevel": player.level,
             "stage": stage,
         }
-        _reset_battle_session(request, clear_enemy_id=True)
-        return _build_current_battle_response(request, player, enemy, stage, event={
+        response = _build_battle_event_response(request, player, enemy, stage, event={
             "type": "victory",
             "payload": build_result_data(result),
         })
+        _reset_battle_session(request, clear_enemy_id=True)
+        return response
 
     actione = choose_enemyAction(enemy, player, buffs, debuffs)
     ex_message, buffs, debuffs = enemyAction(
@@ -1718,14 +1727,12 @@ def battle_post(request, player_id):
                 "newLevel": player.level,
                 "stage": stage,
             }
+            response = _build_battle_event_response(request, player, enemy, stage, event={
+                "type": "victory",
+                "payload": build_result_data(result),
+            }, turn_result=_build_turn_result(is_player_first, turn_steps))
             _reset_battle_session(request, clear_enemy_id=True)
-            return {
-                "battle": None,
-                "event": {
-                    "type": "victory",
-                    "payload": build_result_data(result),
-                }
-            }
+            return response
         else:
             before_player_hp = player.total_hp_battle
             before_player_sp = player.mp
@@ -1877,14 +1884,12 @@ def battle_post(request, player_id):
                 "newLevel": player.level,
                 "stage": stage,
             }
+            response = _build_battle_event_response(request, player, enemy, stage, event={
+                "type": "victory",
+                "payload": build_result_data(result),
+            }, turn_result=_build_turn_result(is_player_first, turn_steps))
             _reset_battle_session(request, clear_enemy_id=True)
-            return {
-                "battle": None,
-                "event": {
-                    "type": "victory",
-                    "payload": build_result_data(result),
-                }
-            }
+            return response
     
 
     # ターン経過でバフを減少

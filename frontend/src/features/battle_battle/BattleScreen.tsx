@@ -18,6 +18,12 @@ type Props = {
 };
 
 type TimingPhase = "ready" | "waiting" | "signal" | "finished";
+type BattleEffect = {
+    id: number;
+    target: "player" | "enemy";
+    kind: "hit" | "defend" | "heal";
+    amount?: number;
+};
 
 const TIMING_WAIT_MIN_MS = 800;
 const TIMING_WAIT_MAX_MS = 2200;
@@ -57,6 +63,63 @@ function getActionKey(data: BattleScreenData) {
     return `${actionMode.skill_index}-${actionMode.skill_name}`;
 }
 
+function joinClasses(...classes: Array<string | false | null | undefined>) {
+    return classes.filter(Boolean).join(" ");
+}
+
+function getStepEffect(step: NonNullable<BattleScreenData["turn_result"]>["steps"][number], id: number): BattleEffect | null {
+    const playerHpDiff = step.after.player_hp - step.before.player_hp;
+    const playerSpDiff = step.after.player_sp - step.before.player_sp;
+    const enemyHpDiff = step.after.enemy_hp - step.before.enemy_hp;
+
+    if (enemyHpDiff < 0) {
+        return {
+            id,
+            target: "enemy",
+            kind: "hit",
+            amount: Math.abs(enemyHpDiff),
+        };
+    }
+
+    if (playerHpDiff < 0) {
+        return {
+            id,
+            target: "player",
+            kind: "hit",
+            amount: Math.abs(playerHpDiff),
+        };
+    }
+
+    if (step.actor === "player" && step.message.includes("防御")) {
+        return {
+            id,
+            target: "player",
+            kind: "defend",
+            amount: playerSpDiff > 0 ? playerSpDiff : undefined,
+        };
+    }
+
+    if (playerHpDiff > 0) {
+        return {
+            id,
+            target: "player",
+            kind: "heal",
+            amount: playerHpDiff,
+        };
+    }
+
+    if (playerSpDiff > 0) {
+        return {
+            id,
+            target: "player",
+            kind: "heal",
+            amount: playerSpDiff,
+        };
+    }
+
+    return null;
+}
+
 export default function BattleScreen(props: Props) {
     const { playerId, stageId } = props;
     const [data, setData] = useState<BattleScreenData | null>(null);
@@ -72,6 +135,8 @@ export default function BattleScreen(props: Props) {
     const [displayPlayerHp, setDisplayPlayerHp] = useState<number | null>(null);
     const [displayPlayerSp, setDisplayPlayerSp] = useState<number | null>(null);
     const [displayEnemyHp, setDisplayEnemyHp] = useState<number | null>(null);
+    const [battleEffect, setBattleEffect] = useState<BattleEffect | null>(null);
+    const [enemyDefeatAnimating, setEnemyDefeatAnimating] = useState(false);
     const finishingActionRef = useRef(false);
     const activeActionKeyRef = useRef<string | null>(null);
     const animationIdRef = useRef(0);
@@ -94,11 +159,27 @@ export default function BattleScreen(props: Props) {
     const animateTurn = useCallback(async (next: BattleScreenData) => {
         const steps = next.turn_result?.steps ?? [];
         if (!next.battle || steps.length === 0) {
-            animationIdRef.current += 1;
+            const animationId = animationIdRef.current + 1;
+            animationIdRef.current = animationId;
             setAnimationPlaying(false);
             setDisplayPlayerHp(null);
             setDisplayPlayerSp(null);
+            setBattleEffect(null);
+            const victoryEvent = next.event?.type === "victory" ? next.event : null;
+            if (next.battle && victoryEvent) {
+                setDisplayEnemyHp(0);
+                setAnimationPlaying(true);
+                setEnemyDefeatAnimating(true);
+                await sleep(850);
+                if (animationIdRef.current !== animationId) return;
+                setEnemyDefeatAnimating(false);
+                setDisplayEnemyHp(null);
+                setAnimationPlaying(false);
+                setData((current) => current ? { ...current, event: victoryEvent } : next);
+                return;
+            }
             setDisplayEnemyHp(null);
+            setEnemyDefeatAnimating(false);
             return;
         }
 
@@ -112,8 +193,12 @@ export default function BattleScreen(props: Props) {
         setDisplayEnemyHp(first.enemy_hp);
         await sleep(200);
 
-        for (const step of steps) {
+        for (const [index, step] of steps.entries()) {
             if (animationIdRef.current !== animationId) return;
+            setBattleEffect(null);
+            await sleep(20);
+            if (animationIdRef.current !== animationId) return;
+            setBattleEffect(getStepEffect(step, animationId * 100 + index));
             setDisplayPlayerHp(step.after.player_hp);
             setDisplayPlayerSp(step.after.player_sp);
             setDisplayEnemyHp(step.after.enemy_hp);
@@ -121,6 +206,17 @@ export default function BattleScreen(props: Props) {
         }
 
         if (animationIdRef.current !== animationId) return;
+        setBattleEffect(null);
+
+        const victoryEvent = next.event?.type === "victory" ? next.event : null;
+        if (victoryEvent) {
+            setEnemyDefeatAnimating(true);
+            await sleep(850);
+            if (animationIdRef.current !== animationId) return;
+            setEnemyDefeatAnimating(false);
+            setData((current) => current ? { ...current, event: victoryEvent } : next);
+        }
+
         setDisplayPlayerHp(null);
         setDisplayPlayerSp(null);
         setDisplayEnemyHp(null);
@@ -128,7 +224,8 @@ export default function BattleScreen(props: Props) {
     }, []);
 
     const applyData = useCallback((next: BattleScreenData) => {
-        setData(next);
+        const shouldDelayVictory = next.event?.type === "victory" && next.battle != null;
+        setData(shouldDelayVictory ? { ...next, event: null } : next);
         updateBackgroundFromData(next, setBackgroundImage);
         const nextActionKey = getActionKey(next);
         const nextActionMode = next.action_mode?.active ? next.action_mode : null;
@@ -229,6 +326,30 @@ export default function BattleScreen(props: Props) {
     const enemyHpPercent = enemy?.max_hp
         ? Math.max(0, Math.round((enemyHpValue / enemy.max_hp) * 100))
         : 0;
+    const enemyEffect = battleEffect?.target === "enemy" ? battleEffect : null;
+    const playerEffect = battleEffect?.target === "player" ? battleEffect : null;
+    const enemyAreaClassName = joinClasses(
+        styles.enemyArea,
+        enemyEffect?.kind === "hit" && "animate-battle-shake",
+        enemyDefeatAnimating && "animate-battle-enemy-defeat",
+    );
+    const enemyImageClassName = joinClasses(
+        styles.enemyImage,
+        enemyEffect?.kind === "hit" && "animate-battle-image-flash-hit",
+    );
+    const playerStatusBoxClassName = joinClasses(
+        styles.playerStatusBox,
+        (itemOpen || skillOpen) && styles.playerStatusBoxWide,
+        playerEffect?.kind === "hit" && "animate-battle-shake",
+    );
+    const getFlashClassName = (effect: BattleEffect | null) => joinClasses(
+        styles.battleFlash,
+        effect?.kind === "defend" && styles.battleFlashDefend,
+        effect?.kind === "heal" && styles.battleFlashHeal,
+        effect?.kind === "hit" && "animate-battle-flash-hit",
+        effect?.kind === "defend" && "animate-battle-flash-defend",
+        effect?.kind === "heal" && "animate-battle-flash-heal",
+    );
     const bgStyle = backgroundImage
         ? { backgroundImage: `url("${stageBackgroundSrc(backgroundImage)}")` }
         : undefined;
@@ -377,7 +498,20 @@ export default function BattleScreen(props: Props) {
                         <MessageBox message={battle.message_history.join("\n")} messageHistory={battle.message_history} />
                     </div>
 
-                    <div className={styles.enemyArea}>
+                    <div className={enemyAreaClassName}>
+                        {enemyEffect ? (
+                            <div key={`enemy-flash-${enemyEffect.id}`} className={getFlashClassName(enemyEffect)} />
+                        ) : null}
+                        {enemyEffect?.kind === "hit" ? (
+                            <>
+                                <div key={`enemy-slash-${enemyEffect.id}`} className={joinClasses(styles.battleSlash, "animate-battle-slash-pop")}>
+                                    /
+                                </div>
+                                <div key={`enemy-damage-${enemyEffect.id}`} className={joinClasses(styles.damagePop, "animate-battle-damage-pop")}>
+                                    {enemyEffect.amount}
+                                </div>
+                            </>
+                        ) : null}
                         <div className={styles.enemyLevel}>LV : {enemy.level}</div>
                         <div
                             className={
@@ -392,7 +526,7 @@ export default function BattleScreen(props: Props) {
                             <img
                                 src={enemyImageSrc(enemy.image_url)}
                                 alt={enemy.name}
-                                className={styles.enemyImage}
+                                className={enemyImageClassName}
                             />
                         )}
                         <GaugeBar
@@ -405,13 +539,20 @@ export default function BattleScreen(props: Props) {
                     </div>
 
                     <div className={styles.playerArea}>
-                        <div
-                            className={
-                                itemOpen || skillOpen
-                                    ? `${styles.playerStatusBox} ${styles.playerStatusBoxWide}`
-                                    : styles.playerStatusBox
-                            }
-                        >
+                        <div className={playerStatusBoxClassName}>
+                            {playerEffect ? (
+                                <div key={`player-flash-${playerEffect.id}`} className={getFlashClassName(playerEffect)} />
+                            ) : null}
+                            {playerEffect?.kind === "hit" ? (
+                                <>
+                                    <div key={`player-slash-${playerEffect.id}`} className={joinClasses(styles.battleSlash, styles.playerSlash, "animate-battle-slash-pop")}>
+                                        /
+                                    </div>
+                                    <div key={`player-damage-${playerEffect.id}`} className={joinClasses(styles.damagePop, styles.playerDamagePop, "animate-battle-damage-pop")}>
+                                        {playerEffect.amount}
+                                    </div>
+                                </>
+                            ) : null}
                             {!itemOpen && !skillOpen && (
                                 <>
                                     <div className={styles.statusTopRow}>

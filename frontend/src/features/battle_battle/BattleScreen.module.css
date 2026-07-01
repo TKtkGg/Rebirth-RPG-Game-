@@ -43,6 +43,61 @@
     z-index: 5;
 }
 
+.battleFlash {
+    position: absolute;
+    inset: -12px;
+    z-index: 15;
+    border-radius: 24px;
+    background: #ff2c2c;
+    pointer-events: none;
+    opacity: 0;
+}
+
+.battleFlashDefend {
+    background: #2f78ff;
+}
+
+.battleFlashHeal {
+    background: #31d667;
+}
+
+.damagePop {
+    position: absolute;
+    top: 42%;
+    left: 50%;
+    z-index: 25;
+    color: #ff3030;
+    font-size: clamp(42px, 7vw, 76px);
+    font-weight: 900;
+    -webkit-text-stroke: 3px #fff;
+    paint-order: stroke fill;
+    text-shadow: 3px 3px 8px rgba(0, 0, 0, 0.85);
+    pointer-events: none;
+}
+
+.playerDamagePop {
+    top: -36px;
+}
+
+.battleSlash {
+    position: absolute;
+    top: 34%;
+    left: 50%;
+    z-index: 24;
+    color: rgba(255, 255, 255, 0.95);
+    font-size: clamp(120px, 16vw, 210px);
+    font-weight: 900;
+    line-height: 0.7;
+    text-shadow:
+        0 0 18px rgba(255, 255, 255, 0.9),
+        4px 4px 12px rgba(255, 0, 0, 0.8);
+    pointer-events: none;
+}
+
+.playerSlash {
+    top: -20px;
+}
+
 .enemyLevel {
     font-size: 28px;
     font-weight: bold;
@@ -128,6 +183,7 @@
     justify-content: center;
     align-items: center;
     gap: 10px;
+    position: relative;
 }
 
 .playerStatusBoxWide {
