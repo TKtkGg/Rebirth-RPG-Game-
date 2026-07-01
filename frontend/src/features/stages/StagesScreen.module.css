@@ -1,0 +1,28 @@
+.container {
+    position: fixed;
+    inset: 0;
+    background-image: url("/game/img/背景/ステージ選択.png");
+    background-size: 105% 105vh;
+    background-position: center;
+    background-repeat: no-repeat;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+}
+
+.board {
+    width: min(92vw, 1100px);
+    height: min(88vh, 740px);
+    padding: 44px 84px 96px;
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 46px 76px;
+    align-content: center;
+    position: relative;
+}
+
+.backButton {
+    position: absolute;
+    left: -98px;
+    bottom: 10px;
+}

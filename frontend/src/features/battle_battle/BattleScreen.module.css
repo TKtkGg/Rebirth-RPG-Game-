@@ -1,0 +1,646 @@
+/* battle.css ベースの戦闘画面レイアウト */
+
+.battleContainer {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100vw;
+    height: 100vh;
+    background-size: 100%;
+    background-position: center bottom;
+    background-repeat: no-repeat;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    padding: 20px 40px;
+    box-sizing: border-box;
+    overflow: hidden;
+    gap: 20px;
+}
+
+.loading {
+    font-size: 24px;
+    font-weight: bold;
+    color: #fff;
+    text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.8);
+}
+
+/* --- メッセージ（左上） --- */
+.messageArea {
+    position: fixed;
+    left: 40px;
+    top: 20px;
+}
+
+/* --- 敵エリア --- */
+.enemyArea {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    flex-shrink: 0;
+    position: relative;
+    z-index: 5;
+}
+
+.battleFlash {
+    position: absolute;
+    inset: -12px;
+    z-index: 15;
+    border-radius: 24px;
+    background: #ff2c2c;
+    pointer-events: none;
+    opacity: 0;
+}
+
+.battleFlashDefend {
+    background: #2f78ff;
+}
+
+.battleFlashHeal {
+    background: #31d667;
+}
+
+.damagePop {
+    position: absolute;
+    top: 42%;
+    left: 50%;
+    z-index: 25;
+    color: #ff3030;
+    font-size: clamp(42px, 7vw, 76px);
+    font-weight: 900;
+    -webkit-text-stroke: 3px #fff;
+    paint-order: stroke fill;
+    text-shadow: 3px 3px 8px rgba(0, 0, 0, 0.85);
+    pointer-events: none;
+}
+
+.playerDamagePop {
+    top: -36px;
+}
+
+.battleSlash {
+    position: absolute;
+    top: 34%;
+    left: 50%;
+    z-index: 24;
+    color: rgba(255, 255, 255, 0.95);
+    font-size: clamp(120px, 16vw, 210px);
+    font-weight: 900;
+    line-height: 0.7;
+    text-shadow:
+        0 0 18px rgba(255, 255, 255, 0.9),
+        4px 4px 12px rgba(255, 0, 0, 0.8);
+    pointer-events: none;
+}
+
+.playerSlash {
+    top: -20px;
+}
+
+.enemyLevel {
+    font-size: 28px;
+    font-weight: bold;
+    color: #000;
+    text-shadow: 2px 2px 4px rgba(255, 255, 255, 0.8);
+    margin-bottom: 5px;
+    text-align: center;
+}
+
+.enemyName {
+    font-size: 48px;
+    font-weight: bold;
+    color: #000;
+    text-shadow: 3px 3px 6px rgba(255, 255, 255, 0.8);
+    margin-bottom: 10px;
+    text-align: center;
+}
+
+.enemyNameStrong {
+    color: #ff0000;
+    text-shadow: 3px 3px 6px rgba(255, 200, 200, 0.8);
+}
+
+.enemyImage {
+    width: 300px;
+    height: 250px;
+    object-fit: contain;
+    margin: 10px 0;
+    filter: drop-shadow(0 10px 20px rgba(0, 0, 0, 0.3));
+    flex-shrink: 0;
+}
+
+.enemyHpBarContainer {
+    width: 600px;
+    max-width: 90vw;
+    height: 40px;
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.5);
+    margin-bottom: 20px;
+}
+
+.enemyHpBarFill {
+    height: 100%;
+    transition: width 0.3s;
+    position: absolute;
+    left: 0;
+    top: 0;
+}
+
+.enemyHpValue {
+    font-size: 24px;
+    font-weight: bold;
+    color: #fff;
+    position: relative;
+    z-index: 10;
+    text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.8);
+}
+
+/* --- プレイヤーエリア --- */
+.playerArea {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    flex-shrink: 0;
+    z-index: 5;
+}
+
+.playerStatusBox {
+    background: rgba(217, 217, 217, 0.5);
+    border-radius: 20px;
+    padding: 15px 30px;
+    color: #000;
+    font-family: Arial, sans-serif;
+    font-size: 22px;
+    font-weight: bold;
+    text-align: center;
+    box-shadow: 0 8px 30px rgba(0, 0, 0, 0.5);
+    margin-bottom: 15px;
+    min-width: 500px;
+    max-width: 95vw;
+    flex-shrink: 0;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    gap: 10px;
+    position: relative;
+}
+
+.playerStatusBoxWide {
+    min-width: 700px;
+}
+
+.statusTopRow {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    width: 100%;
+}
+
+.playerNameCol {
+    width: 120px;
+    text-align: left;
+    flex-shrink: 0;
+}
+
+.statusGauge {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    min-width: 250px;
+    margin-right: -80px;
+}
+
+.statusGaugeBar {
+    width: 120px;
+    height: 25px;
+}
+
+.statusGaugeFill {
+    height: 100%;
+    width: 100%;
+    transition: width 0.3s;
+    position: absolute;
+    left: 0;
+    top: 0;
+}
+
+.statusGaugeFillSp {
+    background: rgb(0, 55, 255);
+}
+
+.statusGaugeValue {
+    min-width: 50px;
+    text-align: center;
+    font-weight: bold;
+    color: #fff;
+    position: relative;
+    z-index: 10;
+    font-size: 15px;
+    text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.8);
+}
+
+.statsRow {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    width: 100%;
+}
+
+.statsText {
+    flex: 1;
+    text-align: left;
+}
+
+.buttonArea {
+    display: flex;
+    justify-content: center;
+    gap: 15px;
+    flex-wrap: wrap;
+    align-items: center;
+    flex-shrink: 0;
+}
+
+.commandButton {
+    min-width: 120px;
+    height: 70px;
+    padding: 12px 28px;
+    font-size: 26px;
+    font-weight: bold;
+}
+
+.subPanelTitle {
+    font-size: 22px;
+    margin: 0 0 8px;
+}
+
+.itemList {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 8px;
+    max-height: 300px;
+    overflow-y: auto;
+    width: 100%;
+    border-radius: 10px;
+    padding: 10px;
+    box-sizing: border-box;
+}
+
+.itemButton {
+    width: 100%;
+    min-height: 56px;
+    font-size: 16px !important;
+    padding: 8px !important;
+}
+
+.itemEmpty {
+    grid-column: 1 / -1;
+    padding: 20px;
+    text-align: center;
+    color: #666;
+    font-size: 20px;
+}
+
+.skillButton {
+    min-width: 200px;
+    min-height: 56px;
+    font-size: 18px !important;
+}
+
+/* --- 終了オーバーレイ（勝利・逃走） --- */
+.endOverlay {
+    position: fixed;
+    inset: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 50;
+    padding: 20px;
+    box-sizing: border-box;
+}
+
+.endPanel {
+    padding: 36px 48px 28px !important;
+    min-width: min(800px, 95vw);
+    min-height: min(580px, 80vh);
+    text-align: center;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 18px;
+}
+
+.endTitle {
+    font-size: clamp(64px, 12vw, 100px);
+    font-weight: 900;
+    color: #e00000;
+    -webkit-text-stroke: 3px #ffffff;
+    paint-order: stroke fill;
+    text-shadow: 2px 2px 6px rgba(0, 0, 0, 0.6);
+    margin: 0;
+    line-height: 1.1;
+}
+
+.victoryContent {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    gap: 36px;
+    font-weight: bold;
+    flex-wrap: wrap;
+}
+
+.victoryContentNoLevelup {
+    justify-content: center;
+}
+
+.victoryLeft {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+}
+
+.victoryStat {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    font-weight: bold;
+    color: #fff;
+}
+
+.victoryLabel {
+    font-weight: bold;
+    color: #ffffff;
+    font-size: clamp(32px, 6vw, 44px);
+}
+
+.expLabel {
+    text-shadow:
+        2px 0 0 #b6ff4a,
+        -2px 0 0 #b6ff4a,
+        0 2px 0 #b6ff4a,
+        0 -2px 0 #b6ff4a,
+        2px 2px 0 #b6ff4a,
+        -2px 2px 0 #b6ff4a,
+        2px -2px 0 #b6ff4a,
+        -2px -2px 0 #b6ff4a;
+}
+
+.goldLabel {
+    text-shadow:
+        2px 0 0 #d0a900,
+        -2px 0 0 #d0a900,
+        0 2px 0 #d0a900,
+        0 -2px 0 #d0a900,
+        2px 2px 0 #d0a900,
+        -2px 2px 0 #d0a900,
+        2px -2px 0 #d0a900,
+        -2px -2px 0 #d0a900;
+}
+
+.victoryValue {
+    font-size: 34px;
+    font-weight: bold;
+    color: #ffffff;
+}
+
+.victoryRight {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    font-size: 38px;
+    font-weight: bold;
+    color: #ffffff;
+}
+
+.victoryLevelup {
+    font-size: 32px;
+}
+
+.victoryLevel {
+    font-size: 28px;
+}
+
+.escapePenalty {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    font-size: 28px;
+    font-weight: bold;
+    color: #fff;
+}
+
+.endButtons {
+    display: flex;
+    gap: 22px;
+    margin-top: 8px;
+    justify-content: center;
+    flex-wrap: wrap;
+}
+
+.endActionButton {
+    min-width: 180px;
+    height: 64px;
+    font-size: 28px !important;
+    font-weight: bold !important;
+    color: #111 !important;
+    text-shadow: none !important;
+    border: 3px solid #222 !important;
+    border-radius: 8px !important;
+}
+
+.continueButton {
+    background: #ff5a5a !important;
+}
+
+.tohomeMessage {
+    font-size: 22px;
+    font-weight: bold;
+    color: #fff;
+    white-space: pre-line;
+    max-width: 600px;
+    line-height: 1.5;
+}
+
+/* --- アクション特技 --- */
+.actionOverlay {
+    position: fixed;
+    inset: 0;
+    z-index: 80;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: flex-start;
+    padding-top: 80px;
+    background: rgba(0, 0, 0, 0.68);
+    user-select: none;
+    cursor: pointer;
+    outline: none;
+}
+
+.actionTimer {
+    font-size: clamp(72px, 12vw, 130px);
+    font-weight: 900;
+    color: #fff;
+    line-height: 1;
+    text-shadow: 4px 4px 10px rgba(0, 0, 0, 0.95);
+}
+
+.actionSkillName {
+    margin-top: 12px;
+    font-size: clamp(24px, 4vw, 44px);
+    font-weight: 900;
+    color: #fff;
+    text-shadow: 3px 3px 8px rgba(0, 0, 0, 0.95);
+}
+
+.actionInstruction {
+    margin-top: 42px;
+    font-size: clamp(64px, 10vw, 100px);
+    font-weight: 900;
+    color: rgba(255, 255, 255, 0.3);
+    text-shadow: 3px 3px 6px rgba(0, 0, 0, 1);
+    pointer-events: none;
+}
+
+.actionStartPrompt {
+    margin-top: 42px;
+    font-size: clamp(32px, 6vw, 64px);
+    font-weight: 900;
+    color: rgba(255, 255, 255, 0.78);
+    text-shadow: 3px 3px 6px rgba(0, 0, 0, 1);
+    pointer-events: none;
+}
+
+.actionResult {
+    margin-top: 28px;
+    font-size: clamp(24px, 4vw, 40px);
+    font-weight: bold;
+    color: #fff;
+    text-shadow: 3px 3px 8px rgba(0, 0, 0, 0.9);
+}
+
+.actionLastHit {
+    margin-top: 10px;
+    font-size: clamp(32px, 5vw, 56px);
+    font-weight: 900;
+    color: #ffeb3b;
+    text-shadow: 3px 3px 8px rgba(0, 0, 0, 0.9);
+}
+
+.timingArea {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+}
+
+.timingSignal {
+    margin-top: 42px;
+    font-size: clamp(64px, 10vw, 100px);
+    font-weight: 900;
+    color: rgba(255, 255, 255, 0.9);
+    text-shadow: 0 0 18px rgba(255, 255, 255, 0.8), 3px 3px 8px rgba(0, 0, 0, 1);
+    pointer-events: none;
+}
+
+.timingGuide {
+    margin-top: 26px;
+    font-size: clamp(22px, 4vw, 36px);
+    font-weight: 900;
+    color: rgba(255, 255, 255, 0.78);
+    text-shadow: 3px 3px 8px rgba(0, 0, 0, 0.95);
+    pointer-events: none;
+}
+
+.timingActions {
+    display: flex;
+    gap: 28px;
+    margin-top: 56px;
+    flex-wrap: wrap;
+    justify-content: center;
+}
+
+.timingButton {
+    min-width: 180px;
+    height: 80px;
+    font-size: 32px !important;
+    font-weight: 900 !important;
+}
+
+@media (max-height: 800px) {
+    .enemyImage {
+        width: 220px;
+        height: 180px;
+    }
+
+    .enemyName {
+        font-size: 36px;
+    }
+
+    .enemyHpBarContainer {
+        width: 500px;
+        height: 35px;
+    }
+
+    .enemyHpValue {
+        font-size: 20px;
+    }
+
+    .playerStatusBox {
+        font-size: 18px;
+        padding: 12px 25px;
+        min-width: 400px;
+    }
+
+    .messageArea {
+        font-size: 18px;
+        padding: 15px 25px;
+        max-height: 320px;
+    }
+
+    .commandButton {
+        height: 60px;
+        font-size: 22px;
+    }
+}
+
+@media (max-width: 768px) {
+    .battleContainer {
+        padding: 10px 15px;
+        gap: 10px;
+    }
+
+    .messageArea {
+        font-size: 16px;
+        padding: 15px 20px;
+        width: 90%;
+        max-width: none;
+        left: 5%;
+        max-height: 200px;
+    }
+
+    .enemyName {
+        font-size: 32px;
+    }
+
+    .enemyHpBarContainer {
+        width: 90%;
+        height: 30px;
+    }
+
+    .playerStatusBox {
+        min-width: auto;
+        width: 95%;
+    }
+
+    .playerStatusBoxWide {
+        min-width: auto;
+    }
+
+    .statusGauge {
+        margin-right: 0;
+        min-width: auto;
+    }
+}

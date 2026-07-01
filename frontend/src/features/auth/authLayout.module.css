@@ -1,0 +1,134 @@
+.page {
+  position: relative;
+  min-height: 100vh;
+  width: 100%;
+  margin: 0;
+  overflow-x: hidden;
+  color: #fff;
+}
+
+.background {
+  position: fixed;
+  inset: 0;
+  z-index: 0;
+  background-image: url("/game/アカウント背景.jpg");
+  background-size: cover;
+  background-position: center;
+  background-repeat: no-repeat;
+}
+
+.gameTitle {
+  position: absolute;
+  top: 5%;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 10;
+  margin: 0;
+  font-size: clamp(36px, 10vw, 100px);
+  font-weight: 700;
+  letter-spacing: 3px;
+  color: #fff;
+  text-shadow:
+    4px 4px 8px rgba(0, 0, 0, 0.8),
+    -2px -2px 4px rgba(255, 255, 255, 0.3);
+  white-space: nowrap;
+  text-align: center;
+}
+
+.contentContainer {
+  position: relative;
+  z-index: 5;
+  width: 100%;
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: clamp(100px, 18vh, 160px) 20px 40px;
+  box-sizing: border-box;
+}
+
+.authContainer {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  min-height: 50vh;
+}
+
+.authBox {
+  width: 100%;
+  max-width: min(400px, 100%);
+  background-color: rgba(101, 67, 33, 0.9);
+  padding: 40px;
+  border-radius: 10px;
+  box-shadow: 0 6px 12px rgba(0, 0, 0, 0.4);
+  box-sizing: border-box;
+}
+
+.authHeading {
+  margin: 0 0 30px;
+  color: #fff;
+  text-align: center;
+  font-size: clamp(28px, 5vw, 34px);
+  font-weight: 700;
+  text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.5);
+}
+
+.errorMessages {
+  color: #ffcccc;
+  background-color: rgba(139, 0, 0, 0.7);
+  padding: 10px;
+  border-radius: 5px;
+  margin-bottom: 15px;
+  font-size: 14px;
+}
+
+.errorMessages p {
+  margin: 0;
+}
+
+.errorMessages p + p {
+  margin-top: 6px;
+}
+
+.backLink {
+  text-align: center;
+  margin-top: 20px;
+}
+
+.backLink button {
+  background: none;
+  border: none;
+  padding: 0;
+  color: #fff;
+  font-size: 16px;
+  text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.5);
+  cursor: pointer;
+  text-decoration: none;
+  font-family: inherit;
+}
+
+.backLink button:hover {
+  text-decoration: underline;
+}
+
+.submitWrap {
+  margin-top: 20px;
+}
+
+.submitButton {
+  width: 100%;
+  min-height: 50px;
+  padding: 15px;
+  font-size: 24px;
+  font-weight: 700;
+  border-radius: 8px !important;
+  border: none !important;
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.3);
+}
+
+.submitButton:hover:not(:disabled) {
+  filter: brightness(1.08);
+}

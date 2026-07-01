@@ -1,0 +1,67 @@
+.screen {
+  position: fixed;
+  inset: 0;
+  background: #e8d68a;
+  padding: 20px;
+  box-sizing: border-box;
+}
+
+.inventoryContainer {
+  display: flex;
+  gap: 20px;
+  height: 100%;
+}
+
+.searchIconContainer {
+  display: flex;
+  gap: 10px;
+}
+
+.searchIconButton {
+  border: none;
+  background: transparent;
+  cursor: pointer;
+  width: fit-content;
+  padding: 0;
+}
+
+.mainContent {
+  flex: 1;
+  display: flex;
+  gap: 20px;
+  min-height: 0;
+}
+
+.itemsPanel {
+  flex: 1;
+  border-radius: 20px;
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+  gap: 20px;
+  align-content: start;
+  overflow-y: auto;
+}
+
+.detailPanel {
+  width: 400px;
+  border-radius: 20px;
+  gap: 16px;
+  align-self: flex-start;
+  display: flex;
+  flex-direction: column;
+}
+
+.emptyMessage {
+  grid-column: 1 / -1;
+  text-align: center;
+  color: #666;
+  font-size: 32px;
+  font-weight: 700;
+  margin-top: 80px;
+}
+
+.backButton {
+  position: fixed;
+  left: 30px;
+  bottom: 30px;
+}

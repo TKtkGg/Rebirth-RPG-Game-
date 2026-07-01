@@ -1,0 +1,28 @@
+export type PlayerScreenData = {
+    id: number;
+    name: string;
+    level: number;
+    exp: number;
+    next_exp: number;
+    max_hp: number;
+    hp: number;
+    atk: number;
+    defense: number;
+    spd: number;
+    max_mp: number;
+    mp: number;
+    stat_points: number;
+    job: string;
+    item: string;
+    defeats: number;
+    strong_defeats: number;
+    death_count: number;
+    gold: number;
+    gold_rate: number;
+    exp_rate: number;
+    total_max_hp_battle: number;
+    total_hp_battle: number;
+    total_atk_battle: number;
+    total_def_battle: number;
+    total_spd_battle: number;
+}

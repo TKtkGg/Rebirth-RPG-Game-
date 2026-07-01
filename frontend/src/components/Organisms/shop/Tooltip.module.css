@@ -1,0 +1,45 @@
+.itemTooltip {
+    position: fixed;
+    z-index: 1000;
+    min-width: 260px;
+    max-width: 360px;
+    background: rgba(0, 0, 0, 0.92);
+    border: 2px solid rgba(255, 255, 255, 0.55);
+    border-radius: 10px;
+    padding: 14px 18px;
+    color: #fff;
+    pointer-events: none;
+    box-shadow: 0 4px 18px rgba(0, 0, 0, 0.75);
+}
+
+.tooltipName {
+    font-size: 22px;
+    font-weight: 700;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.25);
+    padding-bottom: 6px;
+    margin-bottom: 8px;
+}
+
+.tooltipDescription {
+    font-size: 15px;
+    line-height: 1.4;
+    margin-bottom: 10px;
+    color: #e3e3e3;
+}
+
+.tooltipStats {
+    font-size: 16px;
+    line-height: 1.6;
+}
+
+.statLine {
+    display: flex;
+}
+
+.statPositive {
+    color: #90ee90;
+}
+
+.statNegative {
+    color: #ff6b6b;
+}

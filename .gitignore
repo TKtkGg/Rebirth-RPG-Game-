@@ -55,3 +55,7 @@ Thumbs.db
 # Secret key and sensitive data
 secret_key.txt
 .env
+
+# AI context and planning files
+AI_CONTEXT.md
+REFACTORING_PLAN.md

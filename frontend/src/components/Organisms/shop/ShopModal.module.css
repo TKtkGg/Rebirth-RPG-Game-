@@ -1,0 +1,72 @@
+.modalContent {
+    background: rgba(0, 0, 0, 0.78);
+    box-shadow: 0 10px 40px rgba(0, 0, 0, 0.8);
+    padding: 56px 76px;
+    width: min(86vw, 760px);
+    text-align: center;
+}
+
+.modalText {
+    font-size: clamp(32px, 2.3vw, 40px);
+    font-weight: 700;
+    color: #fff;
+    line-height: 1.45;
+    margin-bottom: 24px;
+}
+
+.modalGold {
+    font-size: clamp(24px, 1.8vw, 30px);
+    font-weight: 700;
+    color: #e3e3e3;
+    margin-bottom: 34px;
+}
+
+.quantitySelector {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 30px;
+    margin-bottom: 48px;
+}
+
+.quantityButton {
+    width: 58px;
+    height: 58px;
+    border: none;
+    border-radius: 10px;
+    font-size: 40px;
+    font-weight: 700;
+    background: #d3d3d3;
+    color: #000;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition: transform 0.2s ease, background 0.2s ease;
+}
+
+.quantityButton:hover:not(:disabled) {
+    background: #bfbfbf;
+    transform: scale(1.08);
+}
+
+.quantityButton:disabled {
+    background: #808080;
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
+.quantityDisplay {
+    min-width: 80px;
+    text-align: center;
+    color: #fff;
+    font-size: 48px;
+    font-weight: 700;
+}
+
+.modalButtons {
+    display: flex;
+    justify-content: center;
+    gap: 40px;
+}
+
