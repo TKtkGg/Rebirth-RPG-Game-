@@ -419,6 +419,8 @@
     padding-top: 80px;
     background: rgba(0, 0, 0, 0.68);
     user-select: none;
+    cursor: pointer;
+    outline: none;
 }
 
 .actionTimer {
@@ -437,28 +439,22 @@
     text-shadow: 3px 3px 8px rgba(0, 0, 0, 0.95);
 }
 
-.actionHitArea {
+.actionInstruction {
     margin-top: 42px;
-    width: min(720px, 86vw);
-    height: min(320px, 38vh);
-    border: 6px solid rgba(255, 255, 255, 0.75);
-    border-radius: 28px;
-    background: rgba(255, 255, 255, 0.12);
-    color: rgba(255, 255, 255, 0.85);
-    font-size: clamp(54px, 10vw, 96px);
+    font-size: clamp(64px, 10vw, 100px);
     font-weight: 900;
-    text-shadow: 4px 4px 8px rgba(0, 0, 0, 0.9);
-    cursor: pointer;
+    color: rgba(255, 255, 255, 0.3);
+    text-shadow: 3px 3px 6px rgba(0, 0, 0, 1);
+    pointer-events: none;
 }
 
-.actionHitArea:active {
-    transform: scale(0.98);
-    background: rgba(255, 255, 255, 0.22);
-}
-
-.actionHitArea:disabled {
-    cursor: default;
-    opacity: 0.72;
+.actionStartPrompt {
+    margin-top: 42px;
+    font-size: clamp(32px, 6vw, 64px);
+    font-weight: 900;
+    color: rgba(255, 255, 255, 0.78);
+    text-shadow: 3px 3px 6px rgba(0, 0, 0, 1);
+    pointer-events: none;
 }
 
 .actionResult {

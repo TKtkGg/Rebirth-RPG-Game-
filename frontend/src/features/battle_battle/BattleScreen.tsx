@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect, useRef, useCallback } from "react";
+import { useState, useEffect, useRef, useCallback, type KeyboardEvent } from "react";
 import { useRouter } from "next/navigation";
 import { apiGet, apiPost } from "../../lib/apiClient";
 import { BattleScreenData } from "./types";
@@ -41,7 +41,7 @@ export default function BattleScreen(props: Props) {
     const [itemOpen, setItemOpen] = useState(false);
     const [skillOpen, setSkillOpen] = useState(false);
     const [actionTimeLeft, setActionTimeLeft] = useState<number | null>(null);
-    const [actionHitBusy, setActionHitBusy] = useState(false);
+    const [actionStarted, setActionStarted] = useState(false);
     const [actionFinishing, setActionFinishing] = useState(false);
     const finishingActionRef = useRef(false);
     const activeActionKeyRef = useRef<string | null>(null);
@@ -55,10 +55,12 @@ export default function BattleScreen(props: Props) {
         if (!nextActionKey || !nextActionMode) {
             activeActionKeyRef.current = null;
             setActionTimeLeft(null);
+            setActionStarted(false);
             setActionFinishing(false);
         } else if (activeActionKeyRef.current !== nextActionKey) {
             activeActionKeyRef.current = nextActionKey;
             setActionTimeLeft(nextActionMode.duration_seconds);
+            setActionStarted(false);
             setActionFinishing(false);
             finishingActionRef.current = false;
         }
@@ -129,7 +131,6 @@ export default function BattleScreen(props: Props) {
         if (finishingActionRef.current) return;
         finishingActionRef.current = true;
         setActionFinishing(true);
-        setActionHitBusy(true);
         apiPost(`/api/battle/${playerId}/action-finish/`, {
             click_count: String(data?.action_mode?.click_count ?? 0),
             ...extraData,
@@ -137,28 +138,42 @@ export default function BattleScreen(props: Props) {
             .then((res: BattleScreenData) => {
                 applyData(res);
                 setActionTimeLeft(null);
+                setActionStarted(false);
                 activeActionKeyRef.current = null;
             })
             .finally(() => {
-                setActionHitBusy(false);
                 setActionFinishing(false);
                 finishingActionRef.current = false;
             });
     }, [applyData, data?.action_mode?.click_count, playerId]);
 
     const handleActionHit = () => {
-        if (!actionMode || actionMode.action_type !== "spam" || actionHitBusy || actionFinishing || finishingActionRef.current) return;
-        setActionHitBusy(true);
+        if (!actionMode || actionMode.action_type !== "spam" || actionFinishing || finishingActionRef.current) return;
         apiPost(`/api/battle/${playerId}/action-hit/`, {})
             .then((res: BattleScreenData) => {
+                if (finishingActionRef.current) return;
                 applyData(res);
                 if (res.action_hit?.enemy_defeated) {
                     finishAction();
                 }
-            })
-            .finally(() => {
-                setActionHitBusy(false);
             });
+    };
+
+    const handleSpamOverlayClick = () => {
+        if (!actionMode || actionMode.action_type !== "spam" || actionFinishing || finishingActionRef.current) return;
+        if (!actionStarted) {
+            setActionStarted(true);
+            setActionTimeLeft(actionMode.duration_seconds);
+            return;
+        }
+        if ((actionTimeLeft ?? 0) <= 0) return;
+        handleActionHit();
+    };
+
+    const handleSpamOverlayKeyDown = (event: KeyboardEvent<HTMLDivElement>) => {
+        if (event.key !== "Enter" && event.key !== " ") return;
+        event.preventDefault();
+        handleSpamOverlayClick();
     };
 
     const handleTimingResult = (success: boolean) => {
@@ -169,7 +184,7 @@ export default function BattleScreen(props: Props) {
     };
 
     useEffect(() => {
-        if (!actionMode || actionMode.action_type !== "spam" || actionTimeLeft == null) return;
+        if (!actionStarted || !actionMode || actionMode.action_type !== "spam" || actionTimeLeft == null) return;
         if (actionTimeLeft <= 0) return;
         const timerId = window.setTimeout(() => {
             setActionTimeLeft((current) => {
@@ -183,7 +198,7 @@ export default function BattleScreen(props: Props) {
         }, 100);
 
         return () => window.clearTimeout(timerId);
-    }, [actionMode, actionTimeLeft, finishAction]);
+    }, [actionMode, actionStarted, actionTimeLeft, finishAction]);
 
     return (
         <div className={styles.battleContainer} style={bgStyle}>
@@ -338,7 +353,13 @@ export default function BattleScreen(props: Props) {
             )}
 
             {showCombat && battle && enemy && actionMode && (
-                <div className={styles.actionOverlay}>
+                <div
+                    className={styles.actionOverlay}
+                    onClick={actionMode.action_type === "spam" ? handleSpamOverlayClick : undefined}
+                    onKeyDown={actionMode.action_type === "spam" ? handleSpamOverlayKeyDown : undefined}
+                    role={actionMode.action_type === "spam" ? "button" : undefined}
+                    tabIndex={actionMode.action_type === "spam" ? 0 : undefined}
+                >
                     <div className={styles.actionTimer}>
                         {actionMode.action_type === "spam"
                             ? (actionTimeLeft ?? actionMode.duration_seconds).toFixed(1)
@@ -347,14 +368,9 @@ export default function BattleScreen(props: Props) {
                     <div className={styles.actionSkillName}>{actionMode.skill_name}</div>
                     {actionMode.action_type === "spam" ? (
                         <>
-                            <button
-                                type="button"
-                                className={styles.actionHitArea}
-                                onClick={handleActionHit}
-                                disabled={actionHitBusy || actionFinishing}
-                            >
-                                連打！！
-                            </button>
+                            <div className={actionStarted ? styles.actionInstruction : styles.actionStartPrompt}>
+                                {actionStarted ? "連打！！" : "画面をクリックして開始"}
+                            </div>
                             <div className={styles.actionResult}>
                                 {actionMode.click_count} HIT / 合計 {actionMode.total_damage} ダメージ
                             </div>
