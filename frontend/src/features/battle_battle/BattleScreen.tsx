@@ -22,6 +22,9 @@ type TimingPhase = "ready" | "waiting" | "signal" | "finished";
 const TIMING_WAIT_MIN_MS = 800;
 const TIMING_WAIT_MAX_MS = 2200;
 const TIMING_FAIL_MS = 2000;
+const TURN_ANIMATION_DELAY_MS = 650;
+
+export const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 
 function getTimingMultiplier(elapsedMs: number) {
     if (elapsedMs <= 200) return 3.0;
@@ -65,8 +68,13 @@ export default function BattleScreen(props: Props) {
     const [timingPhase, setTimingPhase] = useState<TimingPhase>("ready");
     const [timingResultText, setTimingResultText] = useState("");
     const [actionFinishing, setActionFinishing] = useState(false);
+    const [animationPlaying, setAnimationPlaying] = useState(false);
+    const [displayPlayerHp, setDisplayPlayerHp] = useState<number | null>(null);
+    const [displayPlayerSp, setDisplayPlayerSp] = useState<number | null>(null);
+    const [displayEnemyHp, setDisplayEnemyHp] = useState<number | null>(null);
     const finishingActionRef = useRef(false);
     const activeActionKeyRef = useRef<string | null>(null);
+    const animationIdRef = useRef(0);
     const timingDelayTimerRef = useRef<number | null>(null);
     const timingFailTimerRef = useRef<number | null>(null);
     const timingSignalAtRef = useRef<number | null>(null);
@@ -81,6 +89,42 @@ export default function BattleScreen(props: Props) {
             window.clearTimeout(timingFailTimerRef.current);
             timingFailTimerRef.current = null;
         }
+    }, []);
+
+    const animateTurn = useCallback(async (next: BattleScreenData) => {
+        const steps = next.turn_result?.steps ?? [];
+        if (!next.battle || steps.length === 0) {
+            animationIdRef.current += 1;
+            setAnimationPlaying(false);
+            setDisplayPlayerHp(null);
+            setDisplayPlayerSp(null);
+            setDisplayEnemyHp(null);
+            return;
+        }
+
+        const animationId = animationIdRef.current + 1;
+        animationIdRef.current = animationId;
+        setAnimationPlaying(true);
+
+        const first = steps[0].before;
+        setDisplayPlayerHp(first.player_hp);
+        setDisplayPlayerSp(first.player_sp);
+        setDisplayEnemyHp(first.enemy_hp);
+        await sleep(200);
+
+        for (const step of steps) {
+            if (animationIdRef.current !== animationId) return;
+            setDisplayPlayerHp(step.after.player_hp);
+            setDisplayPlayerSp(step.after.player_sp);
+            setDisplayEnemyHp(step.after.enemy_hp);
+            await sleep(TURN_ANIMATION_DELAY_MS);
+        }
+
+        if (animationIdRef.current !== animationId) return;
+        setDisplayPlayerHp(null);
+        setDisplayPlayerSp(null);
+        setDisplayEnemyHp(null);
+        setAnimationPlaying(false);
     }, []);
 
     const applyData = useCallback((next: BattleScreenData) => {
@@ -108,7 +152,8 @@ export default function BattleScreen(props: Props) {
             setActionFinishing(false);
             finishingActionRef.current = false;
         }
-    }, [clearTimingTimers]);
+        void animateTurn(next);
+    }, [animateTurn, clearTimingTimers]);
 
     const loadBattle = useCallback(() => {
         apiGet(`/api/battle/${playerId}/?stage_id=${stageId}`).then((res: BattleScreenData) => {
@@ -123,30 +168,35 @@ export default function BattleScreen(props: Props) {
     }, [loadBattle]);
 
     const handleAttack = () => {
+        if (animationPlaying) return;
         setItemOpen(false);
         setSkillOpen(false);
         apiPost(`/api/battle/${playerId}/?stage_id=${stageId}`, { action: "attack" }).then(applyData);
     };
 
     const handleDefend = () => {
+        if (animationPlaying) return;
         setItemOpen(false);
         setSkillOpen(false);
         apiPost(`/api/battle/${playerId}/?stage_id=${stageId}`, { action: "defend" }).then(applyData);
     };
 
     const handleEscape = () => {
+        if (animationPlaying) return;
         setItemOpen(false);
         setSkillOpen(false);
         apiPost(`/api/battle/${playerId}/?stage_id=${stageId}`, { action: "escape" }).then(applyData);
     };
 
     const handleUseItem = (itemId: string) => {
+        if (animationPlaying) return;
         setItemOpen(false);
         setSkillOpen(false);
         apiPost(`/api/battle/${playerId}/?stage_id=${stageId}`, { action: "item", item_id: itemId }).then(applyData);
     };
 
     const handleUseSkill = (index: number) => {
+        if (animationPlaying) return;
         setItemOpen(false);
         setSkillOpen(false);
         apiPost(`/api/battle/${playerId}/?stage_id=${stageId}`, {
@@ -167,6 +217,18 @@ export default function BattleScreen(props: Props) {
     const enemy = battle?.enemy;
     const actionMode = data?.action_mode?.active ? data.action_mode : null;
     const showCombat = battle != null && data?.event == null;
+    const playerHpValue = displayPlayerHp ?? battle?.player.total_hp_battle ?? 0;
+    const playerSpValue = displayPlayerSp ?? battle?.player.mp ?? 0;
+    const enemyHpValue = displayEnemyHp ?? enemy?.hp ?? 0;
+    const playerHpPercent = battle?.player.total_max_hp_battle
+        ? Math.max(0, Math.round((playerHpValue / battle.player.total_max_hp_battle) * 100))
+        : 0;
+    const playerSpPercent = battle?.player.max_mp
+        ? Math.max(0, Math.round((playerSpValue / battle.player.max_mp) * 100))
+        : 0;
+    const enemyHpPercent = enemy?.max_hp
+        ? Math.max(0, Math.round((enemyHpValue / enemy.max_hp) * 100))
+        : 0;
     const bgStyle = backgroundImage
         ? { backgroundImage: `url("${stageBackgroundSrc(backgroundImage)}")` }
         : undefined;
@@ -334,8 +396,8 @@ export default function BattleScreen(props: Props) {
                             />
                         )}
                         <GaugeBar
-                            percent={battle.enemy_hp_percent}
-                            value={enemy.hp}
+                            percent={enemyHpPercent}
+                            value={enemyHpValue}
                             color={getHpColor}
                             variant="hp"
                             className={styles.enemyHpBarContainer}
@@ -357,8 +419,8 @@ export default function BattleScreen(props: Props) {
                                         <div className={styles.statusGauge}>
                                             <span>HP:</span>
                                             <GaugeBar
-                                                percent={battle.player_hp_percent}
-                                                value={battle.player.total_hp_battle}
+                                                percent={playerHpPercent}
+                                                value={playerHpValue}
                                                 color={getHpColor}
                                                 variant="hp"
                                                 className={styles.statusGaugeBar}
@@ -367,8 +429,8 @@ export default function BattleScreen(props: Props) {
                                         <div className={styles.statusGauge}>
                                             <span>SP:</span>
                                             <GaugeBar
-                                                percent={battle.player_sp_percent}
-                                                value={battle.player.mp}
+                                                percent={playerSpPercent}
+                                                value={playerSpValue}
                                                 variant="sp"
                                                 className={styles.statusGaugeBar}
                                             />
@@ -386,6 +448,7 @@ export default function BattleScreen(props: Props) {
                                             variant="red"
                                             className={styles.commandButton}
                                             onClick={handleAttack}
+                                            disabled={animationPlaying}
                                         >
                                             攻撃
                                         </ColorButton>
@@ -393,6 +456,7 @@ export default function BattleScreen(props: Props) {
                                             variant="blue"
                                             className={styles.commandButton}
                                             onClick={handleDefend}
+                                            disabled={animationPlaying}
                                         >
                                             防御
                                         </ColorButton>
@@ -400,9 +464,11 @@ export default function BattleScreen(props: Props) {
                                             variant="yellow"
                                             className={styles.commandButton}
                                             onClick={() => {
+                                                if (animationPlaying) return;
                                                 setItemOpen(false);
                                                 setSkillOpen(true);
                                             }}
+                                            disabled={animationPlaying}
                                         >
                                             特技
                                         </ColorButton>
@@ -410,9 +476,11 @@ export default function BattleScreen(props: Props) {
                                             variant="orange"
                                             className={styles.commandButton}
                                             onClick={() => {
+                                                if (animationPlaying) return;
                                                 setSkillOpen(false);
                                                 setItemOpen(true);
                                             }}
+                                            disabled={animationPlaying}
                                         >
                                             アイテム
                                         </ColorButton>
@@ -420,6 +488,7 @@ export default function BattleScreen(props: Props) {
                                             variant="other"
                                             className={styles.commandButton}
                                             onClick={handleEscape}
+                                            disabled={animationPlaying}
                                         >
                                             逃げる
                                         </ColorButton>

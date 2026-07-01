@@ -1355,6 +1355,30 @@ def build_result_data(result):
     } if result else None
 
 
+def _build_turn_step(actor, message, before_player_hp, before_player_sp, before_enemy_hp, player, enemy):
+    return {
+        "actor": actor,
+        "message": message,
+        "before": {
+            "player_hp": before_player_hp,
+            "player_sp": before_player_sp,
+            "enemy_hp": before_enemy_hp,
+        },
+        "after": {
+            "player_hp": max(0, player.total_hp_battle),
+            "player_sp": player.mp,
+            "enemy_hp": max(0, enemy.hp),
+        },
+    }
+
+
+def _build_turn_result(player_first, steps):
+    return {
+        "player_first": player_first,
+        "steps": steps,
+    }
+
+
 def battle_get(request, player_id):
     player = get_player_from_request(request, player_id)
     if not player:
@@ -1525,6 +1549,7 @@ def battle_post(request, player_id):
     buffs = request.session.get("buffs", {})
     debuffs = request.session.get("debuffs", {})
     special_states = request.session.get("special_states", {})  # 特殊状態（確定回避など）
+    turn_steps = []
 
     actionp = request.POST.get('action')
     # 逃走処理
@@ -1642,6 +1667,9 @@ def battle_post(request, player_id):
     is_player_first = True if special_action_skill else spdcheck(actionp, actione, player, enemy, buffs, debuffs)
     if is_player_first:
         ex_message = ""
+        before_player_hp = player.total_hp_battle
+        before_player_sp = player.mp
+        before_enemy_hp = enemy.hp
         message, success, player_action_result = playerAction(
             message,
             actionp,
@@ -1664,6 +1692,16 @@ def battle_post(request, player_id):
                     },
                 },
             }
+
+        turn_steps.append(_build_turn_step(
+            "player",
+            message,
+            before_player_hp,
+            before_player_sp,
+            before_enemy_hp,
+            player,
+            enemy,
+        ))
 
         if request.session.get("action_mode"):
             if message:
@@ -1689,7 +1727,19 @@ def battle_post(request, player_id):
                 }
             }
         else:
+            before_player_hp = player.total_hp_battle
+            before_player_sp = player.mp
+            before_enemy_hp = enemy.hp
             ex_message, buffs, debuffs = enemyAction(message, enemy, player, buffs, debuffs, actionp, actione, special_states)
+            turn_steps.append(_build_turn_step(
+                "enemy",
+                ex_message,
+                before_player_hp,
+                before_player_sp,
+                before_enemy_hp,
+                player,
+                enemy,
+            ))
 
         # セッションに保存
         request.session["buffs"] = buffs
@@ -1728,7 +1778,19 @@ def battle_post(request, player_id):
                     }
                 }          
     else:
+        before_player_hp = player.total_hp_battle
+        before_player_sp = player.mp
+        before_enemy_hp = enemy.hp
         message, buffs, debuffs = enemyAction(message, enemy, player, buffs, debuffs, actionp, actione, special_states)
+        turn_steps.append(_build_turn_step(
+            "enemy",
+            message,
+            before_player_hp,
+            before_player_sp,
+            before_enemy_hp,
+            player,
+            enemy,
+        ))
 
         # セッションに保存
         request.session["buffs"] = buffs
@@ -1764,6 +1826,9 @@ def battle_post(request, player_id):
                     }
                 }
         
+        before_player_hp = player.total_hp_battle
+        before_player_sp = player.mp
+        before_enemy_hp = enemy.hp
         ex_message, success, player_action_result = playerAction(
             message,
             actionp,
@@ -1777,6 +1842,15 @@ def battle_post(request, player_id):
             request,
         )
         message += ex_message
+        turn_steps.append(_build_turn_step(
+            "player",
+            ex_message,
+            before_player_hp,
+            before_player_sp,
+            before_enemy_hp,
+            player,
+            enemy,
+        ))
         if not success:
             return {
                 "battle": None,
@@ -1860,4 +1934,5 @@ def battle_post(request, player_id):
         "battle": build_battle_data(state),
         "event": None,
         "action_mode": _serialize_action_mode(request),
+        "turn_result": _build_turn_result(is_player_first, turn_steps),
     }

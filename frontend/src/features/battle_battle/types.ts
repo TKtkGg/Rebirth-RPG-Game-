@@ -31,6 +31,27 @@ export type BattleScreenData = {
     "event": BattleEvent | null;
     "action_mode"?: ActionModeData | null;
     "action_hit"?: ActionHitData;
+    "turn_result"?: TurnResultData;
+};
+
+export type TurnStepData = {
+    actor: "player" | "enemy";
+    message: string;
+    before: {
+        player_hp: number;
+        player_sp: number;
+        enemy_hp: number;
+    };
+    after: {
+        player_hp: number;
+        player_sp: number;
+        enemy_hp: number;
+    };
+};
+
+export type TurnResultData = {
+    player_first: boolean;
+    steps: TurnStepData[];
 };
 
 export type ActionModeData = {
