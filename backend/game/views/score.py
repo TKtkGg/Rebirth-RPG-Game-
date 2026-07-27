@@ -16,6 +16,17 @@ def _resolve_config_key(category_key):
     return JOB_CONFIG_KEY_MAP.get(category_key, "all")
 
 
+def get_score_breakdown(request):
+    """
+    セッションに保存されたスコア内訳を取得する。
+    ない場合は None。
+    """
+    breakdown = request.session.get('score_breakdown', {})
+    if not breakdown:
+        return None
+    return breakdown
+
+
 def score_breakdown(request):
     """
     スコア内訳を表示
@@ -23,7 +34,7 @@ def score_breakdown(request):
     セッションに保存されたスコア内訳を表示します。
     内訳データがない場合はゲームオーバー画面にリダイレクトします。
     """
-    breakdown = request.session.get('score_breakdown', {})
+    breakdown = get_score_breakdown(request)
     
     if not breakdown:
         # 内訳データがない場合はゲームオーバー画面にリダイレクト

@@ -13,6 +13,7 @@ from .api_endpoints import (
     battle_action_hit_api,
     battle_api,
     gameover_api,
+    score_breakdown_api,
 )
 
 urlpatterns = [
@@ -29,4 +30,5 @@ urlpatterns = [
     path('battle/<int:player_id>/action-hit/', battle_action_hit_api, name='battle_action_hit_api'),
     path('battle/<int:player_id>/action-finish/', battle_action_finish_api, name='battle_action_finish_api'),
     path('gameover/', gameover_api, name='gameover_api'),
+    path('score_breakdown/', score_breakdown_api, name='score_breakdown_api'),
 ]

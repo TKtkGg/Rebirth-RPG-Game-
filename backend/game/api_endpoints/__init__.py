@@ -8,3 +8,4 @@ from .quest_api import quest_api
 from .ranking_api import ranking_api
 from .battle_api import battle_action_finish_api, battle_action_hit_api, battle_api
 from .gameover_api import gameover_api
+from .score_breakdown_api import score_breakdown_api

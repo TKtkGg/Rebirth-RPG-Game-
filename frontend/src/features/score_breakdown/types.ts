@@ -1,0 +1,21 @@
+export type ScoreBreakdownData = {
+    hp: number;
+    hp_score: number;
+    atk: number;
+    atk_score: number;
+    defense: number;
+    def_score: number;
+    spd: number;
+    spd_score: number;
+    mp: number;
+    mp_score: number;
+    equipment_list: string[];
+    equipment_score: number;
+    defeats: number;
+    defeat_score: number;
+    strong_defeats: number;
+    strong_defeat_score: number;
+    level: number;
+    level_score: number;
+    total_score: number;
+};

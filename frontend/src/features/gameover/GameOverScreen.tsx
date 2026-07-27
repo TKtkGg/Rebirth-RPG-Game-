@@ -77,7 +77,7 @@ export default function GameOverScreen() {
                 <button
                     className={styles.gameoverBtn}
                     type="button"
-                    // Step3 で遷移実装
+                    onClick={() => router.push("/game/score_breakdown")}
                 >
                     内訳を確認する
                 </button>
