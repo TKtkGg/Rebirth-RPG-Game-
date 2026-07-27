@@ -121,6 +121,16 @@ def battle_start_get(request, player_id):
         # 敗北時にショップのセッション購入履歴をクリアし、在庫をリセット
         request.session['session_purchased_items'] = []
         request.session['reset_shop'] = True
+    else:
+        # ホーム表示用に装備込みステータスを同期（作成直後の未初期化もここで補正）
+        player.update_battle_stats()
+        player.save(update_fields=[
+            "total_max_hp_battle",
+            "total_hp_battle",
+            "total_atk_battle",
+            "total_def_battle",
+            "total_spd_battle",
+        ])
     
     # 戦闘回数をカウント(セッションで管理)
     battle_count = request.session.get('battle_count', 0)
