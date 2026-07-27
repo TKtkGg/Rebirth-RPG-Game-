@@ -518,13 +518,15 @@ def battle_action_finish(request, player_id):
                 },
             }, turn_result=turn_result)
 
-        message = tohome(message, player, request)
+        message, exp_penalty, gold_penalty = tohome(message, player, request)
         return _build_current_battle_response(request, player, enemy, stage, event={
             "type": "tohome",
             "payload": {
                 "message": message,
                 "redirect_after": True,
                 "recovering": True,
+                "exp_penalty": exp_penalty,
+                "gold_penalty": gold_penalty,
             },
         }, turn_result=turn_result)
 
@@ -714,9 +716,9 @@ def battle(request, player_id, enemy_id=None):
                 request.session['gameover_player_id'] = player.id
                 return redirect('game:gameover')
             else:
-                message = tohome(message, player, request)
+                message, _, _ = tohome(message, player, request)
                 return render(request, "game/battle.html", render_battle_screen(message, **render_kwargs, redirect_after=True, redirect_url="battle_start", recovering=True))
-        
+
         # ターン経過でバフ・デバフを減少
         buffs, debuffs, special_states = decrease_buff_debuff_turns(buffs, debuffs, special_states)
         
@@ -876,9 +878,9 @@ def battle(request, player_id, enemy_id=None):
                         request.session['gameover_player_id'] = player.id
                         return redirect('game:gameover')
                     else:
-                        message = tohome(message, player, request)
+                        message, _, _ = tohome(message, player, request)
                         return render(request, "game/battle.html", render_battle_screen(message, **render_kwargs, redirect_after=True))
-                
+
                 # ターン経過でバフ・デバフを減少
                 buffs, debuffs, special_states = decrease_buff_debuff_turns(buffs, debuffs, special_states)
                 request.session["buffs"] = buffs
@@ -886,7 +888,7 @@ def battle(request, player_id, enemy_id=None):
                 request.session["special_states"] = special_states
                 render_kwargs["buffs"] = buffs
                 render_kwargs["debuffs"] = debuffs
-                
+
                 # 通常の戦闘画面に戻る
                 if is_ajax:
                     # アイテム使用は必ず先攻
@@ -995,9 +997,9 @@ def battle(request, player_id, enemy_id=None):
                         request.session['gameover_player_id'] = player.id
                         return redirect('game:gameover')
                     else:
-                        message = tohome(message, player, request)
+                        message, _, _ = tohome(message, player, request)
                         return render(request, "game/battle.html", render_battle_screen(message, **render_kwargs, redirect_after=True))
-                
+
                 # 通常の戦闘画面に戻る
                 return render(request, "game/battle.html", render_battle_screen(message, **render_kwargs))
         
@@ -1067,9 +1069,9 @@ def battle(request, player_id, enemy_id=None):
                     if not is_ajax:
                         return redirect('game:gameover')
                 else:
-                    message = tohome(message, player, request)
+                    message, _, _ = tohome(message, player, request)
                     if not is_ajax:
-                        return render(request, "game/battle.html", render_battle_screen(message, **render_kwargs, redirect_after=True, redirect_url="battle_start", recovering=True))          
+                        return render(request, "game/battle.html", render_battle_screen(message, **render_kwargs, redirect_after=True, redirect_url="battle_start", recovering=True))
         else:
             player_hp_before_enemy = player.total_hp_battle
             message, buffs, debuffs = enemyAction(message, enemy, player, buffs, debuffs, actionp, actione, special_states)
@@ -1091,7 +1093,7 @@ def battle(request, player_id, enemy_id=None):
                     if not is_ajax:
                         return redirect('game:gameover')
                 else:
-                    message = tohome(message, player, request)
+                    message, _, _ = tohome(message, player, request)
                     redirect_url = reverse('game:battle_start', kwargs={'player_id': player.id})
                     if not is_ajax:
                         return render(request, "game/battle.html", render_battle_screen(message, **render_kwargs, redirect_after=True, redirect_url="battle_start", recovering=True))
@@ -1644,7 +1646,7 @@ def battle_post(request, player_id):
                         }
                     }
                 else:
-                    message = tohome(message, player, request)
+                    message, exp_penalty, gold_penalty = tohome(message, player, request)
                     return {
                         "battle": None,
                         "event": {
@@ -1653,6 +1655,8 @@ def battle_post(request, player_id):
                                 "message": message,
                                 "redirect_after": True,
                                 "recovering": True,
+                                "exp_penalty": exp_penalty,
+                                "gold_penalty": gold_penalty,
                             },  
                         }
                     }
@@ -1806,7 +1810,7 @@ def battle_post(request, player_id):
                     },
                 }   
             else:
-                message = tohome(message, player, request)
+                message, exp_penalty, gold_penalty = tohome(message, player, request)
                 return {
                     "battle": None,
                     "event": {
@@ -1815,9 +1819,11 @@ def battle_post(request, player_id):
                             "message": message,
                             "redirect_after": True,
                             "recovering": True,
+                            "exp_penalty": exp_penalty,
+                            "gold_penalty": gold_penalty,
                         },
                     }
-                }          
+                }
     else:
         before_player_hp = player.total_hp_battle
         before_player_sp = player.mp
@@ -1854,7 +1860,7 @@ def battle_post(request, player_id):
                     },
                 }
             else:
-                message = tohome(message, player, request)
+                message, exp_penalty, gold_penalty = tohome(message, player, request)
                 return {
                     "battle": None,
                     "event": {
@@ -1863,10 +1869,12 @@ def battle_post(request, player_id):
                             "message": message,
                             "redirect_after": True,
                             "recovering": True,
+                            "exp_penalty": exp_penalty,
+                            "gold_penalty": gold_penalty,
                         },
                     }
                 }
-        
+
         before_player_hp = player.total_hp_battle
         before_player_sp = player.mp
         before_enemy_hp = enemy.hp

@@ -97,7 +97,7 @@ def tohome(message, player, request):
     player.mp = player.max_mp
     player.save()
     
-    return message
+    return message, actual_exp_penalty, actual_gold_penalty
 
 
 def win(message, player, enemy, request):
@@ -804,7 +804,7 @@ def handle_action_mode_end(
             if player.death_count >= 3:
                 request.session['gameover_player_id'] = player.id
             else:
-                message = tohome(message, player, request)
+                message, _, _ = tohome(message, player, request)
 
     # ターン経過でバフ・デバフを減少
     local_buffs, local_debuffs, local_special_states = decrease_buff_debuff_turns(

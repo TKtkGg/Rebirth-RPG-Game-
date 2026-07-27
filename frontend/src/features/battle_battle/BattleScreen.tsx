@@ -318,6 +318,12 @@ export default function BattleScreen(props: Props) {
         loadBattle();
     };
 
+    useEffect(() => {
+        if (data?.event?.type === "gameover") {
+            router.push("/game/gameover");
+        }
+    }, [data?.event, router]);
+
     const battle = data?.battle;
     const enemy = battle?.enemy;
     const actionMode = data?.action_mode?.active ? data.action_mode : null;
@@ -679,7 +685,7 @@ export default function BattleScreen(props: Props) {
                 </>
             )}
 
-            {data?.event && (
+            {data?.event && data.event.type !== "gameover" && (
                 <BattleEndPanel
                     event={data.event}
                     onReturn={handleReturn}

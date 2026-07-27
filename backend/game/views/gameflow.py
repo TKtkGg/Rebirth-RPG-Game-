@@ -169,20 +169,19 @@ def start_game(request):
     })
 
 
-def gameover(request):
+def process_gameover(request):
     """
-    ゲームオーバー画面を表示
-    
-    プレイヤーが敗北した際にスコアを計算し、ゲームオーバー画面を表示します。
-    ログインユーザーの場合はスコアポイントを加算します。
+    ゲームオーバー処理（スコア計算・セッション保存・Player削除・アカウント更新）
+
+    HTML版 / API版の共通ロジック。
     """
     # セッションからplayer_idを取得してスコア計算
     player_id = request.session.get('gameover_player_id')
-    
+
     # セッションに保存されたスコアがあればそれを使う
     score = request.session.get('gameover_score', 0)
     initial_point = request.session.get('gameover_initial_point', 0)
-    
+
     # プレイヤーがまだ存在する場合のみ計算と削除を行う
     if player_id and score == 0:
         try:
@@ -191,11 +190,11 @@ def gameover(request):
             score_data = calculate_score(player)
             score = score_data['total_score']
             initial_point = score // 5000  # スコアの1/5000を初期ポイントとする
-            
+
             # スコアをセッションに保存（内訳から戻った時のため）
             request.session['gameover_score'] = score
             request.session['gameover_initial_point'] = initial_point
-            
+
             # スコア内訳をセッションに保存
             request.session['score_breakdown'] = {
                 'hp': player.max_hp,
@@ -218,20 +217,20 @@ def gameover(request):
                 'level_score': score_data['level_score'],
                 'total_score': score
             }
-            
+
             # Playerを削除
             player.delete()
             del request.session['gameover_player_id']
-            
+
             # ログインユーザーの場合、アカウントにスコアとポイントを保存
             if request.user.is_authenticated:
                 user = request.user
-                
+
                 # 最高スコアの場合のみ更新
                 if score > user.best_score:
                     user.best_score = score
                     user.best_score_job = player.job
-                
+
                 # スコアポイントを加算（永続）
                 user.score_points += initial_point
                 user.initial_points = user.score_points
@@ -247,15 +246,25 @@ def gameover(request):
                     user.best_victories = player.defeats
                     user.best_victories_job = player.job
                 user.save()
-                
+
         except Player.DoesNotExist:
             pass
-    
-    return render(request, 'game/gameover.html', {
+
+    return {
         'score': score,
         'initial_point': initial_point,
         'is_guest': not request.user.is_authenticated,
-    })
+    }
+
+
+def gameover(request):
+    """
+    ゲームオーバー画面を表示
+
+    プレイヤーが敗北した際にスコアを計算し、ゲームオーバー画面を表示します。
+    ログインユーザーの場合はスコアポイントを加算します。
+    """
+    return render(request, 'game/gameover.html', process_gameover(request))
 
 
 def convert_guest_to_user(request, player_id):

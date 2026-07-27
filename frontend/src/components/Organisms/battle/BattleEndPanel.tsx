@@ -75,8 +75,8 @@ export const BattleEndPanel = (props: Props) => {
                     <>
                         <h2 className={styles.endTitle}>逃走</h2>
                         <div className={styles.escapePenalty}>
-                            <p>経験値 : -{event.payload.exp_penalty}</p>
-                            <p>ゴールド : -{event.payload.gold_penalty}</p>
+                            <p>EXP : -{event.payload.exp_penalty}</p>
+                            <p>GOLD : -{event.payload.gold_penalty}</p>
                         </div>
                         <div className={styles.endButtons}>
                             <ColorButton
@@ -91,25 +91,15 @@ export const BattleEndPanel = (props: Props) => {
                 )}
                 {event.type === "tohome" && (
                     <>
-                        <p className={styles.tohomeMessage}>{event.payload.message}</p>
+                        <h2 className={styles.endTitle}>敗北</h2>
+                        <div className={styles.escapePenalty}>
+                            <p>EXP : -{event.payload.exp_penalty}</p>
+                            <p>GOLD : -{event.payload.gold_penalty}</p>
+                        </div>
                         <div className={styles.endButtons}>
                             <ColorButton
                                 variant="other"
                                 className={styles.endActionButton}
-                                onClick={onReturn}
-                            >
-                                戻る
-                            </ColorButton>
-                        </div>
-                    </>
-                )}
-                {event.type === "gameover" && (
-                    <>
-                        <h2 className={styles.endTitle}>ゲームオーバー</h2>
-                        <div className={styles.endButtons}>
-                            <ColorButton 
-                                variant="other" 
-                                className={styles.endActionButton} 
                                 onClick={onReturn}
                             >
                                 戻る

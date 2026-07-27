@@ -1,0 +1,91 @@
+.page {
+    margin: 0;
+    padding: 0;
+    width: 100vw;
+    height: 100vh;
+    background: url("/game/img/背景/ゲームオーバー.jpg") no-repeat center center fixed;
+    background-size: cover;
+    box-sizing: border-box;
+}
+
+.gameoverContainer {
+    width: 100vw;
+    height: 100vh;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: flex-start;
+}
+
+.gameoverTitle {
+    margin-top: 40px;
+    font-size: 5rem;
+    font-weight: bold;
+    color: #e53935;
+    text-shadow: 2px 2px 8px #000;
+    letter-spacing: 0.1em;
+}
+
+.scoreInfo {
+    position: absolute;
+    top: 160px;
+    right: 60px;
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+    background: rgba(0, 0, 0, 0.35);
+    border-radius: 20px;
+    padding: 20px 28px;
+    color: #fff;
+    font-size: 3.2rem;
+    font-weight: bold;
+    text-align: right;
+    z-index: 10;
+    width: 360px;
+    box-shadow: 0 4px 24px rgba(0, 0, 0, 0.25);
+}
+
+.scoreLabel {
+    font-size: 2.2rem;
+    font-weight: bold;
+    color: #eee;
+}
+
+.scorePointRow {
+    margin-top: 24px;
+}
+
+.gameoverButtons {
+    position: fixed;
+    right: 60px;
+    bottom: 60px;
+    display: flex;
+    flex-direction: column;
+    gap: 32px;
+    z-index: 20;
+    align-items: flex-end;
+}
+
+.gameoverActions {
+    display: flex;
+    gap: 24px;
+}
+
+.gameoverBtn {
+    font-size: 2.2rem;
+    font-weight: bold;
+    padding: 18px 48px;
+    border-radius: 16px;
+    border: 3px solid #222;
+    background: rgba(255, 255, 255, 0.92);
+    color: #222;
+    box-shadow: 0 2px 12px rgba(0, 0, 0, 0.18);
+    cursor: pointer;
+    transition: background 0.2s, color 0.2s, transform 0.1s;
+}
+
+.gameoverBtn:hover {
+    background: #222;
+    color: #fff;
+    transform: scale(1.04);
+}
