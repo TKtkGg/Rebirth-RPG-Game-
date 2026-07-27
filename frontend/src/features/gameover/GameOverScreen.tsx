@@ -93,7 +93,7 @@ export default function GameOverScreen() {
                         <button
                             className={styles.gameoverBtn}
                             type="button"
-                            // Step4 で遷移実装
+                            onClick={() => router.push("/game/score_points")}
                         >
                             ポイント分けへ
                         </button>
