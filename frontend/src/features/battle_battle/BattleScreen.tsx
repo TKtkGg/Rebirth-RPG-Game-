@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect, useRef, useCallback, type KeyboardEvent } from "react";
+import { useState, useEffect, useRef, useCallback, type KeyboardEvent as ReactKeyboardEvent } from "react";
 import { useRouter } from "next/navigation";
 import { apiGet, apiPost } from "../../lib/apiClient";
 import { BattleScreenData } from "./types";
@@ -318,6 +318,28 @@ export default function BattleScreen(props: Props) {
         loadBattle();
     };
 
+    const handleDebugGameover = useCallback(() => {
+        if (animationPlaying || actionFinishing || data?.event) return;
+        setItemOpen(false);
+        setSkillOpen(false);
+        apiPost(`/api/battle/${playerId}/?stage_id=${stageId}`, { action: "debug_gameover" }).then(applyData);
+    }, [actionFinishing, animationPlaying, applyData, data?.event, playerId, stageId]);
+
+    useEffect(() => {
+        const onKeyDown = (event: KeyboardEvent) => {
+            if (event.key !== "k" && event.key !== "K") return;
+            if (event.metaKey || event.ctrlKey || event.altKey) return;
+            const target = event.target as HTMLElement | null;
+            if (target && (target.tagName === "INPUT" || target.tagName === "TEXTAREA" || target.isContentEditable)) {
+                return;
+            }
+            event.preventDefault();
+            handleDebugGameover();
+        };
+        window.addEventListener("keydown", onKeyDown);
+        return () => window.removeEventListener("keydown", onKeyDown);
+    }, [handleDebugGameover]);
+
     useEffect(() => {
         if (data?.event?.type === "gameover") {
             router.push("/game/gameover");
@@ -432,7 +454,7 @@ export default function BattleScreen(props: Props) {
         handleActionHit();
     };
 
-    const handleSpamOverlayKeyDown = (event: KeyboardEvent<HTMLDivElement>) => {
+    const handleSpamOverlayKeyDown = (event: ReactKeyboardEvent<HTMLDivElement>) => {
         if (event.key !== "Enter" && event.key !== " ") return;
         event.preventDefault();
         handleSpamOverlayClick();
@@ -487,7 +509,7 @@ export default function BattleScreen(props: Props) {
         });
     };
 
-    const handleTimingOverlayKeyDown = (event: KeyboardEvent<HTMLDivElement>) => {
+    const handleTimingOverlayKeyDown = (event: ReactKeyboardEvent<HTMLDivElement>) => {
         if (event.key !== "Enter" && event.key !== " ") return;
         event.preventDefault();
         handleTimingOverlayClick();

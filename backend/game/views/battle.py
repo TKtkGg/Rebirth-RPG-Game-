@@ -1597,6 +1597,22 @@ def battle_post(request, player_id):
     turn_steps = []
 
     actionp = request.POST.get('action')
+
+    # デバッグ用：kキーでゲームオーバー
+    if actionp == 'debug_gameover':
+        player.death_count = 3  # 完全敗北状態にする
+        player.save()
+        request.session['gameover_player_id'] = player.id
+        return {
+            "battle": None,
+            "event": {
+                "type": "gameover",
+                "payload": {
+                    "message": "プレイヤーが倒れました。",
+                },
+            },
+        }
+
     # 逃走処理
     if actionp == 'escape':
         message, escaped, exp_penalty, gold_penalty = escape(message, player, enemy, request)

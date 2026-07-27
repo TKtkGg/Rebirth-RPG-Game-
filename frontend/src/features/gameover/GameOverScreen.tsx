@@ -9,16 +9,54 @@ import styles from "./GameOverScreen.module.css";
 export default function GameOverScreen() {
     const router = useRouter();
     const [data, setData] = useState<GameOverData | null>(null);
+    const [displayScore, setDisplayScore] = useState(0);
+    const [displayPoint, setDisplayPoint] = useState(0);
 
     useEffect(() => {
         apiGet("/api/gameover/").then((res: GameOverData) => {
             setData(res);
+            // HTML版同様、Score は初期値を表示し、ポイントは 0 から開始
+            setDisplayScore(res.score);
+            setDisplayPoint(0);
         });
     }, []);
 
-    // Step1: スコア数値のカウント演出は未実装（レイアウトのみ。値は HTML 初期表示と同じ 0）
-    const displayScore = 0;
-    const displayPoint = 0;
+    useEffect(() => {
+        if (!data) return;
+
+        // gameover.js と同じロジック
+        const startScore = data.score;
+        const targetInitPoint = data.initial_point;
+        const scoreStep = 31111 / 60; // 60fps相当
+        const totalFrames = Math.ceil(startScore / scoreStep) || 0;
+
+        let currentScore = startScore;
+        let currentPoint = 0;
+        let frame = 0;
+        let rafId = 0;
+
+        const animate = () => {
+            if (currentScore > 0) {
+                currentScore = Math.max(0, currentScore - scoreStep);
+                setDisplayScore(Math.floor(currentScore));
+            }
+            // 初期ポイントはスコアが0になるまで均等に増やす
+            if (totalFrames > 0 && frame < totalFrames) {
+                currentPoint = Math.floor(targetInitPoint * (frame / totalFrames));
+                setDisplayPoint(currentPoint);
+            } else {
+                currentPoint = targetInitPoint;
+                setDisplayPoint(targetInitPoint);
+            }
+            frame++;
+            if (currentScore > 0 || currentPoint < targetInitPoint) {
+                rafId = window.requestAnimationFrame(animate);
+            }
+        };
+
+        rafId = window.requestAnimationFrame(animate);
+        return () => window.cancelAnimationFrame(rafId);
+    }, [data]);
 
     return (
         <div className={styles.page}>
