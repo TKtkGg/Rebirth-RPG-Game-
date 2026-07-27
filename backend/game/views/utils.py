@@ -210,6 +210,10 @@ def create_player_from_start(request, available_jobs, force_guest=False):
     
     # 初期装備を所持装備に追加
     player.owned_equipment.add(wooden_sword, leather_armor)
+
+    # 装備ボーナス込みの戦闘用ステータスを初期化
+    player.update_battle_stats()
+    player.save()
     
     # クエストを初期化
     initialize_player_quests(player)

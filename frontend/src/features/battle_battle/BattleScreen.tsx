@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect, useRef, useCallback, type KeyboardEvent } from "react";
+import { useState, useEffect, useRef, useCallback, type KeyboardEvent as ReactKeyboardEvent } from "react";
 import { useRouter } from "next/navigation";
 import { apiGet, apiPost } from "../../lib/apiClient";
 import { BattleScreenData } from "./types";
@@ -24,11 +24,18 @@ type BattleEffect = {
     kind: "hit" | "defend" | "heal";
     amount?: number;
 };
+type SpamHitPop = {
+    id: number;
+    damage: number;
+    offsetX: number;
+    offsetY: number;
+};
 
 const TIMING_WAIT_MIN_MS = 800;
 const TIMING_WAIT_MAX_MS = 2200;
 const TIMING_FAIL_MS = 2000;
 const TURN_ANIMATION_DELAY_MS = 650;
+const SPAM_HIT_POP_MS = 1000;
 
 export const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 
@@ -129,7 +136,6 @@ export default function BattleScreen(props: Props) {
     const [actionTimeLeft, setActionTimeLeft] = useState<number | null>(null);
     const [actionStarted, setActionStarted] = useState(false);
     const [timingPhase, setTimingPhase] = useState<TimingPhase>("ready");
-    const [timingResultText, setTimingResultText] = useState("");
     const [actionFinishing, setActionFinishing] = useState(false);
     const [animationPlaying, setAnimationPlaying] = useState(false);
     const [displayPlayerHp, setDisplayPlayerHp] = useState<number | null>(null);
@@ -137,9 +143,11 @@ export default function BattleScreen(props: Props) {
     const [displayEnemyHp, setDisplayEnemyHp] = useState<number | null>(null);
     const [battleEffect, setBattleEffect] = useState<BattleEffect | null>(null);
     const [enemyDefeatAnimating, setEnemyDefeatAnimating] = useState(false);
+    const [spamHitPops, setSpamHitPops] = useState<SpamHitPop[]>([]);
     const finishingActionRef = useRef(false);
     const activeActionKeyRef = useRef<string | null>(null);
     const animationIdRef = useRef(0);
+    const spamHitIdRef = useRef(0);
     const timingDelayTimerRef = useRef<number | null>(null);
     const timingFailTimerRef = useRef<number | null>(null);
     const timingSignalAtRef = useRef<number | null>(null);
@@ -236,8 +244,8 @@ export default function BattleScreen(props: Props) {
             setActionTimeLeft(null);
             setActionStarted(false);
             setTimingPhase("ready");
-            setTimingResultText("");
             setActionFinishing(false);
+            setSpamHitPops([]);
         } else if (activeActionKeyRef.current !== nextActionKey) {
             clearTimingTimers();
             activeActionKeyRef.current = nextActionKey;
@@ -245,8 +253,8 @@ export default function BattleScreen(props: Props) {
             setActionTimeLeft(nextActionMode.action_type === "spam" ? nextActionMode.duration_seconds : null);
             setActionStarted(false);
             setTimingPhase("ready");
-            setTimingResultText("");
             setActionFinishing(false);
+            setSpamHitPops([]);
             finishingActionRef.current = false;
         }
         void animateTurn(next);
@@ -310,6 +318,34 @@ export default function BattleScreen(props: Props) {
         loadBattle();
     };
 
+    const handleDebugGameover = useCallback(() => {
+        if (animationPlaying || actionFinishing || data?.event) return;
+        setItemOpen(false);
+        setSkillOpen(false);
+        apiPost(`/api/battle/${playerId}/?stage_id=${stageId}`, { action: "debug_gameover" }).then(applyData);
+    }, [actionFinishing, animationPlaying, applyData, data?.event, playerId, stageId]);
+
+    useEffect(() => {
+        const onKeyDown = (event: KeyboardEvent) => {
+            if (event.key !== "k" && event.key !== "K") return;
+            if (event.metaKey || event.ctrlKey || event.altKey) return;
+            const target = event.target as HTMLElement | null;
+            if (target && (target.tagName === "INPUT" || target.tagName === "TEXTAREA" || target.isContentEditable)) {
+                return;
+            }
+            event.preventDefault();
+            handleDebugGameover();
+        };
+        window.addEventListener("keydown", onKeyDown);
+        return () => window.removeEventListener("keydown", onKeyDown);
+    }, [handleDebugGameover]);
+
+    useEffect(() => {
+        if (data?.event?.type === "gameover") {
+            router.push("/game/gameover");
+        }
+    }, [data?.event, router]);
+
     const battle = data?.battle;
     const enemy = battle?.enemy;
     const actionMode = data?.action_mode?.active ? data.action_mode : null;
@@ -369,7 +405,6 @@ export default function BattleScreen(props: Props) {
                 setActionTimeLeft(null);
                 setActionStarted(false);
                 setTimingPhase("ready");
-                setTimingResultText("");
                 timingSignalAtRef.current = null;
                 activeActionKeyRef.current = null;
             })
@@ -379,12 +414,29 @@ export default function BattleScreen(props: Props) {
             });
     }, [applyData, clearTimingTimers, data?.action_mode?.click_count, playerId]);
 
+    const pushSpamHitPop = (damage: number) => {
+        const id = ++spamHitIdRef.current;
+        const pop: SpamHitPop = {
+            id,
+            damage,
+            offsetX: (Math.random() - 0.5) * 140,
+            offsetY: (Math.random() - 0.5) * 90,
+        };
+        setSpamHitPops((prev) => [...prev, pop]);
+        window.setTimeout(() => {
+            setSpamHitPops((prev) => prev.filter((item) => item.id !== id));
+        }, SPAM_HIT_POP_MS);
+    };
+
     const handleActionHit = () => {
         if (!actionMode || actionMode.action_type !== "spam" || actionFinishing || finishingActionRef.current) return;
         apiPost(`/api/battle/${playerId}/action-hit/`, {})
             .then((res: BattleScreenData) => {
                 if (finishingActionRef.current) return;
                 applyData(res);
+                if (res.action_hit) {
+                    pushSpamHitPop(res.action_hit.damage);
+                }
                 if (res.action_hit?.enemy_defeated) {
                     finishAction();
                 }
@@ -402,16 +454,15 @@ export default function BattleScreen(props: Props) {
         handleActionHit();
     };
 
-    const handleSpamOverlayKeyDown = (event: KeyboardEvent<HTMLDivElement>) => {
+    const handleSpamOverlayKeyDown = (event: ReactKeyboardEvent<HTMLDivElement>) => {
         if (event.key !== "Enter" && event.key !== " ") return;
         event.preventDefault();
         handleSpamOverlayClick();
     };
 
-    const failTimingAction = useCallback((message = "失敗") => {
+    const failTimingAction = useCallback(() => {
         if (finishingActionRef.current) return;
         clearTimingTimers();
-        setTimingResultText(message);
         finishAction({
             timing_result: "fail",
             timing_multiplier: "0",
@@ -422,15 +473,13 @@ export default function BattleScreen(props: Props) {
         if (!actionMode || actionMode.action_type !== "timing" || actionFinishing || finishingActionRef.current) return;
         setActionStarted(true);
         setTimingPhase("waiting");
-        setTimingResultText("集中...");
         timingDelayTimerRef.current = window.setTimeout(() => {
             timingDelayTimerRef.current = null;
             timingSignalAtRef.current = performance.now();
             setTimingPhase("signal");
-            setTimingResultText("");
             timingFailTimerRef.current = window.setTimeout(() => {
                 timingFailTimerRef.current = null;
-                failTimingAction("遅すぎた！");
+                failTimingAction();
             }, TIMING_FAIL_MS);
         }, getRandomTimingDelayMs());
     };
@@ -442,7 +491,7 @@ export default function BattleScreen(props: Props) {
             return;
         }
         if (timingPhase === "waiting") {
-            failTimingAction("早すぎた！");
+            failTimingAction();
             return;
         }
         if (timingPhase !== "signal" || timingSignalAtRef.current == null) return;
@@ -450,18 +499,17 @@ export default function BattleScreen(props: Props) {
         const elapsedMs = performance.now() - timingSignalAtRef.current;
         const timingMultiplier = getTimingMultiplier(elapsedMs);
         if (timingMultiplier <= 0) {
-            failTimingAction("遅すぎた！");
+            failTimingAction();
             return;
         }
         clearTimingTimers();
-        setTimingResultText(`${timingMultiplier.toFixed(1)}倍`);
         finishAction({
             timing_result: "success",
             timing_multiplier: timingMultiplier.toString(),
         });
     };
 
-    const handleTimingOverlayKeyDown = (event: KeyboardEvent<HTMLDivElement>) => {
+    const handleTimingOverlayKeyDown = (event: ReactKeyboardEvent<HTMLDivElement>) => {
         if (event.key !== "Enter" && event.key !== " ") return;
         event.preventDefault();
         handleTimingOverlayClick();
@@ -659,7 +707,7 @@ export default function BattleScreen(props: Props) {
                 </>
             )}
 
-            {data?.event && (
+            {data?.event && data.event.type !== "gameover" && (
                 <BattleEndPanel
                     event={data.event}
                     onReturn={handleReturn}
@@ -675,45 +723,38 @@ export default function BattleScreen(props: Props) {
                     role="button"
                     tabIndex={0}
                 >
-                    <div className={styles.actionTimer}>
-                        {actionMode.action_type === "spam"
-                            ? (actionTimeLeft ?? actionMode.duration_seconds).toFixed(1)
-                            : timingPhase === "signal"
-                                ? "！"
-                                : "TIMING"}
-                    </div>
-                    <div className={styles.actionSkillName}>{actionMode.skill_name}</div>
                     {actionMode.action_type === "spam" ? (
                         <>
+                            <div className={styles.actionTimer}>
+                                {(actionTimeLeft ?? actionMode.duration_seconds).toFixed(1)}
+                            </div>
                             <div className={actionStarted ? styles.actionInstruction : styles.actionStartPrompt}>
-                                {actionStarted ? "連打！！" : "画面をクリックして開始"}
+                                {actionStarted ? "連打！" : "画面をクリックして開始"}
                             </div>
-                            <div className={styles.actionResult}>
-                                {actionMode.click_count} HIT / 合計 {actionMode.total_damage} ダメージ
-                            </div>
-                            {data.action_hit ? (
-                                <div className={styles.actionLastHit}>
-                                    +{data.action_hit.damage}
+                            {spamHitPops.map((pop) => (
+                                <div
+                                    key={pop.id}
+                                    className={joinClasses(styles.spamDamagePop, "animate-battle-damage-pop")}
+                                    style={{
+                                        left: `calc(50% + ${pop.offsetX}px)`,
+                                        top: `calc(48% + ${pop.offsetY}px)`,
+                                    }}
+                                >
+                                    {pop.damage}
                                 </div>
-                            ) : null}
+                            ))}
                         </>
                     ) : (
                         <div className={styles.timingArea}>
-                            <div className={timingPhase === "signal" ? styles.timingSignal : styles.actionStartPrompt}>
-                                {timingPhase === "ready" && "画面をクリックして開始"}
-                                {timingPhase === "waiting" && "集中..."}
-                                {timingPhase === "signal" && "今だ！"}
-                                {timingPhase === "finished" && "判定中..."}
-                            </div>
-                            <div className={styles.timingGuide}>
-                                {timingPhase === "ready" && "「！」が出た瞬間を狙おう"}
-                                {timingPhase === "waiting" && "まだクリックしない"}
-                                {timingPhase === "signal" && "早くクリックするほど高火力"}
-                                {timingPhase === "finished" && timingResultText}
-                            </div>
-                            {timingResultText && timingPhase !== "finished" ? (
-                                <div className={styles.actionLastHit}>{timingResultText}</div>
-                            ) : null}
+                            {timingPhase === "ready" && (
+                                <div className={styles.actionStartPrompt}>画面をクリックして開始</div>
+                            )}
+                            {timingPhase === "waiting" && (
+                                <div className={styles.actionStartPrompt}>集中</div>
+                            )}
+                            {timingPhase === "signal" && (
+                                <div className={styles.timingSignal}>！</div>
+                            )}
                         </div>
                     )}
                 </div>

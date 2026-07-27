@@ -16,6 +16,17 @@ def _resolve_config_key(category_key):
     return JOB_CONFIG_KEY_MAP.get(category_key, "all")
 
 
+def get_score_breakdown(request):
+    """
+    セッションに保存されたスコア内訳を取得する。
+    ない場合は None。
+    """
+    breakdown = request.session.get('score_breakdown', {})
+    if not breakdown:
+        return None
+    return breakdown
+
+
 def score_breakdown(request):
     """
     スコア内訳を表示
@@ -23,7 +34,7 @@ def score_breakdown(request):
     セッションに保存されたスコア内訳を表示します。
     内訳データがない場合はゲームオーバー画面にリダイレクトします。
     """
-    breakdown = request.session.get('score_breakdown', {})
+    breakdown = get_score_breakdown(request)
     
     if not breakdown:
         # 内訳データがない場合はゲームオーバー画面にリダイレクト
@@ -34,15 +45,13 @@ def score_breakdown(request):
     })
 
 
-def score_points(request):
+def get_score_points_screen_data(request, category_key=None):
     """
-    スコアポイント振り分け画面
-    
-    ログインユーザーがスコアポイントを振り分けて、次回プレイ時の初期ステータスを強化できます。
-    全職業共通ボーナスと職業別ボーナスに対応しています。
+    スコアポイント振り分け画面用のデータを返す。
+    未ログインの場合は None。
     """
     if not request.user.is_authenticated:
-        return redirect('game:start')
+        return None
 
     user = request.user
     default_jobs = ["戦士", "魔法使い", "忍者", "格闘家", "侍"]
@@ -50,44 +59,16 @@ def score_points(request):
     # 基本職業 + 追加職業の順で表示（重複は除外）
     job_list = list(dict.fromkeys(default_jobs + unlocked))
 
-    category_key = request.GET.get('category', 'all')
+    if category_key is None:
+        category_key = request.GET.get('category', 'all')
     if category_key != 'all' and category_key not in job_list:
         category_key = 'all'
-
-    if request.method == 'POST':
-        stat_key = request.POST.get('stat')
-        category_key = request.POST.get('category', 'all')
-        if category_key != 'all' and category_key not in job_list:
-            category_key = 'all'
-        if stat_key and user.score_points > 0:
-            config_key = _resolve_config_key(category_key)
-            config_list = SCORE_POINT_CONFIG.get(config_key, SCORE_POINT_CONFIG["all"])
-            valid_keys = {cfg["key"] for cfg in config_list}
-            if stat_key in valid_keys:
-                bonus_dict = _get_score_bonus_dict(user, category_key)
-                cfg = next((item for item in config_list if item["key"] == stat_key), None)
-                if cfg:
-                    current_value = _normalize_bonus_value(cfg, bonus_dict.get(stat_key))
-                    next_value = current_value + cfg["inc"]
-                    min_value = cfg.get("min")
-                    max_value = cfg.get("max")
-                    if min_value is not None:
-                        next_value = max(min_value, next_value)
-                    if max_value is not None:
-                        next_value = min(max_value, next_value)
-                    if next_value != current_value:
-                        bonus_dict[stat_key] = next_value
-                        user.score_points -= 1
-                        _set_score_bonus_dict(user, category_key, bonus_dict)
-                        user.initial_points = user.score_points
-                        user.save()
-        return redirect(f"{reverse('game:score_points')}?category={category_key}")
 
     bonus_dict = _get_score_bonus_dict(user, category_key)
     config_key = _resolve_config_key(category_key)
     config_list = SCORE_POINT_CONFIG.get(config_key, SCORE_POINT_CONFIG["all"])
     stat_items = []
-    for idx, cfg in enumerate(config_list):
+    for cfg in config_list:
         current_value = _normalize_bonus_value(cfg, bonus_dict.get(cfg["key"]))
         next_value = current_value + cfg["inc"]
         min_value = cfg.get("min")
@@ -104,25 +85,85 @@ def score_points(request):
         else:
             current_text = str(int(current_value))
             next_text = str(int(next_value))
-        card_class = "stat-card"
         stat_items.append({
             "key": cfg["key"],
             "label": cfg["label"],
             "current": current_text,
             "next": next_text,
-            "card_class": card_class,
+            "card_class": "stat-card",
         })
 
     categories = [{"key": "all", "label": "全て"}] + [
         {"key": job, "label": job} for job in job_list
     ]
 
-    return render(request, 'game/score_points.html', {
-        'categories': categories,
-        'category_key': category_key,
-        'stat_items': stat_items,
-        'score_points': user.score_points,
-    })
+    return {
+        "categories": categories,
+        "category_key": category_key,
+        "stat_items": stat_items,
+        "score_points": user.score_points,
+    }
+
+
+def allocate_score_point(request, stat_key, category_key):
+    """
+    スコアポイントを1消費して指定ステータスを強化する。
+    成功時は更新後の画面データ、未ログイン時は None。
+    """
+    if not request.user.is_authenticated:
+        return None
+
+    user = request.user
+    default_jobs = ["戦士", "魔法使い", "忍者", "格闘家", "侍"]
+    unlocked = user.unlocked_jobs or []
+    job_list = list(dict.fromkeys(default_jobs + unlocked))
+
+    if category_key != 'all' and category_key not in job_list:
+        category_key = 'all'
+
+    if stat_key and user.score_points > 0:
+        config_key = _resolve_config_key(category_key)
+        config_list = SCORE_POINT_CONFIG.get(config_key, SCORE_POINT_CONFIG["all"])
+        valid_keys = {cfg["key"] for cfg in config_list}
+        if stat_key in valid_keys:
+            bonus_dict = _get_score_bonus_dict(user, category_key)
+            cfg = next((item for item in config_list if item["key"] == stat_key), None)
+            if cfg:
+                current_value = _normalize_bonus_value(cfg, bonus_dict.get(stat_key))
+                next_value = current_value + cfg["inc"]
+                min_value = cfg.get("min")
+                max_value = cfg.get("max")
+                if min_value is not None:
+                    next_value = max(min_value, next_value)
+                if max_value is not None:
+                    next_value = min(max_value, next_value)
+                if next_value != current_value:
+                    bonus_dict[stat_key] = next_value
+                    user.score_points -= 1
+                    _set_score_bonus_dict(user, category_key, bonus_dict)
+                    user.initial_points = user.score_points
+                    user.save()
+
+    return get_score_points_screen_data(request, category_key=category_key)
+
+
+def score_points(request):
+    """
+    スコアポイント振り分け画面
+    
+    ログインユーザーがスコアポイントを振り分けて、次回プレイ時の初期ステータスを強化できます。
+    全職業共通ボーナスと職業別ボーナスに対応しています。
+    """
+    if not request.user.is_authenticated:
+        return redirect('game:start')
+
+    if request.method == 'POST':
+        category_key = request.POST.get('category', 'all')
+        allocate_score_point(request, request.POST.get('stat'), category_key)
+        return redirect(f"{reverse('game:score_points')}?category={category_key}")
+
+    data = get_score_points_screen_data(request)
+    return render(request, 'game/score_points.html', data)
 
 
 def ranking(request, player_id):

@@ -19,6 +19,8 @@ export type TohomePayload = {
     message: string;
     redirect_after: boolean;
     recovering: boolean;
+    exp_penalty: number;
+    gold_penalty: number;
 };
 
 export type GameoverPayload = {
