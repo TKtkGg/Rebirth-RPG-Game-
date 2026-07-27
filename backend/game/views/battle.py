@@ -54,13 +54,16 @@ def _serialize_action_mode(request):
     }
 
 
-def _build_current_battle_response(request, player, enemy, stage, event=None):
+def _build_current_battle_response(request, player, enemy, stage, event=None, turn_result=None):
     if event:
-        return {
+        response = {
             "battle": None,
             "event": event,
             "action_mode": _serialize_action_mode(request),
         }
+        if turn_result:
+            response["turn_result"] = turn_result
+        return response
 
     message_history = request.session.get("message_history", [])
     buffs = request.session.get("buffs", {})
@@ -87,11 +90,14 @@ def _build_current_battle_response(request, player, enemy, stage, event=None):
         "enemy_hp_percent": int((enemy.hp / enemy.max_hp) * 100) if enemy.max_hp > 0 else 0,
     }
 
-    return {
+    response = {
         "battle": build_battle_data(state),
         "event": None,
         "action_mode": _serialize_action_mode(request),
     }
+    if turn_result:
+        response["turn_result"] = turn_result
+    return response
 
 
 def _build_battle_event_response(request, player, enemy, stage, event, turn_result=None):
@@ -417,6 +423,11 @@ def battle_action_finish(request, player_id):
     total_damage = request.session.pop("action_total_damage", 0)
     click_count = request.session.pop("action_click_count", 0)
 
+    turn_steps = []
+    before_player_hp = player.total_hp_battle
+    before_player_sp = player.mp
+    before_enemy_hp = enemy.hp
+
     message = f"{player.name}の{skill_name}！\n"
     if action_type == "timing":
         timing_result = request.POST.get("timing_result")
@@ -439,6 +450,16 @@ def battle_action_finish(request, player_id):
     else:
         message += f"{click_count}回の連続攻撃！ 合計{total_damage}ダメージ！\n"
 
+    turn_steps.append(_build_turn_step(
+        "player",
+        message,
+        before_player_hp,
+        before_player_sp,
+        before_enemy_hp,
+        player,
+        enemy,
+    ))
+
     if enemy.hp <= 0:
         message, gained_exp, gained_gold, existLevel = win(message, player, enemy, request)
         result = {
@@ -451,10 +472,13 @@ def battle_action_finish(request, player_id):
         response = _build_battle_event_response(request, player, enemy, stage, event={
             "type": "victory",
             "payload": build_result_data(result),
-        })
+        }, turn_result=_build_turn_result(True, turn_steps))
         _reset_battle_session(request, clear_enemy_id=True)
         return response
 
+    before_player_hp = player.total_hp_battle
+    before_player_sp = player.mp
+    before_enemy_hp = enemy.hp
     actione = choose_enemyAction(enemy, player, buffs, debuffs)
     ex_message, buffs, debuffs = enemyAction(
         message,
@@ -467,9 +491,19 @@ def battle_action_finish(request, player_id):
         special_states,
     )
     message += ex_message
+    turn_steps.append(_build_turn_step(
+        "enemy",
+        ex_message,
+        before_player_hp,
+        before_player_sp,
+        before_enemy_hp,
+        player,
+        enemy,
+    ))
 
     request.session["buffs"] = buffs
     request.session["debuffs"] = debuffs
+    turn_result = _build_turn_result(True, turn_steps)
 
     if player.total_hp_battle <= 0:
         player.death_count += 1
@@ -482,7 +516,7 @@ def battle_action_finish(request, player_id):
                 "payload": {
                     "message": "プレイヤーが倒れました。",
                 },
-            })
+            }, turn_result=turn_result)
 
         message = tohome(message, player, request)
         return _build_current_battle_response(request, player, enemy, stage, event={
@@ -492,7 +526,7 @@ def battle_action_finish(request, player_id):
                 "redirect_after": True,
                 "recovering": True,
             },
-        })
+        }, turn_result=turn_result)
 
     buffs, debuffs, special_states = decrease_buff_debuff_turns(buffs, debuffs, special_states)
     request.session["buffs"] = buffs
@@ -504,7 +538,7 @@ def battle_action_finish(request, player_id):
         request.session["message_history"] = message_history
 
     player.save()
-    return _build_current_battle_response(request, player, enemy, stage)
+    return _build_current_battle_response(request, player, enemy, stage, turn_result=turn_result)
 
 
 def battle(request, player_id, enemy_id=None):
